@@ -1,0 +1,26 @@
+{
+  "name": "biz-content",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.49.1",
+    "@supabase/ssr": "^0.6.1",
+    "lucide-react": "^0.577.0",
+    "next": "^15.3.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hot-toast": "^2.6.0",
+    "react-markdown": "^10.1.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1",
+    "eslint-config-next": "^15.3.3"
+  }
+}
