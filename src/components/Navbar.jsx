@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Sparkles, LogOut, User, Shield } from 'lucide-react';
+import { Sparkles, LogOut, User, Shield, Wand2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Navbar() {
@@ -31,6 +31,9 @@ export default function Navbar() {
             <div className="nav-user-loading">...</div>
           ) : user ? (
             <div className="nav-user-info">
+              <Link href="/poster" className="poster-header-btn" title="AI Poster Generator">
+                <Wand2 size={14} /> Poster
+              </Link>
               {isAdmin && (
                 <Link href="/admin" className="admin-header-btn">
                   <Shield size={14} /> Admin

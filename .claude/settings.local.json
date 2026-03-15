@@ -4,7 +4,9 @@
       "Bash(vercel --prod)",
       "Bash(vercel env:*)",
       "Bash(vercel --prod --force)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }
