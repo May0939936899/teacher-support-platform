@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import {
-  Loader2, Download, RefreshCw, LayoutGrid, Image as ImageIcon,
+  Loader2, Download, RefreshCw, LayoutGrid, Image as ImageIcon, Upload, X,
   Type, Wand2, FileImage, FileText, Presentation, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -39,9 +39,11 @@ export default function PosterPage() {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [templateId, setTemplateId] = useState('sq-center');
   const [bgImage, setBgImage] = useState(null);
+  const [uploadedPhoto, setUploadedPhoto] = useState(null); // user-uploaded photo
   const [generating, setGenerating] = useState(false);
   const [exporting, setExporting] = useState(null);
   const [showDebug, setShowDebug] = useState(false);
+  const [overlayStrength, setOverlayStrength] = useState(40); // overlay opacity %
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -101,6 +103,22 @@ export default function PosterPage() {
     }
   }
 
+  function handlePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setUploadedPhoto(ev.target.result);
+      setBgImage(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleRemovePhoto() {
+    setUploadedPhoto(null);
+    setBgImage(null);
+  }
+
   function handleChangeLayout() {
     const idx = compatibleTemplates.findIndex(t => t.id === templateId);
     const next = (idx + 1) % compatibleTemplates.length;
@@ -110,7 +128,9 @@ export default function PosterPage() {
   function handleReset() {
     setFormData(INITIAL_FORM);
     setBgImage(null);
+    setUploadedPhoto(null);
     setTemplateId('sq-center');
+    setOverlayStrength(40);
   }
 
   async function handleExport(format) {
@@ -214,6 +234,40 @@ export default function PosterPage() {
               </div>
             </div>
 
+            {/* Photo Upload */}
+            <div className="poster-section">
+              <label className="poster-label">
+                <Upload size={15} /> อัปโหลดรูปพื้นหลัง
+              </label>
+              {uploadedPhoto ? (
+                <div className="poster-photo-preview">
+                  <img src={uploadedPhoto} alt="Background" className="poster-photo-thumb" />
+                  <button className="poster-photo-remove" onClick={handleRemovePhoto} type="button">
+                    <X size={14} /> ลบรูป
+                  </button>
+                </div>
+              ) : (
+                <label className="poster-upload-area">
+                  <Upload size={24} />
+                  <span>คลิกเพื่ออัปโหลดรูปภาพ</span>
+                  <span className="poster-upload-hint">รองรับ JPG, PNG (แนะนำ 1200x1200 ขึ้นไป)</span>
+                  <input type="file" accept="image/*" onChange={handlePhotoUpload} hidden />
+                </label>
+              )}
+              {uploadedPhoto && (
+                <div className="poster-overlay-control">
+                  <label className="poster-overlay-label">ความเข้มตัวกรองข้อความ: {overlayStrength}%</label>
+                  <input
+                    type="range"
+                    min="0" max="80" step="5"
+                    value={overlayStrength}
+                    onChange={e => setOverlayStrength(Number(e.target.value))}
+                    className="poster-range"
+                  />
+                </div>
+              )}
+            </div>
+
             {/* Text Fields */}
             <div className="poster-section">
               <label className="poster-label">
@@ -288,6 +342,7 @@ export default function PosterPage() {
                 preset={preset}
                 bgImage={bgImage}
                 showDebug={showDebug}
+                overlayStrength={overlayStrength}
               />
             </div>
 
