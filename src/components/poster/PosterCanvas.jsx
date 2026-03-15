@@ -1,7 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 
-export default function PosterCanvas({ formData, template, style, preset, bgImage, showDebug, overlayStrength = 40 }) {
+export default function PosterCanvas({ formData, template, style, preset, bgImage, showDebug, overlayStrength = 40, fontFamily }) {
   const blocks = template?.blocks || {};
   const gradient = style?.gradient || 'linear-gradient(135deg, #0F2027, #2C5364)';
   const accent = style?.accent || '#00ADEF';
@@ -44,7 +44,7 @@ export default function PosterCanvas({ formData, template, style, preset, bgImag
         borderRadius: '12px',
         overflow: 'hidden',
         background: bgImage ? '#000' : gradient,
-        fontFamily: "'Inter', 'Noto Sans Thai', sans-serif",
+        fontFamily: fontFamily || "'Inter', 'Noto Sans Thai', sans-serif",
         boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
       }}
     >
