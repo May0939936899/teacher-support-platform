@@ -59,6 +59,12 @@ export const translations = {
     tool_broadcast: 'ส่งประกาศ LINE/Email',
     tool_ebook: 'สร้าง E-book',
 
+    // Marketing
+    side_marketing: 'สื่อสารการตลาด',
+    group_content: 'สร้างคอนเทนต์',
+    tool_marketing_content: 'เขียนคอนเทนต์จากภาพ',
+    tool_auto_poster: 'สร้างโปสเตอร์อัตโนมัติ',
+
     // Common UI
     teacher_mode: 'โหมดอาจารย์',
     student_mode: 'โหมดนักศึกษา',
@@ -150,6 +156,12 @@ export const translations = {
     tool_broadcast: 'LINE & Email Broadcast',
     tool_ebook: 'E-book Builder',
 
+    // Marketing
+    side_marketing: 'Marketing Communications',
+    group_content: 'Content Creation',
+    tool_marketing_content: 'Content Writer from Image',
+    tool_auto_poster: 'Auto Poster Maker',
+
     teacher_mode: 'Teacher Mode',
     student_mode: 'Student Mode',
     generate: 'Generate',
@@ -238,6 +250,12 @@ export const translations = {
     tool_broadcast: '公告推送',
     tool_ebook: '电子书制作',
 
+    // Marketing
+    side_marketing: '营销传播',
+    group_content: '内容创作',
+    tool_marketing_content: '图片生成内容',
+    tool_auto_poster: '自动海报制作',
+
     teacher_mode: '教师模式',
     student_mode: '学生模式',
     generate: '生成',
@@ -325,6 +343,12 @@ export const translations = {
     tool_kpi: 'KPI ダッシュボード',
     tool_broadcast: 'お知らせ配信',
     tool_ebook: '電子書籍作成',
+
+    // Marketing
+    side_marketing: 'マーケティング',
+    group_content: 'コンテンツ作成',
+    tool_marketing_content: '画像からコンテンツ作成',
+    tool_auto_poster: '自動ポスター作成',
 
     teacher_mode: '教師モード',
     student_mode: '学生モード',

@@ -46,6 +46,9 @@ const BudgetTracker = dynamic(() => import('@/components/teacher/tools/BudgetTra
 const KPIDashboard = dynamic(() => import('@/components/teacher/tools/KPIDashboard'), { ssr: false });
 const LINEBroadcast = dynamic(() => import('@/components/teacher/tools/LINEBroadcast'), { ssr: false });
 const EbookBuilder = dynamic(() => import('@/components/teacher/tools/EbookBuilder'), { ssr: false });
+// Marketing
+const MarketingContentWriter = dynamic(() => import('@/components/teacher/tools/MarketingContentWriter'), { ssr: false });
+const AutoPosterMaker = dynamic(() => import('@/components/teacher/tools/AutoPosterMaker'), { ssr: false });
 // Utility
 const ComingSoon = dynamic(() => import('@/components/teacher/tools/ComingSoon'), { ssr: false });
 const TeacherDashboard = dynamic(() => import('@/components/teacher/TeacherDashboard'), { ssr: false });
@@ -107,6 +110,15 @@ function buildMenu(lang) {
           { id: 'image-to-content', labelKey: 'tool_image_content', icon: '🖼️', phase: 3 },
           { id: 'pdf-toolkit', labelKey: 'tool_pdf', icon: '📦', phase: 3 },
           { id: 'template-library', labelKey: 'tool_template', icon: '📚', phase: 3 },
+        ]},
+      ],
+    },
+    {
+      side: 'marketing', labelKey: 'side_marketing', color: 'gold', icon: '📣',
+      groups: [
+        { labelKey: 'group_content', items: [
+          { id: 'marketing-content', labelKey: 'tool_marketing_content', icon: '✍️', phase: 1 },
+          { id: 'auto-poster', labelKey: 'tool_auto_poster', icon: '🎨', phase: 1 },
         ]},
       ],
     },
@@ -174,12 +186,16 @@ const TOOL_MAP = {
   'kpi-dashboard': KPIDashboard,
   'line-broadcast': LINEBroadcast,
   'ebook-builder': EbookBuilder,
+  // Marketing
+  'marketing-content': MarketingContentWriter,
+  'auto-poster': AutoPosterMaker,
 };
 
 const COLOR_MAP = {
   cyan: { bg: CI.cyan, light: '#e6f9ff', border: '#80daff', text: '#0090b8' },
   purple: { bg: CI.purple, light: '#f3edff', border: '#c4a8ff', text: '#5c35cc' },
   magenta: { bg: CI.magenta, light: '#fff0f6', border: '#ff80b8', text: '#b8005e' },
+  gold: { bg: '#e6a800', light: '#fff8e1', border: '#ffd54f', text: '#9e7700' },
 };
 
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -454,7 +470,7 @@ export default function TeacherPage() {
   const [activeTool, setActiveTool] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [expandedSides, setExpandedSides] = useState({ teaching: true, documents: true, admin: true });
+  const [expandedSides, setExpandedSides] = useState({ teaching: true, documents: true, marketing: true, admin: true });
   const [lang, setLang] = useState('th');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [toolError, setToolError] = useState(null);
@@ -704,13 +720,13 @@ export default function TeacherPage() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Logo — Sticky Header */}
       <div style={{
-        padding: '16px 14px', borderBottom: '1px solid #e2e8f0',
-        display: 'flex', alignItems: 'center', gap: '10px', minHeight: '64px',
+        padding: '10px 14px', borderBottom: '1px solid #e2e8f0',
+        display: 'flex', alignItems: 'center', gap: '10px', height: '64px',
         position: 'sticky', top: 0, zIndex: 5,
-        background: '#fff',
+        background: '#fff', boxSizing: 'border-box',
       }}>
         <div onClick={() => { setActiveTool(null); setShowSplash(true); }} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
-          <img src="/logo-spubus.png" alt="SPUBUS" style={{ height: '64px', objectFit: 'contain', flexShrink: 0 }} />
+          <img src="/logo-spubus.png" alt="SPUBUS" style={{ height: '42px', objectFit: 'contain', flexShrink: 0 }} />
         </div>
         {!isMobile && (
           <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{ background: '#f1f5f9', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '6px', borderRadius: '8px', flexShrink: 0, fontSize: '14px', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -851,6 +867,7 @@ export default function TeacherPage() {
         <div style={{
           padding: isMobile ? '8px 12px' : '10px 24px', background: '#fff', borderBottom: '1px solid #e2e8f0',
           display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0,
+          minHeight: '64px', boxSizing: 'border-box',
         }}>
           {/* Mobile hamburger / Desktop sidebar toggle */}
           <button

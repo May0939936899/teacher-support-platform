@@ -512,6 +512,50 @@ ${payload.content}
 - เหมาะกับสไตล์ ${payload.style === 'friendly' ? 'เข้าถึงง่าย อ่านสนุก' : payload.style === 'visual' ? 'เน้นการอธิบายเป็นภาพ พร้อมแนะนำ diagram' : payload.style === 'workshop' ? 'เน้นฝึกทำ มี exercise' : 'วิชาการ เป็นทางการ'}`;
         break;
 
+      case 'marketing_content':
+        prompt = `คุณเป็นผู้เชี่ยวชาญด้านการเขียนคอนเทนต์การตลาดสำหรับมหาวิทยาลัย โดยเฉพาะคณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
+
+เขียนคอนเทนต์สำหรับโพสต์บน ${payload.platform || 'Facebook'}:
+- เป้าหมาย: ${payload.title}
+- หมวดหมู่/สาขา: ${payload.category}
+- โทนการเขียน: ${payload.tone === 'professional' ? 'ทางการ น่าเชื่อถือ' : payload.tone === 'fun' ? 'สนุกสนาน เป็นกันเอง ใช้คำที่วัยรุ่นเข้าถึง' : payload.tone === 'concise' ? 'สั้น กระชับ ตรงประเด็น' : 'เน้นอิโมจิ สีสันสะดุดตา ดึงดูดความสนใจ'}
+${payload.keyPoints ? `- ประเด็นสำคัญ/ข้อมูลเพิ่มเติม: ${payload.keyPoints}` : ''}
+
+กรุณาเขียน:
+1. หัวข้อที่ดึงดูดความสนใจ (Hook)
+2. เนื้อหาหลัก (Body) - อธิบายประโยชน์/จุดเด่น
+3. Call to Action (CTA) - กระตุ้นให้ดำเนินการ
+4. Hashtags ที่เกี่ยวข้อง (5-8 อัน)
+
+เขียนเป็นภาษาไทย เหมาะกับแพลตฟอร์ม ${payload.platform} โดยเฉพาะ
+${payload.platform === 'tiktok' ? '- ใช้ภาษาวัยรุ่น สั้น ติดหู' : ''}
+${payload.platform === 'instagram' ? '- เน้น visual storytelling มี emoji' : ''}
+${payload.platform === 'line' ? '- กระชับ อ่านง่ายในแชท' : ''}
+${payload.platform === 'lemon8' ? '- สไตล์ review/รีวิว แชร์ประสบการณ์' : ''}
+${payload.platform === 'youtube' ? '- เขียนเป็น description + title ที่ SEO ดี' : ''}`;
+        break;
+
+      case 'poster_content':
+        prompt = `คุณเป็นผู้เชี่ยวชาญด้านการออกแบบสื่อประชาสัมพันธ์สำหรับมหาวิทยาลัย
+
+สร้างเนื้อหาสำหรับโปสเตอร์:
+- หัวข้อ: ${payload.title || 'งานกิจกรรม'}
+- รายละเอียด: ${payload.description || ''}
+- สไตล์: ${payload.style || 'modern'}
+- แพลตฟอร์ม: ${payload.platform || 'ig-post'}
+
+ตอบใน JSON format เท่านั้น (ไม่ต้องมี markdown code block):
+{
+  "headline": "หัวข้อหลักที่ดึงดูด (สั้น 5-10 คำ)",
+  "subheadline": "หัวข้อรอง (อธิบายเพิ่ม 1 ประโยค)",
+  "body": "เนื้อหาสั้นๆ 2-3 บรรทัด",
+  "cta": "ข้อความ Call to Action",
+  "hashtags": "#แฮชแท็ก1 #แฮชแท็ก2"
+}
+
+เขียนเป็นภาษาไทย กระชับ อ่านง่าย เหมาะกับการทำโปสเตอร์`;
+        break;
+
       case 'content_summarizer':
         prompt = `คุณเป็นผู้เชี่ยวชาญด้านการสรุปเนื้อหาการศึกษา
 
