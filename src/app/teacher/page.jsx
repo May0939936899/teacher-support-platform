@@ -877,34 +877,48 @@ export default function TeacherPage() {
 
           {activeTool && active ? (
             <>
-              <div style={{
-                width: '36px', height: '36px', borderRadius: '10px',
-                background: COLOR_MAP[active.side.color].light,
-                border: `1px solid ${COLOR_MAP[active.side.color].border}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px',
-              }}>
-                {active.item.icon}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t(lang, active.item.labelKey)}</h1>
-                <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>{t(lang, active.side.labelKey)}</p>
+              {/* Back button */}
+              <button
+                onClick={() => handleSelectTool(null)}
+                style={{
+                  background: COLOR_MAP[active.side.color].light,
+                  border: `1px solid ${COLOR_MAP[active.side.color].border}`,
+                  color: COLOR_MAP[active.side.color].text,
+                  cursor: 'pointer', borderRadius: '10px',
+                  padding: '6px 12px', fontSize: '14px', fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  fontFamily: 'inherit', flexShrink: 0, transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = COLOR_MAP[active.side.color].border + '40'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = COLOR_MAP[active.side.color].light; }}
+              >
+                ← {isMobile ? '' : t(lang, 'home')}
+              </button>
+              {/* Breadcrumb: Section > Tool */}
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  fontSize: '13px', color: COLOR_MAP[active.side.color].text, fontWeight: 600,
+                  background: COLOR_MAP[active.side.color].light, padding: '2px 8px', borderRadius: '6px',
+                  flexShrink: 0, display: isMobile ? 'none' : 'inline',
+                }}>
+                  {active.side.icon} {t(lang, active.side.labelKey)}
+                </span>
+                {!isMobile && <span style={{ color: '#cbd5e1', fontSize: '14px', flexShrink: 0 }}>/</span>}
+                <span style={{ fontSize: '18px', flexShrink: 0 }}>{active.item.icon}</span>
+                <h1 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {t(lang, active.item.labelKey)}
+                </h1>
               </div>
               {active.item.phase === 1 && (
-                <span style={{ fontSize: '14px', padding: '3px 10px', borderRadius: '6px', background: '#dcfce7', color: '#16a34a', fontWeight: 600, flexShrink: 0 }}>
-                  ✓ {t(lang, 'phase_ready')}
+                <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '6px', background: '#dcfce7', color: '#16a34a', fontWeight: 600, flexShrink: 0 }}>
+                  ✓ {isMobile ? '' : t(lang, 'phase_ready')}
                 </span>
               )}
               {active.item.phase > 1 && (
-                <span style={{ fontSize: '14px', padding: '3px 10px', borderRadius: '6px', background: '#fef3c7', color: '#92400e', fontWeight: 600, flexShrink: 0 }}>
-                  Phase {active.item.phase}
+                <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '6px', background: '#fef3c7', color: '#92400e', fontWeight: 600, flexShrink: 0 }}>
+                  P{active.item.phase}
                 </span>
               )}
-              <button
-                onClick={() => handleSelectTool(null)}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '24px', padding: '4px', flexShrink: 0 }}
-              >
-                ×
-              </button>
             </>
           ) : (
             <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { setActiveTool(null); setShowSplash(true); }}>
