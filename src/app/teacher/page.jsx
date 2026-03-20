@@ -267,7 +267,7 @@ function BusSplashScreen({ onFinish }) {
   return (
     <div style={{
       height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(180deg, #0b0b24 0%, #0e0e38 50%, #141452 100%)',
+      background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%)',
       fontFamily: FONT, overflow: 'hidden', position: 'fixed', inset: 0, zIndex: 9999,
     }}>
       <style>{`
@@ -334,7 +334,7 @@ function BusSplashScreen({ onFinish }) {
           width: i % 5 === 0 ? '4px' : i % 3 === 0 ? '3px' : '2px',
           height: i % 5 === 0 ? '4px' : i % 3 === 0 ? '3px' : '2px',
           borderRadius: i % 4 === 0 ? '50%' : '0',
-          background: [CI.cyan, CI.gold, CI.magenta, '#fff', CI.purple][i % 5],
+          background: [CI.cyan, CI.gold, CI.magenta, '#cbd5e1', CI.purple][i % 5],
           top: `${(i * 13 + 3) % 85}%`, left: `${(i * 19 + 7) % 94}%`,
           animation: `twinkle ${1.2 + (i % 4) * 0.7}s ease-in-out infinite`,
           animationDelay: `${i * 0.12}s`,
@@ -427,7 +427,7 @@ function BusSplashScreen({ onFinish }) {
 
       {/* TEACHER SUPPORT subtitle */}
       <div style={{
-        fontSize: '16px', fontWeight: 600, letterSpacing: '7px', color: 'rgba(255,255,255,0.6)',
+        fontSize: '16px', fontWeight: 600, letterSpacing: '7px', color: '#64748b',
         textTransform: 'uppercase', zIndex: 2, marginBottom: '6px',
         animation: 'subtitleReveal 0.8s ease-out 0.8s both',
       }}>
@@ -436,14 +436,14 @@ function BusSplashScreen({ onFinish }) {
 
       {/* Sub-subtitle */}
       <div style={{
-        fontSize: '13px', color: 'rgba(255,255,255,0.3)', zIndex: 2, marginBottom: '4px',
+        fontSize: '13px', color: '#94a3b8', zIndex: 2, marginBottom: '4px',
         opacity: 0, animation: 'subtitleReveal 0.6s ease-out 1.2s both',
         letterSpacing: '3px',
       }}>
         AI-Powered Teaching Platform
       </div>
       <div style={{
-        fontSize: '11px', color: 'rgba(255,255,255,0.15)', zIndex: 2,
+        fontSize: '11px', color: '#b0b8c4', zIndex: 2,
         opacity: 0, animation: 'subtitleReveal 0.6s ease-out 1.5s both',
         letterSpacing: '2px',
       }}>
@@ -453,7 +453,7 @@ function BusSplashScreen({ onFinish }) {
       {/* ===== Curved Road + Big Bus ===== */}
       <div style={{ position: 'relative', width: '100%', height: '120px', zIndex: 2, marginTop: '16px' }}>
         <svg style={{ position: 'absolute', bottom: '8px', width: '104%', left: '-2%', height: '100px' }} viewBox="-100 0 1400 120" preserveAspectRatio="none">
-          <path d="M-100,70 C100,48 350,85 600,65 C850,45 1050,82 1300,60" fill="none" stroke="#2a2a5e" strokeWidth="30" />
+          <path d="M-100,70 C100,48 350,85 600,65 C850,45 1050,82 1300,60" fill="none" stroke="#e2e8f0" strokeWidth="30" />
           <path d="M-100,70 C100,48 350,85 600,65 C850,45 1050,82 1300,60" fill="none" stroke={CI.gold} strokeWidth="2" strokeDasharray="16 12" opacity="0.5">
             <animate attributeName="stroke-dashoffset" from="0" to="-56" dur="0.8s" repeatCount="indefinite" />
           </path>
@@ -463,7 +463,7 @@ function BusSplashScreen({ onFinish }) {
         <div style={{ position: 'absolute', bottom: '24px', animation: 'busRunCurve 5.5s ease-in-out infinite' }}>
           <div style={{ animation: 'bounce 0.3s ease-in-out infinite' }}>
             <svg width="160" height="75" viewBox="0 0 180 85">
-              <ellipse cx="90" cy="78" rx="70" ry="4" fill="rgba(0,0,0,0.25)" />
+              <ellipse cx="90" cy="78" rx="70" ry="4" fill="rgba(0,0,0,0.08)" />
               <rect x="5" y="14" width="170" height="50" rx="10" fill={CI.cyan} />
               <rect x="10" y="7" width="160" height="12" rx="6" fill="#0099cc" />
               <rect x="10" y="17" width="160" height="2.5" fill="#33ccff" opacity="0.35" />
@@ -492,8 +492,8 @@ function BusSplashScreen({ onFinish }) {
                 <line x1="140" y1="63" x2="140" y2="77" stroke="#888" strokeWidth="1" />
                 <line x1="133" y1="70" x2="147" y2="70" stroke="#888" strokeWidth="1" />
               </g>
-              <circle cx="-6" cy="58" r="4" fill="rgba(255,255,255,0.08)" />
-              <circle cx="-16" cy="54" r="6" fill="rgba(255,255,255,0.04)" />
+              <circle cx="-6" cy="58" r="4" fill="rgba(0,0,0,0.04)" />
+              <circle cx="-16" cy="54" r="6" fill="rgba(0,0,0,0.02)" />
             </svg>
           </div>
         </div>
@@ -501,15 +501,15 @@ function BusSplashScreen({ onFinish }) {
 
       {/* Progress bar */}
       <div style={{ position: 'absolute', bottom: '16px', width: '50%', maxWidth: '280px', zIndex: 3 }}>
-        <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ height: '6px', borderRadius: '3px', background: '#e2e8f0', overflow: 'hidden' }}>
           <div style={{
             width: `${progress}%`, height: '100%', borderRadius: '3px',
             background: `linear-gradient(90deg, ${CI.cyan}, ${CI.purple}, ${CI.magenta})`,
             transition: 'width 0.1s linear',
-            boxShadow: `0 0 8px ${CI.cyan}60`,
+            boxShadow: `0 0 6px ${CI.cyan}40`,
           }} />
         </div>
-        <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '3px', fontWeight: 600 }}>
+        <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '9px', color: '#b0b8c4', letterSpacing: '3px', fontWeight: 600 }}>
           LOADING...
         </div>
       </div>
@@ -563,189 +563,34 @@ export default function TeacherPage() {
   if (loading) return (
     <div style={{
       height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0b0b24 0%, #1a1a4e 40%, #2d1b69 100%)',
-      fontFamily: FONT, overflow: 'hidden', position: 'relative',
+      background: '#fff', fontFamily: FONT,
     }}>
-      {/* Stars background */}
       <style>{`
-        @keyframes busRun {
-          0% { transform: translateX(-250px); opacity: 0; }
-          5% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateX(calc(100vw + 250px)); opacity: 0; }
-        }
-        @keyframes busRun2 {
-          0% { transform: translateX(calc(100vw + 150px)) scaleX(-1); opacity: 0; }
-          5% { opacity: 0.4; }
-          90% { opacity: 0.4; }
-          100% { transform: translateX(-350px) scaleX(-1); opacity: 0; }
-        }
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-        @keyframes wheelSpin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        @keyframes fadeInUp {
-          0% { opacity: 0; transform: translateY(30px); }
-          100% { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes roadDash {
-          0% { background-position: 0 0; }
-          100% { background-position: -60px 0; }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 0.6; }
-          50% { opacity: 1; }
-        }
-        @keyframes twinkle {
-          0%, 100% { opacity: 0.2; }
-          50% { opacity: 1; }
-        }
+        @keyframes loadSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes loadPulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+        @keyframes loadBar { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
       `}</style>
-
-      {/* Floating stars */}
-      {[...Array(25)].map((_, i) => (
-        <div key={i} style={{
-          position: 'absolute',
-          width: i % 3 === 0 ? '3px' : '2px', height: i % 3 === 0 ? '3px' : '2px',
-          borderRadius: '50%',
-          background: i % 4 === 0 ? '#00b4e6' : i % 4 === 1 ? '#ffc107' : i % 4 === 2 ? '#e6007e' : '#fff',
-          top: `${(i * 17 + 5) % 85}%`, left: `${(i * 23 + 10) % 90}%`,
-          animation: `twinkle ${1.5 + (i % 3) * 0.8}s ease-in-out infinite`,
-          animationDelay: `${i * 0.2}s`,
-        }} />
-      ))}
-
-      {/* Logo */}
-      <div style={{ animation: 'fadeInUp 0.8s ease-out', marginBottom: '20px', zIndex: 2 }}>
-        <img src="/logo-spubus.png" alt="SPUBUS" style={{ height: '80px', objectFit: 'contain', filter: 'drop-shadow(0 4px 20px rgba(0,180,230,0.4))' }} />
-      </div>
-
-      {/* Title */}
-      <div style={{ animation: 'fadeInUp 0.8s ease-out 0.2s both', zIndex: 2, textAlign: 'center', marginBottom: '50px' }}>
-        <h1 style={{
-          fontSize: '32px', fontWeight: 800, margin: 0, letterSpacing: '0.05em',
-          background: 'linear-gradient(90deg, #00b4e6, #7c4dff, #e6007e)',
-          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-        }}>
-          SPUBUS Teacher Support
-        </h1>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', marginTop: '8px' }}>
-          ระบบสนับสนุนการสอนสำหรับอาจารย์
-        </p>
-      </div>
-
-      {/* Road + Bus Scene */}
       <div style={{
-        position: 'relative', width: '100%', height: '120px',
-        animation: 'fadeInUp 0.8s ease-out 0.4s both', zIndex: 2,
+        width: '48px', height: '48px', borderRadius: '50%',
+        border: '3px solid #f1f5f9', borderTopColor: CI.cyan,
+        animation: 'loadSpin 0.8s linear infinite', marginBottom: '16px',
+      }} />
+      <div style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
+        <span style={{ color: CI.cyan }}>SPU</span><span style={{ color: CI.magenta }}>BUS</span> Teacher Support
+      </div>
+      <div style={{
+        width: '180px', height: '4px', borderRadius: '2px', background: '#f1f5f9',
+        overflow: 'hidden', marginBottom: '8px',
       }}>
-        {/* Road */}
         <div style={{
-          position: 'absolute', bottom: '20px', left: 0, right: 0, height: '40px',
-          background: '#2a2a3e', borderTop: '3px solid #3a3a5e', borderBottom: '3px solid #1a1a2e',
-        }}>
-          {/* Road dashes */}
-          <div style={{
-            position: 'absolute', top: '50%', left: 0, right: 0, height: '3px', transform: 'translateY(-50%)',
-            backgroundImage: 'repeating-linear-gradient(90deg, #ffc107 0px, #ffc107 20px, transparent 20px, transparent 40px)',
-            backgroundSize: '60px 3px',
-            animation: 'roadDash 0.8s linear infinite',
-          }} />
-        </div>
-
-        {/* === BUS (main - going right) === */}
-        <div style={{
-          position: 'absolute', bottom: '45px',
-          animation: 'busRun 4s linear infinite',
-        }}>
-          <div style={{ animation: 'bounce 0.3s ease-in-out infinite', position: 'relative' }}>
-            {/* Bus body */}
-            <svg width="140" height="65" viewBox="0 0 140 65">
-              {/* Main body */}
-              <rect x="5" y="10" width="130" height="40" rx="8" fill="#00b4e6" />
-              {/* Top */}
-              <rect x="10" y="5" width="120" height="10" rx="5" fill="#0099cc" />
-              {/* Windows */}
-              <rect x="15" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
-              <rect x="38" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
-              <rect x="61" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
-              <rect x="84" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
-              {/* Door */}
-              <rect x="107" y="18" width="22" height="28" rx="3" fill="#0099cc" />
-              <rect x="110" y="21" width="7" height="22" rx="2" fill="#e0f7ff" opacity="0.8" />
-              <rect x="119" y="21" width="7" height="22" rx="2" fill="#e0f7ff" opacity="0.8" />
-              {/* Front light */}
-              <rect x="130" y="30" width="8" height="8" rx="2" fill="#ffc107" />
-              {/* Back light */}
-              <rect x="2" y="30" width="6" height="8" rx="2" fill="#e6007e" />
-              {/* Label "SPU BUS" */}
-              <text x="50" y="44" fill="#fff" fontSize="9" fontWeight="800" fontFamily="sans-serif">SPU BUS</text>
-              {/* Bumper */}
-              <rect x="5" y="48" width="130" height="4" rx="2" fill="#0088b3" />
-              {/* Wheels */}
-              <circle cx="35" cy="55" r="9" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
-              <circle cx="35" cy="55" r="4" fill="#555" />
-              <circle cx="105" cy="55" r="9" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
-              <circle cx="105" cy="55" r="4" fill="#555" />
-              {/* Wheel spokes animation */}
-              <g style={{ transformOrigin: '35px 55px', animation: 'wheelSpin 0.4s linear infinite' }}>
-                <line x1="35" y1="49" x2="35" y2="61" stroke="#777" strokeWidth="1" />
-                <line x1="29" y1="55" x2="41" y2="55" stroke="#777" strokeWidth="1" />
-              </g>
-              <g style={{ transformOrigin: '105px 55px', animation: 'wheelSpin 0.4s linear infinite' }}>
-                <line x1="105" y1="49" x2="105" y2="61" stroke="#777" strokeWidth="1" />
-                <line x1="99" y1="55" x2="111" y2="55" stroke="#777" strokeWidth="1" />
-              </g>
-              {/* Exhaust */}
-              <circle cx="-5" cy="48" r="4" fill="rgba(255,255,255,0.15)" />
-              <circle cx="-15" cy="45" r="6" fill="rgba(255,255,255,0.08)" />
-              <circle cx="-28" cy="42" r="8" fill="rgba(255,255,255,0.04)" />
-            </svg>
-          </div>
-        </div>
-
-        {/* === Small bus (going left) === */}
-        <div style={{
-          position: 'absolute', bottom: '30px',
-          animation: 'busRun2 6s linear infinite',
-          animationDelay: '1s',
-        }}>
-          <svg width="80" height="40" viewBox="0 0 140 65">
-            <rect x="5" y="10" width="130" height="40" rx="8" fill="#e6007e" />
-            <rect x="10" y="5" width="120" height="10" rx="5" fill="#cc006e" />
-            <rect x="15" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.9" />
-            <rect x="38" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.9" />
-            <rect x="61" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.9" />
-            <rect x="84" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.9" />
-            <rect x="130" y="30" width="8" height="8" rx="2" fill="#ffc107" />
-            <circle cx="35" cy="55" r="9" fill="#1a1a2e" />
-            <circle cx="105" cy="55" r="9" fill="#1a1a2e" />
-          </svg>
-        </div>
+          width: '50%', height: '100%', borderRadius: '2px',
+          background: `linear-gradient(90deg, ${CI.cyan}, ${CI.purple}, ${CI.magenta})`,
+          animation: 'loadBar 1.2s ease-in-out infinite',
+        }} />
       </div>
-
-      {/* Loading text */}
-      <div style={{ animation: 'fadeInUp 0.8s ease-out 0.6s both', zIndex: 2, textAlign: 'center', marginTop: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
-          <div style={{
-            width: '200px', height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.1)', overflow: 'hidden',
-          }}>
-            <div style={{
-              height: '100%', borderRadius: '3px',
-              background: 'linear-gradient(90deg, #00b4e6, #7c4dff, #e6007e)',
-              animation: 'roadDash 1.5s linear infinite',
-              width: '60%',
-            }} />
-          </div>
-        </div>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', marginTop: '12px', animation: 'pulse 1.5s ease-in-out infinite' }}>
-          กำลังเตรียมเครื่องมือ 35 รายการ...
-        </p>
-      </div>
+      <p style={{ color: '#94a3b8', fontSize: '13px', animation: 'loadPulse 1.5s ease-in-out infinite' }}>
+        กำลังเตรียมเครื่องมือ...
+      </p>
     </div>
   );
 
