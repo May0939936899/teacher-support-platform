@@ -229,216 +229,271 @@ function BusSplashScreen({ onFinish }) {
     return () => { clearInterval(interval); clearTimeout(timer); };
   }, [onFinish]);
 
-  const pxShadow = (color, size = 2) => {
-    const s = size;
-    return `${s}px 0 0 ${color}, -${s}px 0 0 ${color}, 0 ${s}px 0 ${color}, 0 -${s}px 0 ${color}, ${s}px ${s}px 0 ${color}, -${s}px ${s}px 0 ${color}, ${s}px -${s}px 0 ${color}, -${s}px -${s}px 0 ${color}`;
+  // Pixel font data
+  const FONTS = {
+    S: [[0,1,1,1,1,1,0],[1,1,0,0,0,1,1],[1,1,0,0,0,0,0],[0,1,1,1,1,1,0],[0,0,0,0,0,1,1],[1,1,0,0,0,1,1],[0,1,1,1,1,1,0]],
+    P: [[1,1,1,1,1,1,0],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,1,1,1,1,0],[1,1,0,0,0,0,0],[1,1,0,0,0,0,0],[1,1,0,0,0,0,0]],
+    U: [[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[0,1,1,1,1,1,0]],
+    B: [[1,1,1,1,1,1,0],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,1,1,1,1,0],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,1,1,1,1,0]],
   };
+  const LETTERS = [
+    { ch: 'S', color: CI.cyan },
+    { ch: 'P', color: CI.cyan },
+    { ch: 'U', color: CI.cyan },
+    { ch: 'B', color: CI.magenta },
+    { ch: 'U', color: CI.magenta },
+    { ch: 'S', color: CI.magenta },
+  ];
+  const PX = 7, GAP = 2, CHAR_GAP = 10;
+  const charW = 7 * (PX + GAP);
+  const totalW = LETTERS.length * charW + (LETTERS.length - 1) * CHAR_GAP;
+
+  // Build all pixel positions
+  const allPixels = [];
+  let globalIdx = 0;
+  LETTERS.forEach((letter, li) => {
+    const grid = FONTS[letter.ch];
+    const baseX = li * (charW + CHAR_GAP);
+    grid.forEach((row, ry) => {
+      row.forEach((on, rx) => {
+        if (on) {
+          allPixels.push({ x: baseX + rx * (PX + GAP), y: ry * (PX + GAP), li, color: letter.color, idx: globalIdx });
+          globalIdx++;
+        }
+      });
+    });
+  });
 
   return (
     <div style={{
       height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(180deg, #0b0b24 0%, #111145 50%, #1a1a4e 100%)',
+      background: 'linear-gradient(180deg, #0b0b24 0%, #0e0e38 50%, #141452 100%)',
       fontFamily: FONT, overflow: 'hidden', position: 'fixed', inset: 0, zIndex: 9999,
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        @keyframes pxPop {
+          0% { transform: scale(0) rotate(180deg); opacity: 0; }
+          60% { transform: scale(1.3) rotate(-10deg); opacity: 1; }
+          80% { transform: scale(0.9) rotate(5deg); }
+          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+        @keyframes pxWave {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+        @keyframes pxPulse {
+          0%, 100% { opacity: 0.85; filter: brightness(1); }
+          50% { opacity: 1; filter: brightness(1.4); }
+        }
+        @keyframes pxColorCycle {
+          0% { fill: #00b4e6; }
+          25% { fill: #7c4dff; }
+          50% { fill: #e6007e; }
+          75% { fill: #ffc107; }
+          100% { fill: #00b4e6; }
+        }
+        @keyframes pxColorCycleM {
+          0% { fill: #e6007e; }
+          25% { fill: #ffc107; }
+          50% { fill: #00b4e6; }
+          75% { fill: #7c4dff; }
+          100% { fill: #e6007e; }
+        }
+        @keyframes sparkle {
+          0% { transform: scale(0) rotate(0deg); opacity: 0; }
+          50% { transform: scale(1) rotate(180deg); opacity: 1; }
+          100% { transform: scale(0) rotate(360deg); opacity: 0; }
+        }
+        @keyframes floatUp {
+          0% { transform: translateY(0) scale(1); opacity: 0.8; }
+          100% { transform: translateY(-40px) scale(0.3); opacity: 0; }
+        }
+        @keyframes twinkle { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.8; } }
         @keyframes busRunCurve {
-          0% { transform: translateX(-30%) translateY(0px); }
-          25% { transform: translateX(15vw) translateY(-8px); }
-          50% { transform: translateX(45vw) translateY(5px); }
-          75% { transform: translateX(72vw) translateY(-4px); }
-          100% { transform: translateX(calc(100vw + 30%)) translateY(0px); }
+          0% { transform: translateX(-30%); }
+          100% { transform: translateX(calc(100vw + 30%)); }
         }
         @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
         @keyframes wheelSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        @keyframes fadeInUp { 0% { opacity: 0; transform: translateY(30px); } 100% { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeInScale { 0% { opacity: 0; transform: scale(0.85); } 100% { opacity: 1; transform: scale(1); } }
-        @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
-        @keyframes twinkle { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
-        @keyframes subtitleSlide { 0% { opacity: 0; letter-spacing: 16px; } 100% { opacity: 0.55; letter-spacing: 8px; } }
-        @keyframes gradientFlow { 0% { stop-color: #00b4e6; } 25% { stop-color: #7c4dff; } 50% { stop-color: #e6007e; } 75% { stop-color: #ffc107; } 100% { stop-color: #00b4e6; } }
-        @keyframes gradientFlow2 { 0% { stop-color: #e6007e; } 25% { stop-color: #ffc107; } 50% { stop-color: #00b4e6; } 75% { stop-color: #7c4dff; } 100% { stop-color: #e6007e; } }
-        @keyframes gradientFlow3 { 0% { stop-color: #7c4dff; } 25% { stop-color: #00b4e6; } 50% { stop-color: #ffc107; } 75% { stop-color: #e6007e; } 100% { stop-color: #7c4dff; } }
+        @keyframes subtitleReveal {
+          0% { opacity: 0; transform: translateY(12px); letter-spacing: 14px; }
+          100% { opacity: 0.6; transform: translateY(0); letter-spacing: 7px; }
+        }
+        @keyframes heartBeat {
+          0%, 100% { transform: scale(1); }
+          25% { transform: scale(1.1); }
+          50% { transform: scale(1); }
+          75% { transform: scale(1.05); }
+        }
       `}</style>
 
       {/* Floating pixel stars */}
-      {[...Array(30)].map((_, i) => (
+      {[...Array(35)].map((_, i) => (
         <div key={i} style={{
           position: 'absolute',
           width: i % 5 === 0 ? '4px' : i % 3 === 0 ? '3px' : '2px',
           height: i % 5 === 0 ? '4px' : i % 3 === 0 ? '3px' : '2px',
-          background: i % 5 === 0 ? CI.cyan : i % 5 === 1 ? CI.gold : i % 5 === 2 ? CI.magenta : i % 5 === 3 ? '#fff' : CI.purple,
-          top: `${(i * 13 + 3) % 80}%`, left: `${(i * 19 + 7) % 92}%`,
+          borderRadius: i % 4 === 0 ? '50%' : '0',
+          background: [CI.cyan, CI.gold, CI.magenta, '#fff', CI.purple][i % 5],
+          top: `${(i * 13 + 3) % 85}%`, left: `${(i * 19 + 7) % 94}%`,
           animation: `twinkle ${1.2 + (i % 4) * 0.7}s ease-in-out infinite`,
-          animationDelay: `${i * 0.15}s`,
+          animationDelay: `${i * 0.12}s`,
         }} />
       ))}
 
-      {/* Pixel Title: SPUBUS — Animated flowing gradient pixel art */}
-      <div style={{ animation: 'fadeInScale 0.8s ease-out 0.15s both', zIndex: 2, marginBottom: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <svg viewBox="0 0 600 120" style={{ width: '90vw', maxWidth: '760px', height: 'auto' }}>
+      {/* ===== PIXEL TITLE: SPUBUS ===== */}
+      <div style={{ zIndex: 2, marginBottom: '16px' }}>
+        <svg viewBox={`-20 -20 ${totalW + 40} ${7 * (PX + GAP) + 40}`}
+          style={{ width: '88vw', maxWidth: '680px', height: 'auto' }}>
           <defs>
-            <linearGradient id="gradCyan" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%"><animate attributeName="stop-color" values="#00b4e6;#7c4dff;#e6007e;#ffc107;#00b4e6" dur="4s" repeatCount="indefinite" /></stop>
-              <stop offset="50%"><animate attributeName="stop-color" values="#7c4dff;#e6007e;#ffc107;#00b4e6;#7c4dff" dur="4s" repeatCount="indefinite" /></stop>
-              <stop offset="100%"><animate attributeName="stop-color" values="#e6007e;#ffc107;#00b4e6;#7c4dff;#e6007e" dur="4s" repeatCount="indefinite" /></stop>
-            </linearGradient>
-            <linearGradient id="gradMagenta" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%"><animate attributeName="stop-color" values="#e6007e;#ffc107;#00b4e6;#7c4dff;#e6007e" dur="4s" repeatCount="indefinite" /></stop>
-              <stop offset="50%"><animate attributeName="stop-color" values="#ffc107;#00b4e6;#7c4dff;#e6007e;#ffc107" dur="4s" repeatCount="indefinite" /></stop>
-              <stop offset="100%"><animate attributeName="stop-color" values="#00b4e6;#7c4dff;#e6007e;#ffc107;#00b4e6" dur="4s" repeatCount="indefinite" /></stop>
-            </linearGradient>
-            <filter id="glowC" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="4" result="b" />
-              <feFlood floodColor={CI.cyan} floodOpacity="0.35" />
-              <feComposite in2="b" operator="in" />
-              <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
-            </filter>
-            <filter id="glowM" x="-30%" y="-30%" width="160%" height="160%">
-              <feGaussianBlur stdDeviation="4" result="b" />
-              <feFlood floodColor={CI.magenta} floodOpacity="0.35" />
-              <feComposite in2="b" operator="in" />
+            <filter id="pxGlow">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feFlood floodOpacity="0.5" />
+              <feComposite in2="blur" operator="in" />
               <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
           </defs>
-          {(() => {
-            const C = 5, GAP = 1.2, cw = C - GAP;
-            const fonts = {
-              S: [[0,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,0],[1,1,0,0,0,0,1,0],[1,1,0,0,0,0,0,0],[0,1,1,1,1,1,0,0],[0,0,1,1,1,1,1,0],[0,0,0,0,0,1,1,0],[1,0,0,0,0,1,1,0],[1,1,1,1,1,1,0,0],[0,1,1,1,1,0,0,0]],
-              P: [[1,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,0],[1,1,0,0,0,1,1,0],[1,1,0,0,0,1,1,0],[1,1,1,1,1,1,0,0],[1,1,1,1,1,0,0,0],[1,1,0,0,0,0,0,0],[1,1,0,0,0,0,0,0],[1,1,0,0,0,0,0,0],[1,1,0,0,0,0,0,0]],
-              U: [[1,1,0,0,0,1,1,0],[1,1,0,0,0,1,1,0],[1,1,0,0,0,1,1,0],[1,1,0,0,0,1,1,0],[1,1,0,0,0,1,1,0],[1,1,0,0,0,1,1,0],[1,1,0,0,0,1,1,0],[1,1,0,0,0,1,1,0],[0,1,1,1,1,1,0,0],[0,0,1,1,1,0,0,0]],
-              B: [[1,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,0],[1,1,0,0,0,1,1,0],[1,1,0,0,1,1,0,0],[1,1,1,1,1,1,0,0],[1,1,1,1,1,1,1,0],[1,1,0,0,0,1,1,0],[1,1,0,0,0,1,1,0],[1,1,1,1,1,1,1,0],[1,1,1,1,1,1,0,0]],
-            };
-            const charW = 8 * C + 6;
-            const totalW = 6 * charW;
-            const offsetX = (600 - totalW) / 2;
-            const layout = [
-              { ch: 'S', grad: 'url(#gradCyan)', filter: 'url(#glowC)', idx: 0 },
-              { ch: 'P', grad: 'url(#gradCyan)', filter: 'url(#glowC)', idx: 1 },
-              { ch: 'U', grad: 'url(#gradCyan)', filter: 'url(#glowC)', idx: 2 },
-              { ch: 'B', grad: 'url(#gradMagenta)', filter: 'url(#glowM)', idx: 3 },
-              { ch: 'U', grad: 'url(#gradMagenta)', filter: 'url(#glowM)', idx: 4 },
-              { ch: 'S', grad: 'url(#gradMagenta)', filter: 'url(#glowM)', idx: 5 },
-            ];
-            const rects = [];
-            layout.forEach(l => {
-              const grid = fonts[l.ch];
-              const baseX = offsetX + l.idx * charW;
-              const baseDelay = l.idx * 0.07;
-              let pxIdx = 0;
-              // Letter group wrapper for glow filter
-              const letterRects = [];
-              grid.forEach((row, ry) => {
-                row.forEach((on, rx) => {
-                  if (on) {
-                    letterRects.push(
-                      <rect
-                        key={`px${l.idx}_${ry}_${rx}`}
-                        x={baseX + rx * C}
-                        y={ry * C + 4}
-                        width={cw} height={cw}
-                        rx="0.7"
-                        fill={l.grad}
-                        opacity="0"
-                      >
-                        <animate attributeName="opacity" from="0" to="0.92" dur="0.2s" begin={`${baseDelay + pxIdx * 0.005}s`} fill="freeze" />
-                      </rect>
-                    );
-                    pxIdx++;
-                  }
-                });
-              });
-              rects.push(<g key={`g${l.idx}`} filter={l.filter}>{letterRects}</g>);
-            });
-            return rects;
-          })()}
-          {/* Animated glow pulse behind letters */}
-          <rect x="60" y="-2" width="190" height="58" rx="8" fill={CI.cyan} opacity="0">
-            <animate attributeName="opacity" values="0;0.08;0" dur="3.5s" begin="1s" repeatCount="indefinite" />
-          </rect>
-          <rect x="290" y="-2" width="190" height="58" rx="8" fill={CI.magenta} opacity="0">
-            <animate attributeName="opacity" values="0;0.08;0" dur="3.5s" begin="2.8s" repeatCount="indefinite" />
-          </rect>
-          {/* TEACHER SUPPORT — elegant tracking animation */}
-          <text x="300" y="78" textAnchor="middle" fontFamily="'Kanit', sans-serif" fontSize="13" fontWeight="600" fill="rgba(255,255,255,0.55)" letterSpacing="8" opacity="0">
-            TEACHER SUPPORT
-            <animate attributeName="opacity" from="0" to="0.55" dur="0.8s" begin="0.6s" fill="freeze" />
-            <animate attributeName="letterSpacing" from="16" to="8" dur="0.8s" begin="0.6s" fill="freeze" />
-          </text>
-          {/* Subtitle */}
-          <text x="300" y="96" textAnchor="middle" fontFamily="'Kanit', sans-serif" fontSize="9.5" fontWeight="300" fill="rgba(255,255,255,0.3)" letterSpacing="2" opacity="0">
-            AI-Powered Teaching Platform
-            <animate attributeName="opacity" from="0" to="0.3" dur="0.6s" begin="1s" fill="freeze" />
-          </text>
-          {/* Org */}
-          <text x="300" y="112" textAnchor="middle" fontFamily="'Kanit', sans-serif" fontSize="8" fontWeight="300" fill="rgba(255,255,255,0.18)" letterSpacing="1" opacity="0">
-            คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
-            <animate attributeName="opacity" from="0" to="0.18" dur="0.6s" begin="1.2s" fill="freeze" />
-          </text>
+
+          {/* Each pixel as animated rect */}
+          {allPixels.map((px, i) => {
+            const popDelay = px.li * 0.12 + px.idx * 0.008;
+            const waveDelay = (px.x + px.y) * 0.005;
+            const isCyan = px.li < 3;
+            return (
+              <g key={i}>
+                {/* Glow shadow behind pixel */}
+                <rect
+                  x={px.x - 1} y={px.y - 1}
+                  width={PX + 2} height={PX + 2}
+                  rx="2" fill={px.color} opacity="0"
+                  filter="url(#pxGlow)"
+                >
+                  <animate attributeName="opacity" from="0" to="0.3" dur="0.3s" begin={`${popDelay}s`} fill="freeze" />
+                </rect>
+                {/* Main pixel */}
+                <rect
+                  x={px.x} y={px.y}
+                  width={PX} height={PX}
+                  rx="1.5"
+                  fill={px.color}
+                  opacity="0"
+                  style={{
+                    animation: `pxPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${popDelay}s both, pxWave 2.5s ease-in-out ${1.5 + waveDelay}s infinite, ${isCyan ? 'pxColorCycle' : 'pxColorCycleM'} 5s linear ${2 + waveDelay}s infinite, pxPulse 3s ease-in-out ${1.8 + waveDelay}s infinite`,
+                  }}
+                />
+                {/* Highlight corner (cute shine) */}
+                <rect
+                  x={px.x + 1} y={px.y + 1}
+                  width={3} height={3}
+                  rx="0.5" fill="#fff" opacity="0"
+                >
+                  <animate attributeName="opacity" from="0" to="0.35" dur="0.2s" begin={`${popDelay + 0.3}s`} fill="freeze" />
+                </rect>
+              </g>
+            );
+          })}
+
+          {/* Sparkle effects around text */}
+          {[
+            { x: -12, y: 10, delay: 1.5, size: 8 },
+            { x: totalW + 4, y: 5, delay: 2.2, size: 10 },
+            { x: totalW / 2 - 5, y: -14, delay: 1.8, size: 7 },
+            { x: charW * 2 + 20, y: 7 * (PX + GAP) + 5, delay: 2.5, size: 9 },
+            { x: charW * 4, y: -10, delay: 3.0, size: 6 },
+            { x: -8, y: 7 * (PX + GAP) - 5, delay: 3.5, size: 8 },
+            { x: totalW + 8, y: 7 * (PX + GAP) - 10, delay: 2.8, size: 7 },
+          ].map((sp, i) => (
+            <g key={`sp${i}`} style={{ transformOrigin: `${sp.x + sp.size/2}px ${sp.y + sp.size/2}px`, animation: `sparkle 1.8s ease-in-out ${sp.delay}s infinite` }}>
+              <line x1={sp.x + sp.size/2} y1={sp.y} x2={sp.x + sp.size/2} y2={sp.y + sp.size} stroke={CI.gold} strokeWidth="1.5" strokeLinecap="round" />
+              <line x1={sp.x} y1={sp.y + sp.size/2} x2={sp.x + sp.size} y2={sp.y + sp.size/2} stroke={CI.gold} strokeWidth="1.5" strokeLinecap="round" />
+              <line x1={sp.x + 1} y1={sp.y + 1} x2={sp.x + sp.size - 1} y2={sp.y + sp.size - 1} stroke={CI.gold} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+              <line x1={sp.x + sp.size - 1} y1={sp.y + 1} x2={sp.x + 1} y2={sp.y + sp.size - 1} stroke={CI.gold} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
+            </g>
+          ))}
+
+          {/* Floating hearts / particles from text */}
+          {[
+            { x: charW * 1, y: -5, emoji: '✦', color: CI.cyan, delay: 2 },
+            { x: charW * 3.5, y: -5, emoji: '♥', color: CI.magenta, delay: 2.8 },
+            { x: charW * 5, y: -3, emoji: '✦', color: CI.gold, delay: 3.5 },
+          ].map((p, i) => (
+            <text key={`fl${i}`} x={p.x} y={p.y} fontSize="8" fill={p.color} opacity="0"
+              style={{ animation: `floatUp 2.5s ease-out ${p.delay}s infinite` }}>
+              {p.emoji}
+            </text>
+          ))}
         </svg>
       </div>
 
+      {/* TEACHER SUPPORT subtitle */}
+      <div style={{
+        fontSize: '16px', fontWeight: 600, letterSpacing: '7px', color: 'rgba(255,255,255,0.6)',
+        textTransform: 'uppercase', zIndex: 2, marginBottom: '6px',
+        animation: 'subtitleReveal 0.8s ease-out 0.8s both',
+      }}>
+        TEACHER SUPPORT
+      </div>
+
+      {/* Sub-subtitle */}
+      <div style={{
+        fontSize: '13px', color: 'rgba(255,255,255,0.3)', zIndex: 2, marginBottom: '4px',
+        opacity: 0, animation: 'subtitleReveal 0.6s ease-out 1.2s both',
+        letterSpacing: '3px',
+      }}>
+        AI-Powered Teaching Platform
+      </div>
+      <div style={{
+        fontSize: '11px', color: 'rgba(255,255,255,0.15)', zIndex: 2,
+        opacity: 0, animation: 'subtitleReveal 0.6s ease-out 1.5s both',
+        letterSpacing: '2px',
+      }}>
+        คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
+      </div>
+
       {/* ===== Curved Road + Big Bus ===== */}
-      <div style={{ position: 'relative', width: '100%', height: '130px', zIndex: 2, marginTop: '6px' }}>
-        <svg style={{ position: 'absolute', bottom: '8px', width: '104%', left: '-2%', height: '110px' }} viewBox="-100 0 1400 130" preserveAspectRatio="none">
-          <path d="M-100,80 C100,55 350,95 600,72 C850,48 1050,92 1300,68" fill="none" stroke="#2a2a5e" strokeWidth="34" />
-          <path d="M-100,80 C100,55 350,95 600,72 C850,48 1050,92 1300,68" fill="none" stroke="#3a3a6e" strokeWidth="36" opacity="0.25" />
-          <path d="M-100,80 C100,55 350,95 600,72 C850,48 1050,92 1300,68" fill="none" stroke={CI.gold} strokeWidth="2.5" strokeDasharray="18 14" opacity="0.6">
-            <animate attributeName="stroke-dashoffset" from="0" to="-64" dur="0.8s" repeatCount="indefinite" />
+      <div style={{ position: 'relative', width: '100%', height: '120px', zIndex: 2, marginTop: '16px' }}>
+        <svg style={{ position: 'absolute', bottom: '8px', width: '104%', left: '-2%', height: '100px' }} viewBox="-100 0 1400 120" preserveAspectRatio="none">
+          <path d="M-100,70 C100,48 350,85 600,65 C850,45 1050,82 1300,60" fill="none" stroke="#2a2a5e" strokeWidth="30" />
+          <path d="M-100,70 C100,48 350,85 600,65 C850,45 1050,82 1300,60" fill="none" stroke={CI.gold} strokeWidth="2" strokeDasharray="16 12" opacity="0.5">
+            <animate attributeName="stroke-dashoffset" from="0" to="-56" dur="0.8s" repeatCount="indefinite" />
           </path>
-          <path d="M-100,65 C100,40 350,80 600,57 C850,33 1050,77 1300,53" fill="none" stroke="#3a3a6e" strokeWidth="1" opacity="0.3" />
-          <path d="M-100,95 C100,70 350,110 600,87 C850,63 1050,107 1300,83" fill="none" stroke="#3a3a6e" strokeWidth="1" opacity="0.3" />
         </svg>
 
         {/* Big Bus */}
-        <div style={{ position: 'absolute', bottom: '28px', animation: 'busRunCurve 5s ease-in-out infinite' }}>
+        <div style={{ position: 'absolute', bottom: '24px', animation: 'busRunCurve 5.5s ease-in-out infinite' }}>
           <div style={{ animation: 'bounce 0.3s ease-in-out infinite' }}>
-            <svg width="180" height="85" viewBox="0 0 180 85">
-              {/* Shadow */}
-              <ellipse cx="90" cy="80" rx="75" ry="4" fill="rgba(0,0,0,0.3)" />
-              {/* Body */}
-              <rect x="5" y="12" width="170" height="52" rx="10" fill={CI.cyan} />
-              {/* Roof */}
-              <rect x="10" y="5" width="160" height="14" rx="7" fill="#0099cc" />
-              {/* Roof stripe */}
-              <rect x="10" y="16" width="160" height="3" fill="#33ccff" opacity="0.4" />
-              {/* Windows */}
+            <svg width="160" height="75" viewBox="0 0 180 85">
+              <ellipse cx="90" cy="78" rx="70" ry="4" fill="rgba(0,0,0,0.25)" />
+              <rect x="5" y="14" width="170" height="50" rx="10" fill={CI.cyan} />
+              <rect x="10" y="7" width="160" height="12" rx="6" fill="#0099cc" />
+              <rect x="10" y="17" width="160" height="2.5" fill="#33ccff" opacity="0.35" />
               {[18, 46, 74, 102].map((wx, i) => (
                 <g key={i}>
-                  <rect x={wx} y="24" width="22" height="20" rx="4" fill="#1a3a5e" />
-                  <rect x={wx+1} y="25" width="20" height="10" rx="3" fill="#e0f7ff" opacity="0.85" />
-                  <rect x={wx+1} y="36" width="20" height="7" rx="2" fill="#b3e8ff" opacity="0.5" />
+                  <rect x={wx} y="25" width="22" height="18" rx="3" fill="#1a3a5e" />
+                  <rect x={wx+1} y="26" width="20" height="9" rx="2" fill="#e0f7ff" opacity="0.85" />
                 </g>
               ))}
-              {/* Door */}
-              <rect x="132" y="24" width="30" height="34" rx="4" fill="#0088b3" />
-              <rect x="135" y="27" width="12" height="28" rx="3" fill="#e0f7ff" opacity="0.75" />
-              <rect x="149" y="27" width="10" height="28" rx="3" fill="#e0f7ff" opacity="0.75" />
-              {/* Front light */}
+              <rect x="132" y="25" width="30" height="32" rx="4" fill="#0088b3" />
+              <rect x="135" y="28" width="12" height="26" rx="3" fill="#e0f7ff" opacity="0.7" />
+              <rect x="149" y="28" width="10" height="26" rx="3" fill="#e0f7ff" opacity="0.7" />
               <rect x="168" y="38" width="10" height="10" rx="3" fill={CI.gold} />
-              <rect x="168" y="38" width="10" height="10" rx="3" fill="#fff" opacity="0.3" />
-              {/* Back light */}
               <rect x="2" y="38" width="8" height="10" rx="3" fill={CI.magenta} />
-              {/* Label */}
-              <text x="72" y="58" fill="#fff" fontSize="11" fontWeight="800" fontFamily="'Kanit', sans-serif" letterSpacing="1">SPU BUS</text>
-              {/* Bumper */}
-              <rect x="5" y="62" width="170" height="5" rx="2.5" fill="#0088b3" />
-              {/* Wheels */}
-              <circle cx="45" cy="72" r="10" fill="#1a1a2e" stroke="#475569" strokeWidth="2.5" />
-              <circle cx="45" cy="72" r="4.5" fill="#64748b" />
-              <g style={{ transformOrigin: '45px 72px', animation: 'wheelSpin 0.35s linear infinite' }}>
-                <line x1="45" y1="64" x2="45" y2="80" stroke="#888" strokeWidth="1.2" />
-                <line x1="37" y1="72" x2="53" y2="72" stroke="#888" strokeWidth="1.2" />
+              <text x="72" y="56" fill="#fff" fontSize="11" fontWeight="800" fontFamily="'Kanit', sans-serif" letterSpacing="1">SPU BUS</text>
+              <rect x="5" y="62" width="170" height="4" rx="2" fill="#0088b3" />
+              <circle cx="45" cy="70" r="9" fill="#1a1a2e" stroke="#475569" strokeWidth="2" />
+              <circle cx="45" cy="70" r="4" fill="#64748b" />
+              <g style={{ transformOrigin: '45px 70px', animation: 'wheelSpin 0.35s linear infinite' }}>
+                <line x1="45" y1="63" x2="45" y2="77" stroke="#888" strokeWidth="1" />
+                <line x1="38" y1="70" x2="52" y2="70" stroke="#888" strokeWidth="1" />
               </g>
-              <circle cx="140" cy="72" r="10" fill="#1a1a2e" stroke="#475569" strokeWidth="2.5" />
-              <circle cx="140" cy="72" r="4.5" fill="#64748b" />
-              <g style={{ transformOrigin: '140px 72px', animation: 'wheelSpin 0.35s linear infinite' }}>
-                <line x1="140" y1="64" x2="140" y2="80" stroke="#888" strokeWidth="1.2" />
-                <line x1="132" y1="72" x2="148" y2="72" stroke="#888" strokeWidth="1.2" />
+              <circle cx="140" cy="70" r="9" fill="#1a1a2e" stroke="#475569" strokeWidth="2" />
+              <circle cx="140" cy="70" r="4" fill="#64748b" />
+              <g style={{ transformOrigin: '140px 70px', animation: 'wheelSpin 0.35s linear infinite' }}>
+                <line x1="140" y1="63" x2="140" y2="77" stroke="#888" strokeWidth="1" />
+                <line x1="133" y1="70" x2="147" y2="70" stroke="#888" strokeWidth="1" />
               </g>
-              {/* Exhaust */}
-              <circle cx="-8" cy="60" r="5" fill="rgba(255,255,255,0.1)" />
-              <circle cx="-20" cy="56" r="7" fill="rgba(255,255,255,0.06)" />
+              <circle cx="-6" cy="58" r="4" fill="rgba(255,255,255,0.08)" />
+              <circle cx="-16" cy="54" r="6" fill="rgba(255,255,255,0.04)" />
             </svg>
           </div>
         </div>
@@ -454,7 +509,7 @@ function BusSplashScreen({ onFinish }) {
             boxShadow: `0 0 8px ${CI.cyan}60`,
           }} />
         </div>
-        <div style={{ textAlign: 'center', marginTop: '6px', fontFamily: "'Press Start 2P', monospace", fontSize: '8px', color: 'rgba(255,255,255,0.3)', letterSpacing: '2px' }}>
+        <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '9px', color: 'rgba(255,255,255,0.25)', letterSpacing: '3px', fontWeight: 600 }}>
           LOADING...
         </div>
       </div>
