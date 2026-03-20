@@ -6,7 +6,15 @@ import { cookies } from 'next/headers';
 export async function GET(request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+  const next = searchParams.get('next') ?? '/teacher';
+  const errorParam = searchParams.get('error');
+  const errorDesc = searchParams.get('error_description');
+
+  // Handle OAuth errors from provider
+  if (errorParam) {
+    console.error('OAuth error:', errorParam, errorDesc);
+    return NextResponse.redirect(`${origin}/teacher/login?error=${encodeURIComponent(errorParam)}`);
+  }
 
   if (code) {
     const cookieStore = await cookies();
@@ -20,9 +28,14 @@ export async function GET(request) {
             return cookieStore.getAll();
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch (err) {
+              // Ignore cookie errors in middleware context
+              console.warn('Cookie set warning:', err.message);
+            }
           },
         },
       }
@@ -37,5 +50,5 @@ export async function GET(request) {
   }
 
   // Redirect to login on missing code or exchange failure
-  return NextResponse.redirect(`${origin}/login?error=auth`);
+  return NextResponse.redirect(`${origin}/teacher/login?error=auth`);
 }

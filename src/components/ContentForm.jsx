@@ -210,61 +210,85 @@ export default function ContentForm({ onContentGenerated, preview, setPreview, p
           </div>
         </div>
 
-        {/* Image Upload */}
+        {/* Image Upload + AI Read Side-by-Side */}
         <div className="form-group">
           <label>อัปโหลดรูปภาพ / โปสเตอร์ (Media)</label>
-          <div
-            className={`upload-area ${preview ? 'has-image' : ''}`}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            onClick={() => document.getElementById('poster-upload').click()}
-          >
-            {preview ? (
-              <div className="preview-container">
-                <img src={preview} alt="Poster preview" className="poster-preview" />
-                <button type="button" className="remove-btn" onClick={(e) => { e.stopPropagation(); removePoster(); }}>
-                  <X size={16} />
-                </button>
+          <div className={`upload-ai-row ${preview ? 'has-preview' : ''}`}>
+            {/* Left: Upload area */}
+            <div className="upload-ai-left">
+              <div
+                className={`upload-area ${preview ? 'has-image' : ''}`}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById('poster-upload').click()}
+              >
+                {preview ? (
+                  <div className="preview-container">
+                    <img src={preview} alt="Poster preview" className="poster-preview" />
+                    <button type="button" className="remove-btn" onClick={(e) => { e.stopPropagation(); removePoster(); }}>
+                      <X size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="upload-placeholder">
+                    <div className="upload-icon-wrapper">
+                      <Upload size={32} />
+                    </div>
+                    <p className="upload-text">คลิกเพื่ออัปโหลด หรือลากไฟล์มาวาง</p>
+                    <p className="upload-subtext">เพื่อดู Preview (ไม่ส่งผลต่อข้อความของ AI)</p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  id="poster-upload"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden-input"
+                />
               </div>
-            ) : (
-              <div className="upload-placeholder">
-                <div className="upload-icon-wrapper">
-                  <Upload size={32} />
+            </div>
+
+            {/* Right: AI Read box — only visible when image is uploaded */}
+            {preview && (
+              <div className="upload-ai-right">
+                <div className="ai-read-box">
+                  <div className="ai-read-header">
+                    <Sparkles size={18} className="ai-read-icon" />
+                    <span>AI ช่วยอ่านจากรูปภาพ</span>
+                  </div>
+                  <p className="ai-read-desc">
+                    ให้ AI วิเคราะห์รูปภาพและดึงข้อความสำคัญออกมาให้อัตโนมัติ
+                  </p>
+                  <button
+                    type="button"
+                    onClick={extractTextFromImage}
+                    disabled={isExtracting}
+                    className="ai-read-btn"
+                  >
+                    {isExtracting ? (
+                      <><Loader2 size={16} className="spinner" /> กำลังวิเคราะห์...</>
+                    ) : (
+                      <><Sparkles size={16} /> เริ่มอ่านด้วย AI</>
+                    )}
+                  </button>
                 </div>
-                <p className="upload-text">คลิกเพื่ออัปโหลด หรือลากไฟล์มาวาง</p>
-                <p className="upload-subtext">เพื่อดู Preview (ไม่ส่งผลต่อข้อความของ AI)</p>
               </div>
             )}
-            <input
-              type="file"
-              id="poster-upload"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden-input"
-            />
           </div>
         </div>
 
-        {/* Key Points */}
+        {/* Key Points — AI result shows here */}
         <div className="form-group">
-          <div className="label-with-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <label htmlFor="keyPoints" style={{ marginBottom: 0 }}>ประเด็นสำคัญ (Optional)</label>
-            {preview && (
-              <button
-                type="button"
-                onClick={extractTextFromImage}
-                disabled={isExtracting}
-                className="ocr-btn"
-              >
-                {isExtracting ? <Loader2 size={14} className="spinner" /> : <Sparkles size={14} />}
-                {isExtracting ? 'กำลังวิเคราะห์...' : 'AI ช่วยอ่านจากรูปภาพ'}
-              </button>
-            )}
-          </div>
+          <label htmlFor="keyPoints">ประเด็นสำคัญ (Optional)</label>
+          {formData.keyPoints && (
+            <div className="ai-read-result" style={{ marginBottom: '8px' }}>
+              <span className="ai-read-result-badge">ผลลัพธ์จาก AI</span>
+            </div>
+          )}
           <textarea
             id="keyPoints"
             placeholder="พิมพ์ไฮไลท์สั้นๆ หรืออัปโหลดรูปภาพแล้วกดปุ่ม 'AI ช่วยอ่านจากรูปภาพ'..."
-            rows={3}
+            rows={formData.keyPoints ? 6 : 3}
             value={formData.keyPoints}
             onChange={(e) => setFormData({ ...formData, keyPoints: e.target.value })}
             style={{ minHeight: '80px' }}

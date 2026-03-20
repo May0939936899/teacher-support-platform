@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐱 AI Cat Team — Command Center v2.0</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #060b1e;
+  --panel: #0d1232;
+  --border: rgba(0,255,200,0.15);
+  --cyan: #00ffc8;
+  --purple: #7b68ee;
+  --pink: #ff6b9d;
+  --gold: #ffd700;
+  --green: #00ff88;
+  --red: #ff4d6d;
+  --orange: #ff9f43;
+}
+
+body {
+  font-family: 'Prompt', sans-serif;
+  background: var(--bg);
+  color: #e0e0e0;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Scanline ── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,200,.012) 2px, rgba(0,255,200,.012) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Header ── */
+.header {
+  background: linear-gradient(135deg, #0f1435, #1a1f4e);
+  border-bottom: 2px solid var(--cyan);
+  padding: 14px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+.header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 200%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  animation: scan 4s infinite;
+}
+@keyframes scan { to { left: 100%; } }
+
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-icon { font-size: 2rem; animation: catBounce 2s ease-in-out infinite; }
+@keyframes catBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+.logo h1 {
+  font-size: 1.4rem; font-weight: 900;
+  background: linear-gradient(90deg, var(--cyan), var(--purple), var(--pink));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.badge {
+  font-size: .6rem; background: var(--cyan); color: #060b1e;
+  padding: 2px 8px; border-radius: 10px; font-weight: 800; letter-spacing: 1px;
+}
+
+.header-right { display: flex; align-items: center; gap: 20px; }
+.clock { font-family: 'Courier New', monospace; font-size: 1.1rem; color: var(--cyan); text-shadow: 0 0 10px rgba(0,255,200,.5); }
+.sys-status { display: flex; align-items: center; gap: 6px; font-size: .75rem; color: var(--green); }
+.sys-status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Layout ── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
+  padding: 16px;
+  max-height: calc(100vh - 70px);
+  height: calc(100vh - 70px);
+}
+
+/* ── Sections ── */
+.section {
+  background: linear-gradient(135deg, #0d1232, #111740);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.section-header {
+  padding: 10px 16px;
+  background: rgba(0,255,200,.06);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.section-title { font-size: .8rem; font-weight: 700; color: var(--cyan); letter-spacing: 2px; text-transform: uppercase; }
+.section-body { padding: 14px; height: calc(100% - 45px); overflow-y: auto; }
+.section-body::-webkit-scrollbar { width: 4px; }
+.section-body::-webkit-scrollbar-track { background: transparent; }
+.section-body::-webkit-scrollbar-thumb { background: rgba(0,255,200,.3); border-radius: 4px; }
+
+/* ── Chief Cat Command ── */
+.chief-section {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0;
+  min-height: 140px;
+  max-height: 140px;
+}
+.chief-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 20px;
+  border-right: 1px solid var(--border);
+  min-width: 160px;
+  background: rgba(123,104,238,.08);
+  position: relative;
+  overflow: hidden;
+}
+.chief-avatar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(123,104,238,.15), transparent 70%);
+}
+.chief-emoji {
+  font-size: 3rem;
+  filter: drop-shadow(0 0 12px rgba(123,104,238,.6));
+  animation: chiefFloat 3s ease-in-out infinite;
+}
+@keyframes chiefFloat { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-6px) rotate(3deg)} }
+.chief-name { font-size: .8rem; font-weight: 700; color: var(--purple); }
+.chief-rank { font-size: .6rem; color: rgba(255,255,255,.4); }
+
+.chief-controls {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+}
+.chief-speech {
+  background: rgba(123,104,238,.1);
+  border: 1px solid rgba(123,104,238,.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: .8rem;
+  color: rgba(255,255,255,.8);
+  line-height: 1.5;
+  min-height: 50px;
+  position: relative;
+}
+.chief-speech::before {
+  content: '▌';
+  color: var(--cyan);
+  animation: blink .7s infinite;
+  margin-right: 2px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+.task-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.preset-btn {
+  background: rgba(0,255,200,.08);
+  border: 1px solid rgba(0,255,200,.25);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-family: 'Prompt', sans-serif;
+  font-size: .72rem;
+  color: var(--cyan);
+  cursor: pointer;
+  transition: all .3s;
+  white-space: nowrap;
+}
+.preset-btn:hover, .preset-btn.selected {
+  background: rgba(0,255,200,.2);
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(0,255,200,.3);
+}
+.preset-btn.selected { font-weight: 700; }
+.run-btn {
+  background: linear-gradient(135deg, var(--purple), var(--pink));
+  border: none;
+  border-radius: 20px;
+  padding: 5px 20px;
+  font-family: 'Prompt', sans-serif;
+  font-size: .72rem;
+  font-weight: 700;
+  color: white;
+  cursor: pointer;
+  transition: all .3s;
+  white-space: nowrap;
+}
+.run-btn:hover { transform: scale(1.05); box-shadow: 0 0 16px rgba(123,104,238,.5); }
+.run-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+/* ── Agent Grid ── */
+.agents-section { grid-row: 2 / 3; overflow: hidden; }
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 14px;
+  height: calc(100% - 45px);
+  overflow-y: auto;
+  align-content: start;
+}
+.agents-grid::-webkit-scrollbar { width: 4px; }
+.agents-grid::-webkit-scrollbar-thumb { background: rgba(0,255,200,.3); border-radius: 4px; }
+
+/* ── Agent Card ── */
+.agent-card {
+  background: linear-gradient(135deg, rgba(13,18,50,.8), rgba(17,23,64,.8));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+  transition: all .4s;
+  cursor: pointer;
+}
+.agent-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 0%, var(--agent-color-alpha, rgba(0,255,200,.05)), transparent 70%);
+  transition: all .4s;
+}
+.agent-card:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.2); }
+.agent-card.idle { border-color: rgba(255,255,255,.08); }
+.agent-card.waiting {
+  border-color: var(--orange);
+  box-shadow: 0 0 15px rgba(255,159,67,.2);
+}
+.agent-card.thinking {
+  border-color: var(--purple);
+  box-shadow: 0 0 20px rgba(123,104,238,.4);
+  animation: cardPulse 1.5s ease-in-out infinite;
+}
+.agent-card.working {
+  border-color: var(--cyan);
+  box-shadow: 0 0 25px rgba(0,255,200,.4);
+  animation: cardPulse 1s ease-in-out infinite;
+}
+.agent-card.done {
+  border-color: var(--green);
+  box-shadow: 0 0 15px rgba(0,255,136,.2);
+}
+@keyframes cardPulse { 0%,100%{box-shadow:0 0 20px var(--glow-color,.3)} 50%{box-shadow:0 0 40px var(--glow-color,.6)} }
+
+.agent-emoji {
+  font-size: 2.2rem;
+  position: relative;
+  z-index: 1;
+  transition: all .4s;
+}
+.agent-card.thinking .agent-emoji { animation: emojiThink 0.8s ease-in-out infinite alternate; }
+.agent-card.working .agent-emoji { animation: emojiWork 0.6s ease-in-out infinite alternate; }
+@keyframes emojiThink { from{transform:scale(1) rotate(-5deg)} to{transform:scale(1.1) rotate(5deg)} }
+@keyframes emojiWork { from{transform:scale(1.05) translateY(0)} to{transform:scale(1.1) translateY(-3px)} }
+
+.agent-name { font-size: .75rem; font-weight: 700; color: white; text-align: center; z-index: 1; }
+.agent-role { font-size: .62rem; color: rgba(255,255,255,.4); text-align: center; z-index: 1; }
+
+.agent-status-bar {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,.08);
+  border-radius: 3px;
+  overflow: hidden;
+  z-index: 1;
+}
+.agent-progress {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .3s ease;
+  width: 0%;
+}
+.agent-card.idle .agent-progress { background: rgba(255,255,255,.2); }
+.agent-card.waiting .agent-progress { background: var(--orange); width: 30%; animation: waitingPulse 1.5s infinite; }
+.agent-card.thinking .agent-progress { background: var(--purple); animation: progressFill 3s ease-in-out forwards; }
+.agent-card.working .agent-progress { background: linear-gradient(90deg, var(--cyan), var(--purple)); animation: progressWork 2s linear infinite; }
+.agent-card.done .agent-progress { background: var(--green); width: 100%; }
+@keyframes waitingPulse { 0%,100%{width:20%} 50%{width:50%} }
+@keyframes progressFill { from{width:0%} to{width:80%} }
+@keyframes progressWork { 0%{background-position:0% 0%} 100%{background-position:200% 0%} }
+
+.agent-status-text {
+  font-size: .62rem;
+  font-weight: 600;
+  z-index: 1;
+}
+.agent-card.idle .agent-status-text { color: rgba(255,255,255,.3); }
+.agent-card.waiting .agent-status-text { color: var(--orange); }
+.agent-card.thinking .agent-status-text { color: var(--purple); }
+.agent-card.working .agent-status-text { color: var(--cyan); }
+.agent-card.done .agent-status-text { color: var(--green); }
+
+.agent-task-preview {
+  font-size: .6rem;
+  color: rgba(255,255,255,.3);
+  text-align: center;
+  z-index: 1;
+  min-height: 16px;
+  line-height: 1.3;
+}
+
+/* ── Right Panel ── */
+.right-panel {
+  grid-row: 2 / 4;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Log Section ── */
+.log-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.log-body {
+  flex: 1;
+  padding: 10px 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.log-body::-webkit-scrollbar { width: 4px; }
+.log-body::-webkit-scrollbar-thumb { background: rgba(0,255,200,.3); border-radius: 4px; }
+
+.log-entry {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: .72rem;
+  line-height: 1.4;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,.03);
+  border-left: 2px solid transparent;
+  animation: logSlide .3s ease;
+}
+@keyframes logSlide { from{opacity:0;transform:translateX(10px)} to{opacity:1;transform:translateX(0)} }
+.log-entry.system { border-left-color: var(--cyan); }
+.log-entry.agent { border-left-color: var(--purple); }
+.log-entry.success { border-left-color: var(--green); }
+.log-entry.warning { border-left-color: var(--orange); }
+.log-entry.error { border-left-color: var(--red); }
+
+.log-time { color: rgba(0,255,200,.5); white-space: nowrap; font-family: 'Courier New', monospace; font-size: .65rem; }
+.log-icon { font-size: .85rem; }
+.log-msg { color: rgba(255,255,255,.75); flex: 1; }
+.log-msg strong { color: white; }
+
+/* ── Stats Section ── */
+.stats-section { max-height: 180px; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
+.stat-box {
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.stat-value { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+.stat-label { font-size: .6rem; color: rgba(255,255,255,.4); margin-top: 3px; }
+.stat-cyan { color: var(--cyan); text-shadow: 0 0 10px rgba(0,255,200,.4); }
+.stat-purple { color: var(--purple); text-shadow: 0 0 10px rgba(123,104,238,.4); }
+.stat-green { color: var(--green); text-shadow: 0 0 10px rgba(0,255,136,.4); }
+.stat-pink { color: var(--pink); text-shadow: 0 0 10px rgba(255,107,157,.4); }
+
+/* ── Workflow Indicator ── */
+.workflow-section { max-height: 100px; }
+.workflow-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  overflow-x: auto;
+}
+.workflow-bar::-webkit-scrollbar { height: 3px; }
+.workflow-bar::-webkit-scrollbar-thumb { background: rgba(0,255,200,.3); border-radius: 2px; }
+.wf-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 50px;
+}
+.wf-circle {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .9rem;
+  border: 2px solid rgba(255,255,255,.1);
+  background: rgba(0,0,0,.3);
+  transition: all .5s;
+  position: relative;
+}
+.wf-circle.pending { border-color: rgba(255,255,255,.1); opacity: .4; }
+.wf-circle.active {
+  border-color: var(--cyan);
+  box-shadow: 0 0 15px rgba(0,255,200,.5);
+  animation: wfPulse 1s infinite;
+}
+@keyframes wfPulse { 0%,100%{box-shadow:0 0 10px rgba(0,255,200,.3)} 50%{box-shadow:0 0 25px rgba(0,255,200,.8)} }
+.wf-circle.complete { border-color: var(--green); background: rgba(0,255,136,.1); }
+.wf-circle.complete::after {
+  content: '✓';
+  position: absolute;
+  bottom: -2px; right: -2px;
+  font-size: .55rem;
+  width: 14px; height: 14px;
+  background: var(--green);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #060b1e;
+  font-weight: 900;
+}
+.wf-name { font-size: .5rem; color: rgba(255,255,255,.4); text-align: center; }
+.wf-arrow { color: rgba(0,255,200,.3); font-size: .7rem; margin-bottom: 10px; }
+
+/* ── Typing animation ── */
+@keyframes typeText {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0% 0 0); }
+}
+
+/* ── Output Preview ── */
+.output-section { max-height: 200px; }
+.output-preview {
+  padding: 10px 14px;
+  font-size: .72rem;
+  line-height: 1.6;
+  color: rgba(255,255,255,.7);
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  max-height: 155px;
+  overflow-y: auto;
+}
+.output-preview::-webkit-scrollbar { width: 3px; }
+.output-preview::-webkit-scrollbar-thumb { background: rgba(0,255,200,.3); border-radius: 2px; }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; height: auto; max-height: none; }
+  .right-panel { grid-row: auto; }
+  .agents-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">
+    <span class="logo-icon">🐱</span>
+    <div>
+      <h1>AI Cat Team — Command Center</h1>
+      <div style="font-size:.65rem;color:rgba(255,255,255,.4)">บอสเหมียว Orchestration System</div>
+    </div>
+    <span class="badge">v2.0</span>
+  </div>
+  <div class="header-right">
+    <div class="sys-status">SYSTEM ONLINE</div>
+    <div class="clock" id="clock">00:00:00</div>
+  </div>
+</div>
+
+<!-- Layout -->
+<div class="layout">
+
+  <!-- Chief Cat Command Bar -->
+  <div class="section chief-section">
+    <div class="chief-avatar">
+      <div class="chief-emoji">😼</div>
+      <div class="chief-name">บอสเหมียว</div>
+      <div class="chief-rank">Chief Cat • Orchestrator</div>
+    </div>
+    <div class="chief-controls">
+      <div class="chief-speech" id="chiefSpeech">รอรับคำสั่งจากท่านผู้ใช้อยู่นะ เลือกงานด้านล่างแล้วกด RUN ได้เลย...</div>
+      <div class="task-row" id="taskRow">
+        <button class="preset-btn" onclick="selectTask(this, 'content')">📝 สร้างคอนเทนต์ขายของ</button>
+        <button class="preset-btn" onclick="selectTask(this, 'research')">🔍 วิจัยตลาดคู่แข่ง</button>
+        <button class="preset-btn" onclick="selectTask(this, 'live')">🎥 วางแผน Live ขายของ</button>
+        <button class="preset-btn" onclick="selectTask(this, 'store')">🏪 จัดการร้านออนไลน์</button>
+        <button class="preset-btn" onclick="selectTask(this, 'analyze')">📊 วิเคราะห์ยอดขาย</button>
+        <button class="preset-btn" onclick="selectTask(this, 'voc')">💬 จัดการรีวิวลูกค้า</button>
+        <button class="run-btn" id="runBtn" onclick="runWorkflow()" disabled>▶ RUN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent Grid -->
+  <div class="section agents-section" style="grid-row:2/3;">
+    <div class="section-header">
+      <span class="section-title">🐾 ทีมแมว AI — Agent Status</span>
+      <span style="font-size:.65rem;color:rgba(255,255,255,.3)" id="activeCount">0/10 active</span>
+    </div>
+    <div class="agents-grid" id="agentsGrid">
+      <!-- Generated by JS -->
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="right-panel" style="grid-row:2/4;">
+
+    <!-- Workflow Timeline -->
+    <div class="section workflow-section">
+      <div class="section-header">
+        <span class="section-title">⚡ Workflow</span>
+        <span id="wfStatus" style="font-size:.65rem;color:rgba(255,255,255,.3)">IDLE</span>
+      </div>
+      <div class="workflow-bar" id="workflowBar">
+        <div style="font-size:.7rem;color:rgba(255,255,255,.2);padding:10px">เลือกงานแล้วกด RUN เพื่อดู workflow</div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="section stats-section">
+      <div class="section-header">
+        <span class="section-title">📈 Stats</span>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value stat-cyan" id="statTasks">0</div>
+          <div class="stat-label">Tasks Run</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value stat-purple" id="statAgents">10</div>
+          <div class="stat-label">Agents Ready</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value stat-green" id="statSuccess">100%</div>
+          <div class="stat-label">Success Rate</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value stat-pink" id="statTime">0s</div>
+          <div class="stat-label">Last Runtime</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Output Preview -->
+    <div class="section output-section">
+      <div class="section-header">
+        <span class="section-title">📄 Output Preview</span>
+        <span id="outputBadge" style="font-size:.6rem;background:rgba(0,255,200,.15);color:var(--cyan);padding:2px 8px;border-radius:10px;display:none">LIVE</span>
+      </div>
+      <div class="output-preview" id="outputPreview" style="color:rgba(255,255,255,.25)">// ผลลัพธ์จากทีมแมวจะแสดงที่นี่...</div>
+    </div>
+
+    <!-- Log -->
+    <div class="section log-section">
+      <div class="section-header">
+        <span class="section-title">📋 Activity Log</span>
+        <button onclick="clearLog()" style="background:none;border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:2px 8px;font-size:.6rem;color:rgba(255,255,255,.3);cursor:pointer">CLEAR</button>
+      </div>
+      <div class="log-body" id="logBody">
+        <div class="log-entry system">
+          <span class="log-time">00:00:00</span>
+          <span class="log-icon">🟢</span>
+          <span class="log-msg"><strong>SYSTEM:</strong> AI Cat Team Command Center เริ่มต้นแล้ว</span>
+        </div>
+        <div class="log-entry system">
+          <span class="log-time">00:00:00</span>
+          <span class="log-icon">😼</span>
+          <span class="log-msg"><strong>บอสเหมียว:</strong> ทีมแมวพร้อมรับงาน 10/10 agents online</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const AGENTS = [
+  { id: 'chief',    emoji: '😼', name: 'บอสเหมียว',      role: 'Chief Orchestrator', color: '#7b68ee' },
+  { id: 'creative', emoji: '🎨', name: 'แมวครีเอเตอร์', role: 'Content Creator',    color: '#ff6b9d' },
+  { id: 'coder',    emoji: '💻', name: 'แมวโปรแกรมเมอร์',role: 'Coder',              color: '#00ffc8' },
+  { id: 'analyst',  emoji: '📊', name: 'แมวนักวิเคราะห์',role: 'Data Analyst',       color: '#ffd700' },
+  { id: 'research', emoji: '🔍', name: 'แมวสายสืบ',      role: 'Researcher',         color: '#00b4d8' },
+  { id: 'qa',       emoji: '🔎', name: 'แมวตรวจงาน',    role: 'QA Inspector',       color: '#ff4d6d' },
+  { id: 'store',    emoji: '🏪', name: 'แมวจัดการร้าน', role: 'Store Manager',      color: '#ff9f43' },
+  { id: 'live',     emoji: '🎥', name: 'แมว Live',       role: 'Live Manager',       color: '#a29bfe' },
+  { id: 'planner',  emoji: '📅', name: 'แมวจัดเวลา',    role: 'Planner',            color: '#55efc4' },
+  { id: 'voc',      emoji: '💬', name: 'แมว VOC',        role: 'Customer Voice',     color: '#fd79a8' },
+];
+
+const WORKFLOWS = {
+  content: {
+    name: 'สร้างคอนเทนต์ขายของ',
+    steps: [
+      { agent: 'chief',    action: 'วิเคราะห์คำสั่งและแจกงาน',         duration: 2500 },
+      { agent: 'research', action: 'หาข้อมูลสินค้าและเทรนด์',          duration: 4000 },
+      { agent: 'creative', action: 'สร้างคอนเทนต์ caption + hashtag',  duration: 5000 },
+      { agent: 'qa',       action: 'ตรวจสอบความถูกต้องและภาษา',       duration: 3000 },
+      { agent: 'planner',  action: 'วางแผนตารางโพสต์',                  duration: 2000 },
+    ],
+    chiefLines: [
+      'รับทราบ! งานสร้างคอนเทนต์ขายของ กำลังประสานงานทีม...',
+      'ส่งงานให้แมวสายสืบหาข้อมูลก่อน แล้วโยนให้ครีเอเตอร์',
+      'แมวครีเอเตอร์กำลังเขียน caption ไฟแรง! 🎨',
+      'แมวตรวจงานกำลัง QA อยู่ รอแป๊บนึง...',
+      'เสร็จแล้ว! แมวจัดเวลาวางแผนโพสต์ให้เรียบร้อย ✅',
+    ],
+    output: `📝 คอนเทนต์ Instagram — ครีมกันแดด SPF50+
+
+🌟 Caption:
+"แดดแรงแค่ไหน เราก็ไม่กลัว! ☀️
+ครีมกันแดด SPF50+ PA++++
+ปกป้องผิวได้ 8 ชั่วโมง ไม่มันเยิ้ม
+ขาวขึ้นภายใน 2 สัปดาห์
+
+💧 Lightweight formula
+🌿 Reef-safe, ปลอดภัยกับผิวบอบบาง
+📦 พร้อมส่ง ราคา 390฿
+
+#ครีมกันแดด #SPF50 #ผิวสวย #Skincare"
+
+📅 แผนโพสต์: อังคาร-พฤหัส 10:00, 18:00 น.
+✅ QA Pass | Hashtag: 8 tags | จำนวนตัวอักษร: 287`,
+  },
+  research: {
+    name: 'วิจัยตลาดคู่แข่ง',
+    steps: [
+      { agent: 'chief',    action: 'กำหนด scope การวิจัย',              duration: 2000 },
+      { agent: 'research', action: 'รวบรวมข้อมูลคู่แข่ง 10 ราย',       duration: 6000 },
+      { agent: 'analyst',  action: 'วิเคราะห์ราคาและ positioning',      duration: 5000 },
+      { agent: 'creative', action: 'สร้าง visual report',               duration: 3000 },
+      { agent: 'qa',       action: 'ตรวจสอบความถูกต้องข้อมูล',         duration: 2000 },
+    ],
+    chiefLines: [
+      'โปรเจกต์วิจัยตลาด! แมวสายสืบออกภาคสนามได้เลย 🔍',
+      'กำลังรวบรวมข้อมูลคู่แข่ง 10 ราย รอแป๊บนะ...',
+      'แมวนักวิเคราะห์เข้าประมวลผลข้อมูล ทำกราฟสวยๆ 📊',
+      'แมวครีเอเตอร์แปลงข้อมูลเป็น visual report แล้ว',
+      'ผ่าน QA! รายงานวิจัยพร้อมส่งแล้ว ✅',
+    ],
+    output: `📊 Market Research Report — Skincare Thailand 2026
+
+🏆 Top 5 Competitors:
+1. Brand A — ราคา 350-500฿ | Rating 4.8 ⭐
+2. Brand B — ราคา 280-450฿ | Rating 4.6 ⭐
+3. Brand C — ราคา 200-380฿ | Rating 4.5 ⭐
+4. Brand D — ราคา 420-680฿ | Rating 4.7 ⭐
+5. Brand E — ราคา 150-290฿ | Rating 4.3 ⭐
+
+💡 Key Insights:
+• ตลาด SPF50+ เติบโต 23% YoY
+• ลูกค้า Gen Z ให้ความสำคัญ reef-safe 68%
+• ราคา sweet spot: 350-450฿
+• Pain point หลัก: มัน เหนียว กลิ่น
+
+🎯 Opportunity:
+Natural + lightweight + affordable gap ยังว่างอยู่`,
+  },
+  live: {
+    name: 'วางแผน Live ขายของ',
+    steps: [
+      { agent: 'chief',    action: 'รับ brief และวาง timeline',           duration: 2000 },
+      { agent: 'live',     action: 'สร้าง script Live 2 ชั่วโมง',        duration: 6000 },
+      { agent: 'creative', action: 'ออกแบบ visual และ props',             duration: 4000 },
+      { agent: 'planner',  action: 'จัดตารางและ checklist MC',            duration: 3000 },
+      { agent: 'qa',       action: 'ตรวจ script และ flow',                duration: 2500 },
+    ],
+    chiefLines: [
+      'Live ขายของ! แมว Live เป็นหัวหอกเลยนะ 🎥',
+      'กำลังเขียน script 2 ชั่วโมงให้ MC พูดได้ลื่น',
+      'แมวครีเอเตอร์ทำ visual board และจัดของสาธิต',
+      'แมวจัดเวลาทำ checklist ก่อน Live ครบทุกข้อ',
+      'พร้อม Live แล้ว! ขอให้ยอดขายพุ่ง 🚀',
+    ],
+    output: `🎥 Live Script — TikTok Shop Live 2 ชม.
+
+⏰ Timeline:
+00:00 - Intro + Giveaway ล่อคน (15 นาที)
+00:15 - Demo สินค้า Hero Product (20 นาที)
+00:35 - Flash Deal 1 — ลด 30% 5 นาที!
+00:40 - รีวิว + Q&A (15 นาที)
+...ต่อจนครบ 120 นาที
+
+💬 Hook Scripts:
+• "วันนี้ใครยังไม่ได้ครีมกันแดด รีบมาเลย!"
+• "ซื้อ 2 แถม 1 มีแค่ Live นี้เท่านั้น!"
+• "กดหัวใจคนละ 100 ดวง แจกเพิ่มอีก 5 รางวัล!"
+
+✅ MC Checklist: 24 items | Script: 2,400 คำ`,
+  },
+  store: {
+    name: 'จัดการร้านออนไลน์',
+    steps: [
+      { agent: 'chief',    action: 'audit ร้านและกำหนดแผน',              duration: 2000 },
+      { agent: 'store',    action: 'ตรวจสต็อกและจัดหมวดสินค้า',         duration: 5000 },
+      { agent: 'analyst',  action: 'วิเคราะห์ยอดขายและ conversion',      duration: 4000 },
+      { agent: 'creative', action: 'อัพเดท banner และ thumbnail',        duration: 3500 },
+      { agent: 'voc',      action: 'ตอบรีวิวและแก้ปัญหาลูกค้า',        duration: 3000 },
+    ],
+    chiefLines: [
+      'จัดการร้าน! ส่งแมวจัดการร้านเป็นหน้าด้านก่อน 🏪',
+      'ตรวจสต็อก + จัดหมวดสินค้าให้เรียบร้อย...',
+      'แมวนักวิเคราะห์ดู conversion rate และ bottleneck',
+      'แมวครีเอเตอร์รีแบรนด์ thumbnail ให้คลิกมากขึ้น',
+      'แมว VOC ตอบรีวิวและแก้ 1-star ทุกใบแล้ว ✅',
+    ],
+    output: `🏪 Store Optimization Report — Shopee
+
+📦 สต็อก:
+• สินค้า A: เหลือ 23 ชิ้น ⚠️ ต้องสั่งเพิ่ม
+• สินค้า B: 156 ชิ้น ✅ OK
+• สินค้า C: หมดสต็อก ❌ รีบแจ้ง supplier
+
+📈 Performance:
+• CTR: 3.2% → เป้า 5%+ (ต้องปรับ thumbnail)
+• Conversion: 2.8% (ดีกว่า avg 2.1%)
+• รีวิว: 4.7⭐ (ตอบแก้ 3 รีวิว 1-star แล้ว)
+
+🎯 Action Items:
+1. สั่งสต็อก A เพิ่ม 200 ชิ้น
+2. เปลี่ยน thumbnail ให้มีราคาชัดเจน
+3. เพิ่มโปรโมชัน bundle deal`,
+  },
+  analyze: {
+    name: 'วิเคราะห์ยอดขาย',
+    steps: [
+      { agent: 'chief',    action: 'กำหนด KPI และ period',               duration: 2000 },
+      { agent: 'analyst',  action: 'ดึงและประมวลผลข้อมูลยอดขาย',        duration: 6000 },
+      { agent: 'research', action: 'เปรียบเทียบกับ benchmark ตลาด',      duration: 3500 },
+      { agent: 'creative', action: 'สร้าง dashboard และ visual report', duration: 4000 },
+      { agent: 'planner',  action: 'วางแผนปรับกลยุทธ์',                 duration: 2500 },
+    ],
+    chiefLines: [
+      'วิเคราะห์ยอดขาย! แมวนักวิเคราะห์ตื่นได้แล้ว 📊',
+      'กำลังรันโมเดลวิเคราะห์ข้อมูล 3 เดือนย้อนหลัง...',
+      'แมวสายสืบหา benchmark ตลาดมาเปรียบ trend',
+      'แมวครีเอเตอร์ทำ dashboard สวยๆ เสร็จแล้ว',
+      'มีแผนปรับกลยุทธ์เดือนหน้า พร้อมส่งบอร์ด ✅',
+    ],
+    output: `📊 Sales Analysis — Q1 2026
+
+💰 Revenue Summary:
+• มกราคม: 285,400฿ (+12% MoM)
+• กุมภาพันธ์: 310,200฿ (+8.7% MoM)
+• มีนาคม: 342,800฿ (+10.5% MoM) ← ล่าสุด
+• รวม Q1: 938,400฿ 🎉
+
+🏆 Top Products:
+1. ครีมกันแดด SPF50: 38% of revenue
+2. เซรั่ม Vit C: 22% of revenue
+3. มอยส์เจอไรเซอร์: 18% of revenue
+
+📉 Insight:
+• วันอาทิตย์ยอดขายสูงสุด 2.3x
+• Flash deal ให้ ROI 340%
+• ลูกค้า repeat 42% (ดีมาก!)
+
+🎯 เป้า Q2: 1.2M฿ (+28%)`,
+  },
+  voc: {
+    name: 'จัดการรีวิวลูกค้า',
+    steps: [
+      { agent: 'chief',    action: 'รวบรวม feedback ทุกช่องทาง',         duration: 2000 },
+      { agent: 'voc',      action: 'วิเคราะห์ sentiment และ categorize', duration: 5500 },
+      { agent: 'analyst',  action: 'สรุป insight และ pain points',        duration: 3500 },
+      { agent: 'creative', action: 'สร้าง script ตอบลูกค้า',            duration: 3000 },
+      { agent: 'qa',       action: 'ตรวจและอนุมัติ response',            duration: 2500 },
+    ],
+    chiefLines: [
+      'จัดการ VOC! แมว VOC มารับงานด่วนเลย 💬',
+      'กำลัง analyze รีวิว 247 ข้อความจากทุกแพลตฟอร์ม...',
+      'แมวนักวิเคราะห์ categorize และสรุป pain points',
+      'แมวครีเอเตอร์เขียน template ตอบลูกค้าอย่างเป็นมิตร',
+      'QA อนุมัติแล้ว ส่ง response ทั้งหมดได้เลย ✅',
+    ],
+    output: `💬 VOC Report — March 2026
+
+📊 Sentiment Analysis (247 รีวิว):
+• Positive: 187 (75.7%) 😊
+• Neutral: 38 (15.4%) 😐
+• Negative: 22 (8.9%) 😞
+
+🔥 Top Issues:
+1. จัดส่งช้า — 12 ข้อความ (แก้ด่วน!)
+2. บรรจุภัณฑ์เสียหาย — 6 ข้อความ
+3. สีไม่ตรงรูป — 4 ข้อความ
+
+💚 Top Praises:
+1. ผิวดีขึ้นจริง — 67 ข้อความ
+2. ราคาคุ้ม — 52 ข้อความ
+3. บริการดีมาก — 41 ข้อความ
+
+✉️ Response Templates:
+• ตอบชมเชย: 3 แบบ (varied)
+• ตอบปัญหาจัดส่ง: ready to send
+• ตอบปัญหาสินค้า: pending approval`,
+  },
+};
+
+// ── State ──────────────────────────────────────────────────────────────────────
+let selectedTask = null;
+let isRunning = false;
+let taskCount = 0;
+let startTime = null;
+
+// ── Init ────────────────────────────────────────────────────────────────────────
+function init() {
+  renderAgents();
+  updateClock();
+  setInterval(updateClock, 1000);
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0') + ':' +
+    String(now.getSeconds()).padStart(2,'0');
+}
+
+function renderAgents() {
+  const grid = document.getElementById('agentsGrid');
+  grid.innerHTML = AGENTS.map(a => `
+    <div class="agent-card idle" id="card-${a.id}" style="--agent-color-alpha:${a.color}22">
+      <div class="agent-emoji">${a.emoji}</div>
+      <div class="agent-name">${a.name}</div>
+      <div class="agent-role">${a.role}</div>
+      <div class="agent-status-bar"><div class="agent-progress" id="prog-${a.id}"></div></div>
+      <div class="agent-status-text" id="status-${a.id}">🔵 Idle</div>
+      <div class="agent-task-preview" id="task-${a.id}"></div>
+    </div>
+  `).join('');
+}
+
+// ── Task Selection ──────────────────────────────────────────────────────────────
+function selectTask(btn, taskId) {
+  if (isRunning) return;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedTask = taskId;
+  document.getElementById('runBtn').disabled = false;
+
+  const wf = WORKFLOWS[taskId];
+  document.getElementById('chiefSpeech').textContent =
+    `งาน "${wf.name}" — มี ${wf.steps.length} ขั้นตอน กดRUNได้เลย บอสเหมียวพร้อมแล้ว 🐾`;
+  renderWorkflowBar(wf.steps, []);
+}
+
+function renderWorkflowBar(steps, completedIds) {
+  const bar = document.getElementById('workflowBar');
+  bar.innerHTML = steps.map((step, i) => {
+    const agent = AGENTS.find(a => a.id === step.agent);
+    const isComplete = completedIds.includes(i);
+    const isActive = completedIds.length === i && isRunning;
+    const cls = isComplete ? 'complete' : isActive ? 'active' : 'pending';
+    return `
+      ${i > 0 ? '<div class="wf-arrow">→</div>' : ''}
+      <div class="wf-node">
+        <div class="wf-circle ${cls}">${agent.emoji}</div>
+        <div class="wf-name">${agent.name.substring(0,6)}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Run Workflow ────────────────────────────────────────────────────────────────
+async function runWorkflow() {
+  if (!selectedTask || isRunning) return;
+
+  isRunning = true;
+  startTime = Date.now();
+  taskCount++;
+  document.getElementById('statTasks').textContent = taskCount;
+  document.getElementById('runBtn').disabled = true;
+  document.querySelectorAll('.preset-btn').forEach(b => b.style.pointerEvents = 'none');
+
+  const wf = WORKFLOWS[selectedTask];
+  document.getElementById('wfStatus').textContent = 'RUNNING';
+  document.getElementById('wfStatus').style.color = '#00ffc8';
+  document.getElementById('outputBadge').style.display = 'inline';
+  document.getElementById('outputPreview').style.color = 'rgba(255,255,255,.5)';
+  document.getElementById('outputPreview').textContent = '⏳ กำลังประมวลผล...';
+
+  // Reset all cards
+  AGENTS.forEach(a => setCardState(a.id, 'idle', '🔵 Idle', ''));
+
+  const completedSteps = [];
+
+  for (let i = 0; i < wf.steps.length; i++) {
+    const step = wf.steps[i];
+    const agent = AGENTS.find(a => a.id === step.agent);
+
+    // Chief says something
+    if (wf.chiefLines[i]) {
+      setChiefSpeech(wf.chiefLines[i]);
+    }
+
+    // Update workflow bar
+    renderWorkflowBar(wf.steps, completedSteps);
+
+    // Waiting → thinking
+    setCardState(step.agent, 'waiting', '🟡 รอรับงาน', step.action);
+    addLog('agent', agent.emoji, `<strong>${agent.name}</strong>: รับงาน — ${step.action}`);
+    await sleep(600);
+
+    setCardState(step.agent, 'thinking', '🟣 กำลังคิด...', step.action);
+    await sleep(800);
+
+    setCardState(step.agent, 'working', '🔵 กำลังทำงาน', step.action);
+    addLog('agent', '⚡', `<strong>${agent.name}</strong>: กำลัง ${step.action}...`);
+
+    await sleep(step.duration);
+
+    setCardState(step.agent, 'done', '✅ เสร็จแล้ว', step.action);
+    completedSteps.push(i);
+    addLog('success', '✅', `<strong>${agent.name}</strong>: เสร็จแล้ว — ${step.action}`);
+    renderWorkflowBar(wf.steps, completedSteps);
+
+    await sleep(300);
+  }
+
+  // Done!
+  const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+  document.getElementById('statTime').textContent = elapsed + 's';
+  document.getElementById('wfStatus').textContent = 'COMPLETE';
+  document.getElementById('wfStatus').style.color = '#00ff88';
+
+  setChiefSpeech(`เหมียว~ งาน "${wf.name}" เสร็จสมบูรณ์แล้ว! ใช้เวลา ${elapsed} วินาที 🐾✅`);
+  addLog('success', '😼', `<strong>บอสเหมียว:</strong> ทุกงานเสร็จหมดแล้ว! Runtime: ${elapsed}s`);
+
+  // Show output
+  document.getElementById('outputBadge').style.display = 'none';
+  document.getElementById('outputPreview').style.color = 'rgba(255,255,255,.8)';
+  typeOutput(wf.output);
+
+  // Update active count
+  document.getElementById('activeCount').textContent = '0/10 active';
+
+  isRunning = false;
+  document.getElementById('runBtn').disabled = false;
+  document.querySelectorAll('.preset-btn').forEach(b => b.style.pointerEvents = 'auto');
+}
+
+function setCardState(agentId, state, statusText, taskText) {
+  const card = document.getElementById('card-' + agentId);
+  const status = document.getElementById('status-' + agentId);
+  const task = document.getElementById('task-' + agentId);
+
+  card.className = 'agent-card ' + state;
+
+  status.textContent = statusText;
+  if (taskText) task.textContent = taskText.substring(0, 28) + (taskText.length > 28 ? '…' : '');
+  else task.textContent = '';
+
+  // Update active count
+  const active = document.querySelectorAll('.agent-card.working, .agent-card.thinking, .agent-card.waiting').length;
+  document.getElementById('activeCount').textContent = active + '/10 active';
+  document.getElementById('statAgents').textContent = document.querySelectorAll('.agent-card.idle').length;
+}
+
+function setChiefSpeech(text) {
+  document.getElementById('chiefSpeech').textContent = text;
+}
+
+function addLog(type, icon, msg) {
+  const body = document.getElementById('logBody');
+  const now = new Date();
+  const time = String(now.getHours()).padStart(2,'0') + ':' +
+               String(now.getMinutes()).padStart(2,'0') + ':' +
+               String(now.getSeconds()).padStart(2,'0');
+
+  const entry = document.createElement('div');
+  entry.className = 'log-entry ' + type;
+  entry.innerHTML = `<span class="log-time">${time}</span><span class="log-icon">${icon}</span><span class="log-msg">${msg}</span>`;
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('logBody').innerHTML = '';
+}
+
+async function typeOutput(text) {
+  const el = document.getElementById('outputPreview');
+  el.textContent = '';
+  const chars = text.split('');
+  const chunkSize = 3;
+  for (let i = 0; i < chars.length; i += chunkSize) {
+    el.textContent += chars.slice(i, i + chunkSize).join('');
+    el.scrollTop = el.scrollHeight;
+    await sleep(18);
+  }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// ── Start ────────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

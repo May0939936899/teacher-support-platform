@@ -43,7 +43,7 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
     { label: t(lang, 'stat_total_tools'), value: '35', icon: '🛠️', color: CI.cyan },
     { label: t(lang, 'stat_phase1_ready'), value: '7', icon: '✅', color: CI.magenta },
     { label: 'AI Features', value: '12', icon: '🤖', color: CI.purple },
-    { label: t(lang, 'stat_main_areas'), value: '3', icon: '🎓', color: CI.gold },
+    { label: t(lang, 'stat_main_areas'), value: '4', icon: '🎓', color: CI.gold },
   ];
 
   return (

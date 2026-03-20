@@ -6,7 +6,27 @@
       "Bash(vercel --prod --force)",
       "WebSearch",
       "Bash(npm install:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(npx next:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/poster)",
+      "Bash(npx vercel:*)",
+      "Bash(npm run:*)",
+      "Bash(find '/Users/kewalin/Desktop/Biz content/src' -path *api* -name *.js)",
+      "WebFetch(domain:ai-academy-lime.vercel.app)",
+      "Bash(vercel --version)",
+      "Bash(vercel link:*)",
+      "Bash(npx prisma:*)",
+      "Bash(nc -zv ep-twilight-salad-a1i8ba19.ap-southeast-1.aws.neon.tech 5432)",
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:vercel.com)",
+      "WebFetch(domain:linear.app)",
+      "WebFetch(domain:raycast.com)",
+      "WebFetch(domain:craft.do)",
+      "WebFetch(domain:arc.net)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:fontofweb.com)",
+      "Bash(npm ls:*)"
     ]
   }
 }

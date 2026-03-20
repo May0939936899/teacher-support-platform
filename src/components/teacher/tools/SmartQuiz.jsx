@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
+import AntiCheatGuard from './AntiCheatGuard';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -932,6 +933,11 @@ export default function SmartQuiz() {
           )}
 
           {studentView.step === 'quiz' && !studentView.submitted && (
+            <AntiCheatGuard
+              active={true}
+              maxWarnings={1}
+              onViolation={() => { submitAnswers(); }}
+            >
             <div>
               <div style={{
                 background: `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`, color: '#fff',
@@ -1005,6 +1011,7 @@ export default function SmartQuiz() {
                 ✅ ส่งคำตอบ
               </button>
             </div>
+            </AntiCheatGuard>
           )}
 
           {studentView.submitted && (

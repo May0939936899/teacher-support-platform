@@ -8,8 +8,8 @@ export const translations = {
 
     // Sides
     side_teaching: 'ด้านการสอน',
-    side_documents: 'เครื่องมือเอกสาร',
-    side_admin: 'การบริหาร',
+    side_documents: 'ด้านเครื่องมือเอกสาร',
+    side_admin: 'ด้านการบริหาร',
 
     // Groups
     group_assess: 'ประเมินและทดสอบ',
@@ -60,7 +60,7 @@ export const translations = {
     tool_ebook: 'สร้าง E-book',
 
     // Marketing
-    side_marketing: 'สื่อสารการตลาด',
+    side_marketing: 'ด้านสื่อสารการตลาด',
     group_content: 'สร้างคอนเทนต์',
     tool_marketing_content: 'เขียนคอนเทนต์จากภาพ',
     tool_auto_poster: 'สร้างโปสเตอร์อัตโนมัติ',
@@ -93,9 +93,9 @@ export const translations = {
 
     // Dashboard
     dashboard_welcome: 'ยินดีต้อนรับสู่ Teacher Support Platform',
-    dashboard_desc: 'ระบบสนับสนุนการสอนสำหรับอาจารย์มหาวิทยาลัย — 35 เครื่องมือ ใน 3 ด้าน 8 หมวด',
+    dashboard_desc: 'ระบบสนับสนุนการสอนสำหรับอาจารย์มหาวิทยาลัย — 35 เครื่องมือ ใน 4 ด้าน 9 หมวด',
     dashboard_phase1: 'Phase 1 — พร้อมใช้งาน',
-    dashboard_all: 'ทั้งหมด 3 ด้าน',
+    dashboard_all: 'ทั้งหมด 4 ด้าน',
     stat_total_tools: 'เครื่องมือทั้งหมด',
     stat_phase1_ready: 'Phase 1 พร้อมใช้',
     stat_main_areas: 'ด้านหลัก',
@@ -187,9 +187,9 @@ export const translations = {
     logout: 'Sign Out',
 
     dashboard_welcome: 'Welcome to Teacher Support Platform',
-    dashboard_desc: 'University teaching support system — 35 tools in 3 areas, 8 categories',
+    dashboard_desc: 'University teaching support system — 35 tools in 4 areas, 9 categories',
     dashboard_phase1: 'Phase 1 — Ready to Use',
-    dashboard_all: 'All 3 Areas',
+    dashboard_all: 'All 4 Areas',
     stat_total_tools: 'Total Tools',
     stat_phase1_ready: 'Phase 1 Ready',
     stat_main_areas: 'Main Areas',
@@ -281,9 +281,9 @@ export const translations = {
     logout: '退出登录',
 
     dashboard_welcome: '欢迎使用教学支持平台',
-    dashboard_desc: '大学教学支持系统 — 35个工具，3大领域，8个类别',
+    dashboard_desc: '大学教学支持系统 — 35个工具，4大领域，9个类别',
     dashboard_phase1: '第一阶段 — 可使用',
-    dashboard_all: '全部 3 大领域',
+    dashboard_all: '全部 4 大领域',
     stat_total_tools: '工具总数',
     stat_phase1_ready: '第一阶段可用',
     stat_main_areas: '主要领域',
@@ -375,9 +375,9 @@ export const translations = {
     logout: 'ログアウト',
 
     dashboard_welcome: '教育支援プラットフォームへようこそ',
-    dashboard_desc: '大学教育支援システム — 35ツール、3分野、8カテゴリ',
+    dashboard_desc: '大学教育支援システム — 35ツール、4分野、9カテゴリ',
     dashboard_phase1: 'フェーズ1 — 利用可能',
-    dashboard_all: '全3分野',
+    dashboard_all: '全4分野',
     stat_total_tools: '全ツール',
     stat_phase1_ready: 'Phase 1 利用可能',
     stat_main_areas: '主要分野',

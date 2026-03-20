@@ -4,13 +4,13 @@
 // ===================================================
 
 export const CATEGORY_TAGS = {
-  "คณะบริหารธุรกิจ (ภาพรวม)": "#YouDreamItYouOwnIt\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#เรียนกับตัวจริงประสบการณ์จริง\n#SBS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
-  "สาขาการบริหารและการจัดการสมัยใหม่": "#YouDreamItYouOwnIt\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#สาขาวิชาการบริหารและการจัดการสมัยใหม่\n#เรียนกับตัวจริงประสบการณ์จริง\n#SBS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
-  "สาขาการตลาดดิจิทัล": "#YouDreamItYouOwnIt\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#สาขาวิชาการตลาดดิจิทัล\n#เรียนกับตัวจริงประสบการณ์จริง\n#SBS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
-  "สาขาธุรกิจระหว่างประเทศ": "#YouDreamItYouOwnIt\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#สาขาวิชาธุรกิจระหว่างประเทศ\n#เรียนกับตัวจริงประสบการณ์จริง\n#SBS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
-  "สาขาบริหารธุรกิจ": "#YouDreamItYouOwnIt\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#สาขาวิชาบริหารธุรกิจ\n#เรียนกับตัวจริงประสบการณ์จริง\n#SBS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
-  "ศูนย์บ่มเพาะธุรกิจ": "#BusinessIncubator\n#ศูนย์บ่มเพาะธุรกิจ #คณะบริหารธุรกิจ\n#มหาวิทยาลัยศรีปทุม #SBS #SPU",
-  "กิจการนักศึกษา": "#StudentAffairs\n#กิจการนักศึกษา #คณะบริหารธุรกิจ\n#มหาวิทยาลัยศรีปทุม #SBS #SPU"
+  "คณะบริหารธุรกิจ (ภาพรวม)": "#เปลี่ยนฝันปั้นธุรกิจ\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#เรียนกับตัวจริงประสบการณ์จริง\n#SPUBUS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
+  "สาขาการบริหารและการจัดการสมัยใหม่": "#เปลี่ยนฝันปั้นธุรกิจ\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#สาขาวิชาการบริหารและการจัดการสมัยใหม่\n#เรียนกับตัวจริงประสบการณ์จริง\n#SPUBUS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
+  "สาขาการตลาดดิจิทัล": "#เปลี่ยนฝันปั้นธุรกิจ\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#สาขาวิชาการตลาดดิจิทัล\n#เรียนกับตัวจริงประสบการณ์จริง\n#SPUBUS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
+  "สาขาธุรกิจระหว่างประเทศ": "#เปลี่ยนฝันปั้นธุรกิจ\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#สาขาวิชาธุรกิจระหว่างประเทศ\n#เรียนกับตัวจริงประสบการณ์จริง\n#SPUBUS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
+  "สาขาบริหารธุรกิจ": "#เปลี่ยนฝันปั้นธุรกิจ\n#คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม\n#สาขาวิชาบริหารธุรกิจ\n#เรียนกับตัวจริงประสบการณ์จริง\n#SPUBUS #SPU #SripatumUniversity\n#SripatumBusinessSchool",
+  "ศูนย์บ่มเพาะธุรกิจ": "#BusinessIncubator\n#ศูนย์บ่มเพาะธุรกิจ #คณะบริหารธุรกิจ\n#มหาวิทยาลัยศรีปทุม #SPUBUS #SPU",
+  "กิจการนักศึกษา": "#StudentAffairs\n#กิจการนักศึกษา #คณะบริหารธุรกิจ\n#มหาวิทยาลัยศรีปทุม #SPUBUS #SPU"
 };
 
 export const CATEGORIES = Object.keys(CATEGORY_TAGS);

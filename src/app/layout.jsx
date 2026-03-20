@@ -3,7 +3,7 @@ import { AuthProvider } from '@/hooks/useAuth';
 import { Toaster } from 'react-hot-toast';
 
 export const metadata = {
-  title: 'BiZ Content — AI-Powered Content Generator',
+  title: 'SPUBUS BIZ CONTENT — AI-Powered Content Generator',
   description: 'สร้างคอนเทนต์ด้วย AI สำหรับคณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม',
   icons: { icon: '/favicon.ico' },
 };

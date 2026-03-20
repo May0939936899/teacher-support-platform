@@ -36,7 +36,7 @@ async function callGemini(prompt, imageData = null) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('ไม่มี AI API key — กรุณาตั้งค่า ANTHROPIC_API_KEY หรือ GEMINI_API_KEY ใน .env.local');
 
-  const model = imageData ? 'gemini-2.0-flash' : 'gemini-2.0-flash';
+  const model = imageData ? 'gemini-2.5-flash-preview-05-20' : 'gemini-2.5-flash-preview-05-20';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const parts = [];

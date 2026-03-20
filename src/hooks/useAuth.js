@@ -13,13 +13,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) fetchOrCreateProfile(session.user);
       else setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
+      if (session?.user) fetchOrCreateProfile(session.user);
       else {
         setProfile(null);
         setLoading(false);
@@ -29,14 +29,87 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function fetchProfile(userId) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    setProfile(data);
-    setLoading(false);
+  async function fetchOrCreateProfile(authUser) {
+    try {
+      // Try to fetch existing profile
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (data) {
+        // Profile exists — check if needs updating (e.g. avatar from Google)
+        const meta = authUser.user_metadata || {};
+        const needsUpdate =
+          (!data.avatar_url && meta.avatar_url) ||
+          (!data.full_name && (meta.full_name || meta.name));
+
+        if (needsUpdate) {
+          const updates = {};
+          if (!data.avatar_url && meta.avatar_url) updates.avatar_url = meta.avatar_url;
+          if (!data.full_name && (meta.full_name || meta.name)) updates.full_name = meta.full_name || meta.name;
+
+          const { data: updated } = await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', authUser.id)
+            .select()
+            .single();
+
+          setProfile(updated || data);
+        } else {
+          setProfile(data);
+        }
+      } else if (error && (error.code === 'PGRST116' || error.message?.includes('no rows'))) {
+        // Profile doesn't exist — create one
+        const meta = authUser.user_metadata || {};
+        const newProfile = {
+          id: authUser.id,
+          email: authUser.email,
+          full_name: meta.full_name || meta.name || authUser.email?.split('@')[0] || '',
+          avatar_url: meta.avatar_url || meta.picture || '',
+          role: 'user',
+        };
+
+        const { data: created, error: insertError } = await supabase
+          .from('profiles')
+          .insert(newProfile)
+          .select()
+          .single();
+
+        if (insertError) {
+          console.warn('Could not create profile:', insertError.message);
+          // Still set a local profile so the app works
+          setProfile(newProfile);
+        } else {
+          setProfile(created);
+        }
+      } else {
+        // Some other error — still try to work with user metadata
+        const meta = authUser.user_metadata || {};
+        setProfile({
+          id: authUser.id,
+          email: authUser.email,
+          full_name: meta.full_name || meta.name || '',
+          avatar_url: meta.avatar_url || meta.picture || '',
+          role: 'user',
+        });
+      }
+    } catch (err) {
+      console.warn('Profile fetch error:', err);
+      // Fallback — construct profile from auth user metadata
+      const meta = authUser.user_metadata || {};
+      setProfile({
+        id: authUser.id,
+        email: authUser.email,
+        full_name: meta.full_name || meta.name || '',
+        avatar_url: meta.avatar_url || meta.picture || '',
+        role: 'user',
+      });
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function signInWithGoogle() {

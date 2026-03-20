@@ -1,7 +1,20 @@
 'use client';
 import { useMemo } from 'react';
 
-export default function PosterCanvas({ formData, template, style, preset, bgImage, showDebug, overlayStrength = 40, fontFamily }) {
+const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${d} ${THAI_MONTHS[m - 1]} ${y + 543}`;
+}
+
+function fmtTime(t) {
+  if (!t) return '';
+  return `${t} น.`;
+}
+
+export default function PosterCanvas({ formData, template, style, preset, bgImage, showDebug, overlayStrength = 40, fontFamily, speakerPhoto, speakerScale = 1, speakerPos = {x:0,y:0}, extraLogos = [], logoScales = [1,1,1] }) {
   const blocks = template?.blocks || {};
   const gradient = style?.gradient || 'linear-gradient(135deg, #0F2027, #2C5364)';
   const accent = style?.accent || '#00ADEF';
@@ -17,12 +30,13 @@ export default function PosterCanvas({ formData, template, style, preset, bgImag
       fields.push({ key: 'title', text: formData.title, ...blocks.title });
     if (formData.subtitle && blocks.subtitle)
       fields.push({ key: 'subtitle', text: formData.subtitle, ...blocks.subtitle });
-    if (formData.speaker && blocks.speaker)
-      fields.push({ key: 'speaker', text: `👤 ${formData.speaker}`, ...blocks.speaker });
+    const speakerNames = (formData.speakers || [formData.speaker]).filter(Boolean);
+    if (speakerNames.length > 0 && blocks.speaker)
+      fields.push({ key: 'speaker', text: `👤 ${speakerNames.join('  ·  ')}`, ...blocks.speaker });
 
     const infoParts = [
-      formData.date && `📅 ${formData.date}`,
-      formData.time && `⏰ ${formData.time}`,
+      formData.date && `📅 ${fmtDate(formData.date)}`,
+      formData.time && `⏰ ${fmtTime(formData.time)}`,
       formData.location && `📍 ${formData.location}`,
     ].filter(Boolean);
     if (infoParts.length > 0 && blocks.info)
@@ -98,16 +112,31 @@ export default function PosterCanvas({ formData, template, style, preset, bgImag
         zIndex: 5,
       }} />
 
-      {/* SPU Logo — top right (when branding enabled) */}
+      {/* Logos — top right (SPU + extra logos) */}
       {formData.showBranding !== false && (
         <div style={{
           position: 'absolute',
           top: '4%', right: '4%',
           zIndex: 15,
           display: 'flex',
-          gap: '8px',
+          gap: '10px',
           alignItems: 'center',
         }}>
+          {/* Extra logos first (left side) */}
+          {extraLogos.map((logo, i) => logo ? (
+            <img
+              key={`extra-logo-${i}`}
+              src={logo}
+              alt={`Logo ${i + 1}`}
+              style={{
+                height: `clamp(${18 * (logoScales[i] || 1)}px, ${4.5 * (logoScales[i] || 1)}vw, ${44 * (logoScales[i] || 1)}px)`,
+                maxWidth: `clamp(${30 * (logoScales[i] || 1)}px, ${8 * (logoScales[i] || 1)}vw, ${80 * (logoScales[i] || 1)}px)`,
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))',
+              }}
+            />
+          ) : null)}
+          {/* SPU logo always last (rightmost) */}
           <img
             src="/spu-bus-logo.png"
             alt="SPU BUS"
@@ -196,16 +225,42 @@ export default function PosterCanvas({ formData, template, style, preset, bgImag
           lineHeight: 1.2,
         }}>
           <div style={{ fontSize: 'clamp(24px, 4vw, 42px)', fontWeight: 900 }}>
-            {formData.date.match(/\d+/)?.[0] || ''}
+            {formData.date.split('-')[2]?.replace(/^0/, '') || ''}
           </div>
           <div style={{ fontSize: 'clamp(10px, 1.5vw, 15px)', fontWeight: 600, opacity: 0.9 }}>
-            {formData.date.replace(/\d+\s*/, '') || formData.date}
+            {(() => { const [y,m] = (formData.date || '').split('-').map(Number); return m ? `${THAI_MONTHS[m-1]} ${y+543}` : ''; })()}
           </div>
           {formData.time && (
             <div style={{ fontSize: 'clamp(8px, 1.2vw, 12px)', marginTop: '4px', opacity: 0.8 }}>
-              {formData.time}
+              {fmtTime(formData.time)}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Speaker / Person Photo */}
+      {speakerPhoto && (
+        <div style={{
+          position: 'absolute',
+          bottom: `${speakerPos.y}%`,
+          right: `${2 - speakerPos.x}%`,
+          zIndex: 8,
+          height: `${65 * speakerScale}%`,
+          display: 'flex',
+          alignItems: 'flex-end',
+          pointerEvents: 'none',
+        }}>
+          <img
+            src={speakerPhoto}
+            alt="Speaker"
+            style={{
+              height: '100%',
+              maxWidth: '45%',
+              objectFit: 'contain',
+              objectPosition: 'bottom right',
+              filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.4))',
+            }}
+          />
         </div>
       )}
 

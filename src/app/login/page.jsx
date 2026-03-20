@@ -1,12 +1,21 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="login-page"><Loader2 size={32} className="spinner" style={{ color: 'var(--primary)' }} /></div>}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const { user, loading, signInWithGoogle, signUpWithEmail, signInWithEmail } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [tab, setTab] = useState('login'); // 'login' | 'register'
   const [email, setEmail] = useState('');
@@ -20,6 +29,16 @@ export default function LoginPage() {
   useEffect(() => {
     if (!loading && user) router.push('/');
   }, [user, loading, router]);
+
+  // Show OAuth error from redirect
+  useEffect(() => {
+    const error = searchParams.get('error');
+    if (error === 'auth') {
+      setMessage({ type: 'error', text: 'การเข้าสู่ระบบผิดพลาด กรุณาลองใหม่อีกครั้ง' });
+    } else if (error) {
+      setMessage({ type: 'error', text: `เกิดข้อผิดพลาด: ${error}` });
+    }
+  }, [searchParams]);
 
   if (loading) {
     return (
@@ -100,7 +119,7 @@ export default function LoginPage() {
 
         {/* Brand */}
         <div className="login-brand">
-          <h1><span className="text-gradient">BiZ Content</span></h1>
+          <h1><span className="text-gradient">SPUBUS BIZ CONTENT</span></h1>
           <p>AI-Powered Content Generator</p>
           <p className="login-sub">คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม</p>
         </div>

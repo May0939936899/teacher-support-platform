@@ -55,7 +55,7 @@ export default function AdminDashboard() {
   return (
     <div className="admin-page-container">
       <div className="dashboard-header-page">
-        <h2><BarChart3 size={24} style={{ color: 'var(--primary)' }} /> BiZ Content | Admin Dashboard</h2>
+        <h2><BarChart3 size={24} style={{ color: 'var(--primary)' }} /> SPUBUS BIZ CONTENT | Admin Dashboard</h2>
         <button onClick={() => router.push('/')} className="back-btn">← กลับหน้าหลัก</button>
       </div>
 

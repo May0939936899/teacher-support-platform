@@ -16,28 +16,26 @@ function getNode(nodeId) {
   return node;
 }
 
-const SCALE = 2;
-
-export async function exportToPng(formData, nodeId = 'poster-canvas') {
+export async function exportToPng(formData, nodeId = 'poster-canvas', scale = 2) {
   const { toPng } = await import('html-to-image');
   const node = getNode(nodeId);
-  const dataUrl = await toPng(node, { pixelRatio: SCALE, cacheBust: true, quality: 1 });
+  const dataUrl = await toPng(node, { pixelRatio: scale, cacheBust: true, quality: 1 });
   downloadDataUrl(dataUrl, getFileName(formData, 'png'));
 }
 
-export async function exportToJpg(formData, nodeId = 'poster-canvas') {
+export async function exportToJpg(formData, nodeId = 'poster-canvas', scale = 2) {
   const { toJpeg } = await import('html-to-image');
   const node = getNode(nodeId);
-  const dataUrl = await toJpeg(node, { pixelRatio: SCALE, cacheBust: true, quality: 0.95, backgroundColor: '#000' });
+  const dataUrl = await toJpeg(node, { pixelRatio: scale, cacheBust: true, quality: 0.95, backgroundColor: '#000' });
   downloadDataUrl(dataUrl, getFileName(formData, 'jpg'));
 }
 
-export async function exportToPdf(formData, preset, nodeId = 'poster-canvas') {
+export async function exportToPdf(formData, preset, nodeId = 'poster-canvas', scale = 2) {
   const { toPng } = await import('html-to-image');
   const jsPDFModule = await import('jspdf');
   const jsPDF = jsPDFModule.jsPDF || jsPDFModule.default;
   const node = getNode(nodeId);
-  const dataUrl = await toPng(node, { pixelRatio: SCALE, cacheBust: true });
+  const dataUrl = await toPng(node, { pixelRatio: scale, cacheBust: true });
 
   const w = preset?.w || 1200;
   const h = preset?.h || 1200;
@@ -54,7 +52,7 @@ export async function exportToPdf(formData, preset, nodeId = 'poster-canvas') {
   pdf.save(getFileName(formData, 'pdf'));
 }
 
-export async function exportToPptx(formData, preset, nodeId = 'poster-canvas') {
+export async function exportToPptx(formData, preset, nodeId = 'poster-canvas', scale = 2) {
   // Load pptxgenjs from CDN to avoid node:https bundle issue
   if (!window.PptxGenJS) {
     await new Promise((resolve, reject) => {
@@ -68,7 +66,7 @@ export async function exportToPptx(formData, preset, nodeId = 'poster-canvas') {
 
   const { toPng } = await import('html-to-image');
   const node = getNode(nodeId);
-  const dataUrl = await toPng(node, { pixelRatio: SCALE, cacheBust: true });
+  const dataUrl = await toPng(node, { pixelRatio: scale, cacheBust: true });
 
   const w = preset?.w || 1200;
   const h = preset?.h || 1200;
@@ -79,7 +77,7 @@ export async function exportToPptx(formData, preset, nodeId = 'poster-canvas') {
   else { slideH = 10; slideW = 10 * ratio; }
 
   const pptx = new window.PptxGenJS();
-  pptx.author = 'BiZ Content';
+  pptx.author = 'SPUBUS BIZ CONTENT';
   pptx.title = formData.title || 'AI Poster';
   pptx.defineLayout({ name: 'POSTER', width: slideW, height: slideH });
   pptx.layout = 'POSTER';

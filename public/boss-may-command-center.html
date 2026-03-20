@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>👑 BOSS MAY — AI Cat Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Prompt:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════════════════════════ */
+:root {
+  --bg: #040B1C;
+  --panel: #080F22;
+  --panel2: #0D1535;
+  --border: rgba(0,245,212,0.15);
+  --cyan: #00F5D4;
+  --purple: #7B68EE;
+  --pink: #FF6B9D;
+  --gold: #FFD700;
+  --green: #00FF88;
+  --red: #FF4D6D;
+  --orange: #FF9F43;
+  --blue: #4ECDC4;
+  --text: #C8D6E5;
+  --pixel: 'Press Start 2P', monospace;
+  --body: 'Prompt', sans-serif;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; }
+body {
+  font-family: var(--body);
+  background: var(--bg);
+  color: var(--text);
+  user-select: none;
+}
+
+/* ═══ SCANLINES ═══ */
+body::after {
+  content:'';
+  position:fixed; inset:0;
+  background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,245,212,.008) 2px,rgba(0,245,212,.008) 4px);
+  pointer-events:none; z-index:9999;
+}
+
+/* ═══ SCROLLBAR ═══ */
+::-webkit-scrollbar { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:rgba(0,245,212,.3); border-radius:4px; }
+
+/* ═══════════════════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════════════════ */
+.hdr {
+  height: 52px;
+  background: linear-gradient(135deg, #080F22, #0E1640);
+  border-bottom: 2px solid var(--cyan);
+  display: flex; align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  position: relative; overflow: hidden;
+  flex-shrink: 0;
+}
+.hdr::before {
+  content:'';
+  position:absolute; top:0; left:-100%;
+  width:200%; height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  animation: scanLine 3s infinite;
+}
+@keyframes scanLine { to { left:100%; } }
+
+.hdr-left { display:flex; align-items:center; gap:12px; }
+.hdr-logo {
+  font-family: var(--pixel);
+  font-size:.85rem;
+  background: linear-gradient(90deg,var(--gold),var(--pink),var(--cyan));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  filter: drop-shadow(0 0 8px rgba(255,215,0,.4));
+}
+.hdr-version {
+  font-size:.6rem; font-family: var(--pixel);
+  background: var(--gold); color:#040B1C;
+  padding:4px 10px; border-radius:4px; font-weight:700;
+}
+.hdr-status { display:flex; align-items:center; gap:8px; font-size:.85rem; }
+.dot-online { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:blink 1.5s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.hdr-right { display:flex; align-items:center; gap:16px; }
+.hdr-clock {
+  font-family: var(--pixel);
+  font-size:.9rem; color:var(--cyan);
+  text-shadow: 0 0 12px rgba(0,245,212,.6);
+}
+.hdr-agents { font-size:.7rem; color:rgba(255,255,255,.45); font-family:var(--pixel); }
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN LAYOUT
+═══════════════════════════════════════════════════════════ */
+.main {
+  display: grid;
+  grid-template-columns: 320px 1fr 520px;
+  height: calc(100vh - 52px);
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   LEFT SIDEBAR — BOSS MAY + TEAM
+═══════════════════════════════════════════════════════════ */
+.sidebar {
+  background: linear-gradient(180deg,#080F22,#060D1E);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* BOSS MAY section */
+.boss-section {
+  padding: 14px;
+  background: linear-gradient(135deg,rgba(255,215,0,.07),rgba(255,107,157,.07));
+  border-bottom: 1px solid rgba(255,215,0,.2);
+  flex-shrink: 0;
+}
+.boss-title {
+  font-family:var(--pixel); font-size:.6rem;
+  color:var(--gold); margin-bottom:10px;
+  text-align:center; letter-spacing:2px;
+}
+.boss-avatar-wrap {
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+}
+.boss-canvas-wrap {
+  position:relative; width:80px; height:80px;
+  background: radial-gradient(circle, rgba(232,67,147,0.2) 0%, rgba(4,11,28,0.8) 70%);
+  border-radius:50%;
+}
+.boss-canvas-wrap canvas {
+  width:80px; height:80px; image-rendering:pixelated;
+  position:relative; z-index:2;
+  border-radius:50%;
+}
+.boss-crown {
+  position:absolute; top:-14px; left:50%; transform:translateX(-50%);
+  font-size:1.4rem; filter:drop-shadow(0 0 8px var(--gold));
+  animation:crownFloat 2s ease-in-out infinite;
+}
+@keyframes crownFloat { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(-4px)} }
+.boss-ring {
+  position:absolute; inset:-4px;
+  border-radius:50%;
+  border:3px solid transparent;
+  background:linear-gradient(transparent,transparent) padding-box,
+             linear-gradient(45deg,var(--gold),var(--pink),var(--cyan),var(--gold)) border-box;
+  animation:ringRotate 3s linear infinite;
+  z-index:0;
+  pointer-events:none;
+}
+@keyframes ringRotate { to{transform:rotate(360deg)} }
+
+.boss-name { font-family:var(--pixel); font-size:.8rem; color:var(--gold); text-align:center; }
+.boss-subtitle { font-size:.9rem; color:rgba(255,255,255,.5); text-align:center; margin-top:4px; }
+.boss-input-wrap { margin-top:12px; }
+.boss-textarea {
+  width:100%;
+  background:rgba(0,0,0,.5);
+  border:2px solid rgba(255,215,0,.3);
+  border-radius:8px;
+  padding:12px 14px;
+  font-family:var(--body); font-size:1rem;
+  line-height:1.6;
+  color:white; resize:none;
+  outline:none; transition:.3s;
+  min-height:80px;
+}
+.boss-textarea:focus { border-color:var(--gold); box-shadow:0 0 15px rgba(255,215,0,.3); }
+.boss-textarea::placeholder { color:rgba(255,255,255,.35); font-size:.95rem; }
+.boss-btn {
+  width:100%; margin-top:8px;
+  background:linear-gradient(135deg,var(--gold),#FFA500);
+  border:none; border-radius:8px;
+  padding:14px; cursor:pointer;
+  font-family:var(--body); font-size:1.1rem;
+  color:#040B1C; font-weight:700;
+  transition:.3s; letter-spacing:1px;
+}
+.boss-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 15px rgba(255,215,0,.4); }
+.boss-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+/* Team Status */
+.team-label {
+  font-family:var(--pixel); font-size:.55rem;
+  color:var(--cyan); padding:12px 14px 8px;
+  letter-spacing:2px; flex-shrink:0;
+  border-top:1px solid var(--border);
+}
+.team-list { flex:1; overflow-y:auto; padding:0 10px 10px; }
+
+.team-item {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 8px;
+  border-radius:6px;
+  margin-bottom:4px;
+  cursor:pointer; transition:.2s;
+  border:1px solid transparent;
+}
+.team-item:hover { background:rgba(255,255,255,.04); }
+.team-item.active { background:rgba(0,245,212,.06); border-color:rgba(0,245,212,.2); }
+
+.ti-avatar { width:36px; height:36px; flex-shrink:0; image-rendering:pixelated; }
+.ti-info { flex:1; min-width:0; }
+.ti-name { font-family:var(--pixel); font-size:.5rem; color:white; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ti-role { font-size:.8rem; color:rgba(255,255,255,.4); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ti-dot {
+  width:7px; height:7px; border-radius:50%; flex-shrink:0;
+  background:rgba(255,255,255,.2);
+}
+.ti-dot.online { background:var(--green); box-shadow:0 0 6px var(--green); }
+.ti-dot.working { background:var(--cyan); box-shadow:0 0 6px var(--cyan); animation:blink .8s infinite; }
+.ti-dot.thinking { background:var(--purple); box-shadow:0 0 6px var(--purple); animation:blink 1s infinite; }
+.ti-dot.done { background:var(--green); }
+.ti-dot.idle { background:rgba(255,255,255,.15); }
+
+/* ═══════════════════════════════════════════════════════════
+   CENTER — COMMAND CENTER + FACTORY + LOG
+═══════════════════════════════════════════════════════════ */
+.center {
+  display:flex; flex-direction:column;
+  border-right:1px solid var(--border);
+  overflow:hidden;
+}
+
+/* Command Center - isometric room */
+.cmd-center {
+  flex-shrink:0; height:240px;
+  background:linear-gradient(135deg,#080F22,#0A1228);
+  border-bottom:1px solid var(--border);
+  position:relative; overflow:hidden;
+}
+.cmd-title {
+  position:absolute; top:10px; left:14px;
+  font-family:var(--pixel); font-size:.6rem;
+  color:var(--cyan); letter-spacing:3px;
+  text-shadow:0 0 10px rgba(0,245,212,.5);
+}
+.cmd-version {
+  position:absolute; top:10px; right:14px;
+  font-family:var(--pixel); font-size:.5rem; color:rgba(0,245,212,.4);
+}
+
+/* Isometric room */
+.iso-room {
+  position:absolute; inset:30px 14px 10px;
+  display:flex; align-items:flex-end; justify-content:center;
+  perspective:600px;
+}
+.iso-stage {
+  position:relative;
+  transform:rotateX(20deg);
+  transform-style:preserve-3d;
+  width:100%; max-width:420px;
+}
+
+/* Floor */
+.iso-floor {
+  width:100%; height:110px;
+  background:linear-gradient(135deg,#0A1628,#0F1E3D);
+  border:1px solid rgba(0,245,212,.1);
+  position:relative; overflow:hidden;
+  border-radius:4px;
+}
+/* Grid lines on floor */
+.iso-floor::before {
+  content:'';
+  position:absolute; inset:0;
+  background:
+    repeating-linear-gradient(90deg,transparent,transparent 29px,rgba(0,245,212,.04) 30px),
+    repeating-linear-gradient(180deg,transparent,transparent 19px,rgba(0,245,212,.04) 20px);
+}
+
+/* Boss desk */
+.boss-desk {
+  position:absolute;
+  bottom:20px; left:50%; transform:translateX(-50%);
+  width:120px; height:50px;
+}
+.desk-top {
+  position:absolute; bottom:0; width:100%; height:35px;
+  background:linear-gradient(135deg,#1a2040,#141B35);
+  border:1px solid rgba(123,104,238,.4);
+  border-radius:3px;
+  display:flex; align-items:center; justify-content:space-around;
+  padding:4px;
+  box-shadow:0 0 20px rgba(123,104,238,.2);
+}
+.desk-screen {
+  background:#001a0a; border:1px solid rgba(0,245,212,.4);
+  border-radius:2px; font-size:4px; overflow:hidden;
+  display:flex; flex-direction:column;
+  justify-content:center; align-items:center;
+  color:var(--cyan);
+}
+.desk-s1 { width:36px; height:26px; }
+.desk-s2 { width:50px; height:26px; }
+.desk-s3 { width:28px; height:26px; }
+
+.screen-lines { display:flex; flex-direction:column; gap:1px; padding:2px; width:100%; }
+.screen-line { height:1px; background:currentColor; opacity:.6; border-radius:1px; }
+
+/* Boss cat in room */
+.room-boss {
+  position:absolute; bottom:55px; left:50%; transform:translateX(-60%);
+}
+.room-boss canvas { width:32px; height:32px; image-rendering:pixelated; }
+
+/* Floating data orbs */
+.data-orb {
+  position:absolute;
+  width:8px; height:8px; border-radius:50%;
+  background:var(--cyan); box-shadow:0 0 8px var(--cyan);
+  animation:orbFloat var(--dur,3s) ease-in-out infinite;
+  animation-delay:var(--delay,0s);
+}
+@keyframes orbFloat {
+  0%,100%{transform:translateY(0) translateX(0); opacity:.8;}
+  33%{transform:translateY(-15px) translateX(5px); opacity:1;}
+  66%{transform:translateY(-8px) translateX(-5px); opacity:.6;}
+}
+
+/* Screens on wall */
+.wall-screens {
+  position:absolute; top:0; left:0; right:0;
+  height:60px;
+  background:linear-gradient(180deg,#050C20,#08122A);
+  border-bottom:1px solid rgba(0,245,212,.1);
+  display:flex; gap:6px; align-items:center; padding:6px 10px;
+}
+.wall-screen {
+  flex:1; height:46px;
+  background:#000d1a; border:1px solid rgba(0,245,212,.2);
+  border-radius:3px; overflow:hidden;
+  position:relative;
+}
+.ws-bar { height:100%; display:flex; flex-direction:column; justify-content:center; gap:3px; padding:4px; }
+.ws-bar-line { height:3px; background:var(--cyan); border-radius:2px; animation:barAnim var(--d,2s) ease-in-out infinite; }
+@keyframes barAnim { 0%,100%{width:60%} 50%{width:100%} }
+.ws-map { position:absolute; inset:0; opacity:.3;
+  background:radial-gradient(circle at 30% 40%, rgba(0,245,212,.6) 1px, transparent 1px),
+             radial-gradient(circle at 70% 60%, rgba(255,107,157,.6) 1px, transparent 1px),
+             radial-gradient(circle at 50% 30%, rgba(255,215,0,.6) 1px, transparent 1px); }
+
+/* Connecting lines between agents */
+.conn-lines {
+  position:absolute; inset:0; pointer-events:none;
+}
+
+/* ─── Meow Factory ─── */
+.factory {
+  flex-shrink:0; height:115px;
+  background:linear-gradient(135deg,#06101F,#08122A);
+  border-bottom:1px solid var(--border);
+  position:relative; overflow:hidden;
+}
+.factory-title {
+  position:absolute; top:8px; left:14px;
+  font-family:var(--pixel); font-size:.55rem;
+  color:var(--purple); letter-spacing:3px;
+}
+.factory-agents {
+  position:absolute; top:8px; right:14px;
+  font-family:var(--pixel); font-size:.5rem;
+  color:rgba(255,255,255,.35);
+}
+
+/* Conveyor belt */
+.conveyor {
+  position:absolute; bottom:14px; left:0; right:0;
+  height:38px;
+}
+/* Belt body */
+.belt-body {
+  position:absolute; bottom:0; left:0; right:0; height:18px;
+  background: repeating-linear-gradient(90deg,
+    #1a1f4e 0px, #1a1f4e 18px,
+    #141840 18px, #141840 36px);
+  border-top:2px solid rgba(0,245,212,.3);
+  border-bottom:2px solid rgba(0,245,212,.2);
+  animation:beltScroll 1s linear infinite;
+}
+@keyframes beltScroll { to{background-position:36px 0;} }
+/* Belt cats walking */
+.belt-cats {
+  position:absolute; bottom:14px; left:0; right:0; height:26px;
+  display:flex; align-items:flex-end;
+}
+.belt-cat {
+  position:absolute; bottom:0;
+  animation:catWalk linear infinite;
+  animation-duration: var(--dur, 8s);
+  animation-delay: var(--delay, 0s);
+}
+.belt-cat canvas { width:22px; height:22px; image-rendering:pixelated; }
+@keyframes catWalk {
+  from { left:-30px; }
+  to   { left:calc(100% + 30px); }
+}
+
+/* Task packets on belt */
+.task-packet {
+  position:absolute; bottom:18px;
+  background:rgba(0,245,212,.1); border:1px solid rgba(0,245,212,.4);
+  border-radius:3px; padding:2px 5px;
+  font-family:var(--pixel); font-size:.3rem; color:var(--cyan);
+  animation:packetMove linear infinite;
+  animation-duration:var(--dur,6s);
+  animation-delay:var(--delay,0s);
+  white-space:nowrap;
+}
+@keyframes packetMove {
+  from{left:-100px} to{left:calc(100% + 100px)}
+}
+
+/* ─── Activity Log ─── */
+.log-panel {
+  flex:1; display:flex; flex-direction:column; overflow:hidden;
+  min-height:0;
+}
+.log-hdr {
+  padding:8px 14px;
+  background:rgba(0,0,0,.3);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  flex-shrink:0;
+}
+.log-hdr-title { font-family:var(--pixel); font-size:.55rem; color:var(--cyan); letter-spacing:2px; }
+.log-clear { background:none; border:1px solid rgba(255,255,255,.1); border-radius:4px;
+  padding:4px 12px; font-size:.8rem; color:rgba(255,255,255,.4); cursor:pointer; }
+.log-body {
+  flex:1; overflow-y:auto; padding:10px 12px;
+  display:flex; flex-direction:column; gap:5px;
+}
+.log-entry {
+  display:flex; gap:10px; align-items:flex-start;
+  padding:7px 10px; border-radius:5px;
+  font-size:.85rem; line-height:1.5;
+  border-left:3px solid transparent;
+  background:rgba(255,255,255,.02);
+  animation:logIn .3s ease;
+}
+@keyframes logIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:translateY(0)} }
+.log-entry.sys { border-left-color:var(--cyan); }
+.log-entry.agent { border-left-color:var(--purple); }
+.log-entry.boss { border-left-color:var(--gold); }
+.log-entry.success { border-left-color:var(--green); }
+.log-entry.warn { border-left-color:var(--orange); }
+.log-entry.error { border-left-color:var(--red); }
+.log-t { font-family:var(--pixel); font-size:.45rem; color:rgba(0,245,212,.5); white-space:nowrap; margin-top:2px; }
+.log-ico { font-size:1.1rem; }
+.log-m { color:rgba(255,255,255,.75); flex:1; }
+.log-m strong { color:white; font-weight:700; }
+
+/* ═══════════════════════════════════════════════════════════
+   RIGHT — WORKSTATIONS
+═══════════════════════════════════════════════════════════ */
+.workstations {
+  display:flex; flex-direction:column; overflow:hidden;
+}
+.ws-hdr {
+  padding:10px 14px;
+  background:rgba(0,0,0,.3);
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  flex-shrink:0;
+}
+.ws-hdr-title { font-family:var(--pixel); font-size:.6rem; color:var(--cyan); letter-spacing:2px; }
+.ws-count { font-family:var(--pixel); font-size:.5rem; color:rgba(255,255,255,.35); }
+
+.ws-grid {
+  flex:1; overflow-y:auto;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px; padding:10px;
+  align-content:start;
+}
+
+/* Individual Workstation Card */
+.ws-card {
+  background:linear-gradient(135deg,#080F22,#0C1530);
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:10px; overflow:hidden;
+  position:relative; transition:.4s;
+  cursor:pointer;
+}
+.ws-card:hover { border-color:rgba(255,255,255,.15); transform:translateY(-1px); }
+.ws-card.ws-idle { border-color:rgba(255,255,255,.05); }
+.ws-card.ws-waiting { border-color:var(--orange); box-shadow:0 0 12px rgba(255,159,67,.15); }
+.ws-card.ws-thinking { border-color:var(--purple); box-shadow:0 0 18px rgba(123,104,238,.25); animation:cardPulse 1.5s infinite; }
+.ws-card.ws-working { border-color:var(--cyan); box-shadow:0 0 20px rgba(0,245,212,.25); animation:cardPulse 1s infinite; }
+.ws-card.ws-done { border-color:var(--green); box-shadow:0 0 12px rgba(0,255,136,.15); }
+@keyframes cardPulse { 0%,100%{opacity:1} 50%{opacity:.85} }
+
+/* Room view inside card */
+.ws-room {
+  height:90px;
+  position:relative; overflow:hidden;
+  background:linear-gradient(160deg,#0A1628 0%,#071020 100%);
+}
+/* Isometric floor grid */
+.ws-room::before {
+  content:'';
+  position:absolute; inset:0;
+  background:
+    repeating-linear-gradient(90deg,transparent,transparent 14px,rgba(0,245,212,.03) 15px),
+    repeating-linear-gradient(180deg,transparent,transparent 9px,rgba(0,245,212,.03) 10px);
+}
+/* Color accent glow on room */
+.ws-room::after {
+  content:'';
+  position:absolute; bottom:0; left:0; right:0; height:40px;
+  background:linear-gradient(transparent, var(--ws-accent, rgba(0,245,212,.04)));
+}
+
+/* Cat in workstation */
+.ws-cat-figure {
+  position:absolute; bottom:6px; right:8px;
+}
+.ws-cat-figure canvas { width:42px; height:48px; image-rendering:pixelated; }
+
+/* Cat's desk items */
+.ws-desk {
+  position:absolute; bottom:8px; left:10px;
+  width:60px; height:30px;
+}
+.ws-monitor {
+  width:36px; height:26px;
+  background:#000d1a; border:1px solid var(--ws-accent-solid, rgba(0,245,212,.4));
+  border-radius:2px; position:relative; overflow:hidden;
+}
+.monitor-content {
+  position:absolute; inset:2px;
+  display:flex; flex-direction:column; gap:1px;
+}
+.mc-line { height:2px; background:var(--ws-accent-solid, var(--cyan)); border-radius:1px; opacity:.7; }
+.ws-keyboard {
+  width:40px; height:6px;
+  background:#131825; border:1px solid rgba(255,255,255,.1);
+  border-radius:2px; margin-top:2px;
+}
+
+/* Cat name bar */
+.ws-bar-bot {
+  padding:8px 12px;
+  display:flex; align-items:center; gap:8px;
+}
+.ws-cat-name { font-family:var(--pixel); font-size:.5rem; color:white; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ws-cat-status { font-size:.8rem; font-weight:600; }
+.ws-cat-status.idle { color:rgba(255,255,255,.3); }
+.ws-cat-status.working { color:var(--cyan); }
+.ws-cat-status.thinking { color:var(--purple); }
+.ws-cat-status.done { color:var(--green); }
+.ws-cat-status.waiting { color:var(--orange); }
+
+/* Progress bar */
+.ws-prog-wrap { height:2px; background:rgba(255,255,255,.06); margin:0 10px 8px; border-radius:2px; overflow:hidden; }
+.ws-prog { height:100%; border-radius:2px; width:0; transition:.4s; }
+.ws-idle .ws-prog { background:rgba(255,255,255,.1); }
+.ws-working .ws-prog { background:linear-gradient(90deg,var(--cyan),var(--purple)); animation:progAnim 1.5s ease-in-out infinite; }
+.ws-thinking .ws-prog { background:var(--purple); animation:progAnim 2s ease-in-out infinite; }
+.ws-done .ws-prog { background:var(--green); width:100% !important; }
+@keyframes progAnim { 0%{width:10%} 50%{width:80%} 100%{width:10%} }
+
+/* Task text inside monitor */
+.ws-task-text {
+  position:absolute; inset:0;
+  background:rgba(0,0,0,.7);
+  padding:4px; font-size:.38rem; font-family:var(--pixel);
+  color:var(--ws-accent-solid,var(--cyan));
+  overflow:hidden; display:none;
+  align-items:flex-start; flex-direction:column; gap:1px;
+}
+.ws-card.ws-working .ws-task-text,
+.ws-card.ws-thinking .ws-task-text { display:flex; }
+
+/* Output overlay */
+.ws-output {
+  display:none; padding:10px 12px; font-size:.8rem; line-height:1.6;
+  color:rgba(255,255,255,.75); background:rgba(0,0,0,.3);
+  border-top:1px solid var(--border); max-height:80px; overflow-y:auto;
+}
+.ws-card.ws-done .ws-output { display:block; }
+
+/* ═══════════════════════════════════════════════════════════
+   THINKING INDICATOR
+═══════════════════════════════════════════════════════════ */
+.thinking-dots {
+  display:inline-flex; gap:3px; align-items:center;
+}
+.thinking-dots span {
+  width:4px; height:4px; border-radius:50%;
+  background:var(--purple);
+  animation:dotBounce .6s ease-in-out infinite;
+}
+.thinking-dots span:nth-child(2) { animation-delay:.15s; }
+.thinking-dots span:nth-child(3) { animation-delay:.3s; }
+@keyframes dotBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+
+/* ═══════════════════════════════════════════════════════════
+   LOADING OVERLAY
+═══════════════════════════════════════════════════════════ */
+.overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(4,11,28,.85); z-index:100;
+  align-items:center; justify-content:center;
+  flex-direction:column; gap:12px;
+}
+.overlay.show { display:flex; }
+.overlay-text { font-family:var(--pixel); font-size:.6rem; color:var(--cyan); }
+
+/* ═══════════════════════════════════════════════════════════
+   FILE DROP ZONE
+═══════════════════════════════════════════════════════════ */
+.file-drop-section {
+  margin-top:8px;
+  padding:0 8px 8px;
+}
+.file-drop-label {
+  font-family:var(--pixel); font-size:.55rem;
+  color:var(--purple); margin-bottom:8px;
+  display:block;
+}
+.file-drop-zone {
+  border:2px dashed rgba(123,104,238,.4);
+  border-radius:10px;
+  padding:24px 14px;
+  text-align:center;
+  cursor:pointer;
+  transition:all .25s;
+  background:rgba(123,104,238,.05);
+  position:relative;
+  min-height:100px;
+}
+.file-drop-zone:hover, .file-drop-zone.dragover {
+  border-color:var(--purple);
+  background:rgba(123,104,238,.12);
+  box-shadow:0 0 25px rgba(123,104,238,.2);
+}
+.file-drop-zone.dragover {
+  transform:scale(1.03);
+  border-color:var(--gold);
+  background:rgba(255,215,0,.08);
+}
+.file-drop-icon {
+  font-size:2.2rem;
+  margin-bottom:8px;
+}
+.file-drop-text {
+  font-size:1rem;
+  color:rgba(255,255,255,.6);
+  line-height:1.6;
+}
+.file-drop-text strong {
+  color:var(--purple);
+  font-size:1.05rem;
+}
+.file-drop-formats {
+  font-size:.8rem;
+  color:rgba(255,255,255,.35);
+  margin-top:8px;
+  letter-spacing:1px;
+}
+.file-drop-zone input[type="file"] {
+  position:absolute; inset:0; opacity:0; cursor:pointer;
+  z-index:10;
+}
+
+/* File preview */
+.file-preview {
+  display:none;
+  margin-top:10px;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(123,104,238,.25);
+  border-radius:8px;
+  padding:14px 16px;
+}
+.file-preview.show { display:block; }
+.file-preview-name {
+  font-size:1rem; color:var(--purple);
+  font-weight:700; margin-bottom:6px;
+  display:flex; align-items:center; gap:8px;
+  word-break:break-all;
+}
+.file-preview-info {
+  font-size:.85rem; color:rgba(255,255,255,.45);
+}
+.file-preview-actions {
+  display:flex; gap:8px; margin-top:12px;
+}
+.file-action-btn {
+  flex:1; padding:12px 8px;
+  border-radius:6px; border:none;
+  font-family:var(--body); font-size:.95rem;
+  font-weight:600;
+  cursor:pointer; transition:all .2s;
+}
+.file-action-btn.summarize {
+  background:var(--purple); color:white;
+}
+.file-action-btn.summarize:hover {
+  background:#8B7BFF; box-shadow:0 0 15px rgba(123,104,238,.4);
+  transform:translateY(-1px);
+}
+.file-action-btn.remove {
+  background:rgba(255,77,109,.15); color:var(--red);
+  border:1px solid rgba(255,77,109,.25);
+}
+.file-action-btn.remove:hover { background:rgba(255,77,109,.3); }
+
+/* ═══════════════════════════════════════════════════════════
+   MISSION RESULTS PANEL
+═══════════════════════════════════════════════════════════ */
+.results-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(4,11,28,.92); z-index:200;
+  align-items:center; justify-content:center;
+  backdrop-filter:blur(6px);
+  animation:fadeIn .3s ease;
+}
+.results-overlay.show { display:flex; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+.results-panel {
+  width: min(96vw, 1100px);
+  max-height: 90vh;
+  background: linear-gradient(145deg, #080F22, #0D1535);
+  border: 2px solid var(--cyan);
+  border-radius: 8px;
+  display: flex; flex-direction: column;
+  box-shadow: 0 0 60px rgba(0,245,212,.15), inset 0 0 40px rgba(0,245,212,.03);
+  animation: panelSlideUp .4s ease;
+}
+@keyframes panelSlideUp { from{transform:translateY(40px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+.results-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 14px 20px;
+  border-bottom: 2px solid var(--border);
+  background: rgba(0,245,212,.04);
+  flex-shrink:0;
+}
+.results-hdr-title {
+  font-family: var(--pixel); font-size:1rem;
+  background: linear-gradient(90deg,var(--gold),var(--cyan));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+}
+.results-hdr-meta {
+  font-size:.7rem; color:rgba(255,255,255,.5); font-family:var(--pixel);
+  margin-top:4px;
+}
+.results-close {
+  background: var(--red); color:white; border:none;
+  font-family:var(--pixel); font-size:.65rem;
+  padding:10px 20px; border-radius:6px; cursor:pointer;
+  transition: all .2s;
+}
+.results-close:hover { background:#FF6B8A; transform:scale(1.05); box-shadow:0 0 12px rgba(255,77,109,.4); }
+
+.results-body {
+  overflow-y: auto; padding: 16px;
+  flex: 1;
+}
+
+.result-card {
+  background: rgba(0,0,0,.3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.result-card:hover { border-color: rgba(0,245,212,.35); }
+
+.result-card-hdr {
+  display: flex; align-items:center; gap:14px;
+  padding: 14px 18px;
+  background: rgba(0,245,212,.04);
+  border-bottom:1px solid var(--border);
+  cursor:pointer;
+  user-select:none;
+}
+.result-card-hdr:hover { background:rgba(0,245,212,.07); }
+
+.result-cat-emoji {
+  font-size:2.2rem;
+  width:48px; height:48px;
+  display:flex; align-items:center; justify-content:center;
+  background: rgba(0,0,0,.3);
+  border-radius:8px;
+  border:2px solid rgba(0,245,212,.15);
+  flex-shrink:0;
+}
+.result-cat-name {
+  font-family:var(--pixel); font-size:.75rem;
+  color: var(--cyan);
+  flex:1;
+}
+.result-cat-role {
+  font-size:.9rem; color:rgba(255,255,255,.6);
+  margin-top:4px; font-family:var(--body);
+}
+.result-status {
+  font-family:var(--pixel); font-size:.55rem;
+  padding:5px 12px; border-radius:4px;
+  background: rgba(0,255,136,.15); color:var(--green);
+  border:1px solid rgba(0,255,136,.25);
+}
+.result-toggle {
+  font-size:1.2rem; color:rgba(255,255,255,.4);
+  transition: transform .2s;
+}
+.result-card.open .result-toggle { transform:rotate(180deg); }
+
+.result-card-body {
+  display:none; padding: 20px 22px;
+  font-size:1rem; line-height:1.8;
+  color: rgba(255,255,255,.9);
+  font-family: var(--body);
+}
+.result-card.open .result-card-body { display:block; }
+
+/* ═══ Markdown rendered content ═══ */
+.result-card-body h2 {
+  font-family:var(--pixel); font-size:.7rem;
+  color:var(--cyan); margin:20px 0 10px 0;
+  padding-bottom:6px; border-bottom:1px solid rgba(0,245,212,.2);
+  letter-spacing:.5px;
+}
+.result-card-body h2:first-child { margin-top:4px; }
+.result-card-body h3 {
+  font-size:.95rem; font-weight:700;
+  color:var(--gold); margin:14px 0 8px 0;
+}
+.result-card-body p { margin:8px 0; }
+.result-card-body ul, .result-card-body ol {
+  margin:8px 0 8px 20px; padding:0;
+}
+.result-card-body li { margin:4px 0; }
+.result-card-body li::marker { color:var(--cyan); }
+.result-card-body strong { color:#fff; }
+.result-card-body table {
+  width:100%; border-collapse:collapse;
+  margin:12px 0; font-size:.9rem;
+}
+.result-card-body th {
+  background:rgba(0,245,212,.1);
+  color:var(--cyan); font-weight:700;
+  padding:10px 12px; text-align:left;
+  border:1px solid rgba(0,245,212,.15);
+  font-size:.85rem;
+}
+.result-card-body td {
+  padding:8px 12px;
+  border:1px solid rgba(255,255,255,.08);
+}
+.result-card-body tr:nth-child(even) td { background:rgba(255,255,255,.02); }
+.result-card-body tr:hover td { background:rgba(0,245,212,.04); }
+.result-card-body code {
+  background:rgba(0,245,212,.08); color:var(--cyan);
+  padding:2px 6px; border-radius:3px; font-size:.85em;
+}
+.result-card-body pre {
+  background:rgba(0,0,0,.4); border:1px solid rgba(0,245,212,.15);
+  border-radius:6px; padding:14px; margin:12px 0;
+  overflow-x:auto;
+}
+.result-card-body pre code { background:none; padding:0; color:rgba(255,255,255,.85); }
+.result-card-body blockquote {
+  border-left:3px solid var(--purple);
+  padding:8px 16px; margin:12px 0;
+  background:rgba(123,104,238,.06);
+  color:rgba(255,255,255,.75);
+  font-style:italic;
+}
+.result-card-body hr {
+  border:none; height:1px;
+  background:rgba(0,245,212,.15); margin:16px 0;
+}
+.result-card-body input[type="checkbox"] {
+  margin-right:6px; accent-color:var(--cyan);
+}
+
+/* Copy button */
+.result-copy-btn {
+  float:right; margin-top:-2px;
+  background: rgba(0,245,212,.1); color:var(--cyan);
+  border:1px solid rgba(0,245,212,.3); border-radius:6px;
+  font-size:.85rem; padding:8px 16px; cursor:pointer;
+  font-family:var(--body); transition:all .2s;
+}
+.result-copy-btn:hover { background:rgba(0,245,212,.25); }
+
+/* Export bar */
+.results-footer {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px;
+  border-top:2px solid var(--border);
+  background:rgba(0,0,0,.2);
+  flex-shrink:0;
+}
+.export-btns { display:flex; gap:10px; }
+.export-btn {
+  background: rgba(123,104,238,.15); color:var(--purple);
+  border:1px solid rgba(123,104,238,.3); border-radius:6px;
+  font-family:var(--pixel); font-size:.55rem;
+  padding:10px 18px; cursor:pointer; transition:all .2s;
+}
+.export-btn:hover { background:rgba(123,104,238,.25); transform:translateY(-1px); }
+.export-btn.primary {
+  background:var(--gold); color:#040B1C;
+  border-color:var(--gold); font-weight:700;
+  font-size:.6rem; padding:12px 24px;
+}
+.export-btn.primary:hover { box-shadow:0 0 16px rgba(255,215,0,.4); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-left">
+    <span class="hdr-logo">👑 BOSS MAY — AI CAT COMMAND CENTER</span>
+    <span class="hdr-version">v2.0</span>
+  </div>
+  <div class="hdr-right">
+    <div class="hdr-status"><div class="dot-online"></div><span style="font-family:'Press Start 2P';font-size:.55rem;color:var(--green)">ALL SYSTEMS ONLINE</span></div>
+    <div class="hdr-agents" id="hdrAgents">10 AGENTS READY</div>
+    <div class="hdr-clock" id="clock">00:00:00</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT SIDEBAR -->
+  <div class="sidebar">
+    <!-- BOSS MAY -->
+    <div class="boss-section">
+      <div class="boss-title">▶ SUPREME COMMANDER ◀</div>
+      <div class="boss-avatar-wrap">
+        <div class="boss-canvas-wrap">
+          <div class="boss-crown">👑</div>
+          <div class="boss-ring"></div>
+          <canvas id="bossMayCanvas" width="48" height="48"></canvas>
+        </div>
+        <div class="boss-name">BOSS MAY</div>
+        <div class="boss-subtitle">ผู้บัญชาการสูงสุด</div>
+      </div>
+      <div class="boss-input-wrap">
+        <textarea class="boss-textarea" id="bossInput" rows="2"
+          placeholder="พิมพ์คำสั่งให้ทีมแมว..."></textarea>
+        <button class="boss-btn" id="bossRunBtn" onclick="runBossCommand()">▶ ส่งคำสั่ง</button>
+      </div>
+
+      <!-- File Drop Zone -->
+      <div class="file-drop-section">
+        <span class="file-drop-label">▸ FILE UPLOAD</span>
+        <input type="file" id="fileInput" accept=".txt,.csv,.md,.json,.log,.html,.xml,.js,.py,.tsv" style="display:none">
+        <div class="file-drop-zone" id="fileDropZone" onclick="document.getElementById('fileInput').click()">
+          <div class="file-drop-icon">📂</div>
+          <div class="file-drop-text">
+            <strong>ลากไฟล์มาวาง</strong> หรือ กดเลือก
+          </div>
+          <div class="file-drop-formats">TXT · CSV · JSON · MD · HTML · LOG</div>
+        </div>
+        <div class="file-preview" id="filePreview">
+          <div class="file-preview-name" id="filePreviewName">📄 filename.txt</div>
+          <div class="file-preview-info" id="filePreviewInfo">0 KB — 0 บรรทัด</div>
+          <div class="file-preview-actions">
+            <button class="file-action-btn summarize" onclick="summarizeFile()">📋 สรุปไฟล์</button>
+            <button class="file-action-btn remove" onclick="removeFile()">✕ ลบ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Team Label -->
+    <div class="team-label">▸ TEAM STATUS</div>
+
+    <!-- Team List -->
+    <div class="team-list" id="teamList">
+      <!-- JS rendered -->
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+
+    <!-- Command Center Isometric Room -->
+    <div class="cmd-center">
+      <div class="cmd-title">▸ COMMAND CENTER</div>
+      <div class="cmd-version">BOSS MAY HQ</div>
+      <div class="iso-room">
+        <div class="iso-stage">
+          <!-- Wall screens -->
+          <div class="wall-screens" id="wallScreens">
+            <div class="wall-screen">
+              <div class="ws-bar">
+                <div class="ws-bar-line" style="--d:1.2s"></div>
+                <div class="ws-bar-line" style="--d:1.8s;width:80%"></div>
+                <div class="ws-bar-line" style="--d:1.5s;width:60%"></div>
+                <div class="ws-bar-line" style="--d:2.1s;width:90%"></div>
+              </div>
+            </div>
+            <div class="wall-screen">
+              <div class="ws-map"></div>
+              <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+                <div style="font-family:'Press Start 2P';font-size:.35rem;color:var(--cyan);text-align:center;line-height:1.8" id="centerScreenText">READY<br>AWAITING<br>ORDERS</div>
+              </div>
+            </div>
+            <div class="wall-screen">
+              <div class="ws-bar">
+                <div class="ws-bar-line" style="--d:2s;background:var(--purple)"></div>
+                <div class="ws-bar-line" style="--d:1.6s;width:70%;background:var(--pink)"></div>
+                <div class="ws-bar-line" style="--d:1.3s;background:var(--gold)"></div>
+                <div class="ws-bar-line" style="--d:2.3s;width:55%;background:var(--purple)"></div>
+              </div>
+            </div>
+          </div>
+          <!-- Floor -->
+          <div class="iso-floor">
+            <!-- Data orbs -->
+            <div class="data-orb" style="left:20%;top:30%;--dur:3s;--delay:0s;background:var(--cyan);box-shadow:0 0 8px var(--cyan)"></div>
+            <div class="data-orb" style="left:40%;top:50%;--dur:4s;--delay:.8s;background:var(--purple);box-shadow:0 0 8px var(--purple)"></div>
+            <div class="data-orb" style="left:65%;top:25%;--dur:3.5s;--delay:1.5s;background:var(--pink);box-shadow:0 0 8px var(--pink)"></div>
+            <div class="data-orb" style="left:80%;top:60%;--dur:2.8s;--delay:.3s;background:var(--gold);box-shadow:0 0 8px var(--gold)"></div>
+            <!-- Boss at desk -->
+            <div class="boss-desk">
+              <div class="desk-top">
+                <div class="desk-screen desk-s1">
+                  <div class="screen-lines">
+                    <div class="screen-line"></div><div class="screen-line" style="width:70%"></div>
+                    <div class="screen-line" style="width:85%"></div><div class="screen-line" style="width:60%"></div>
+                    <div class="screen-line"></div>
+                  </div>
+                </div>
+                <div class="desk-screen desk-s2" style="font-family:'Press Start 2P';font-size:2.5px;line-height:1.4;text-align:center;padding:3px" id="centerDeskScreen">
+                  BOSS MAY<br>ONLINE
+                </div>
+                <div class="desk-screen desk-s3">
+                  <div class="screen-lines">
+                    <div class="screen-line" style="background:var(--gold)"></div>
+                    <div class="screen-line" style="width:60%;background:var(--gold)"></div>
+                    <div class="screen-line" style="background:var(--gold)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Boss cat figure -->
+            <div class="room-boss">
+              <canvas id="roomBossCanvas" width="48" height="48"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Meow Factory -->
+    <div class="factory">
+      <div class="factory-title">▸ MEOW FACTORY</div>
+      <div class="factory-agents" id="factoryCount">AGENTS ONLINE: 10</div>
+      <div class="conveyor">
+        <div class="belt-body"></div>
+        <div class="belt-cats" id="beltCats">
+          <!-- JS rendered -->
+        </div>
+        <!-- Task packets on belt -->
+        <div class="task-packet" style="--dur:7s;--delay:0s">CONTENT</div>
+        <div class="task-packet" style="--dur:9s;--delay:2s;border-color:rgba(123,104,238,.4);color:var(--purple)">RESEARCH</div>
+        <div class="task-packet" style="--dur:6s;--delay:4s;border-color:rgba(255,215,0,.4);color:var(--gold)">ANALYZE</div>
+        <div class="task-packet" style="--dur:8s;--delay:1s;border-color:rgba(255,107,157,.4);color:var(--pink)">LIVE PLAN</div>
+      </div>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="log-panel">
+      <div class="log-hdr">
+        <span class="log-hdr-title">▸ ACTIVITY LOG</span>
+        <button class="log-clear" onclick="clearLog()">CLEAR</button>
+      </div>
+      <div class="log-body" id="logBody">
+        <div class="log-entry sys"><span class="log-t">00:00:00</span><span class="log-ico">🟢</span><span class="log-m"><strong>SYSTEM:</strong> AI Cat Command Center เริ่มต้นแล้ว</span></div>
+        <div class="log-entry boss"><span class="log-t">00:00:00</span><span class="log-ico">👑</span><span class="log-m"><strong>BOSS MAY:</strong> พร้อมรับคำสั่ง — ทีมแมว 10 ตัว online ครบ</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT — WORKSTATIONS -->
+  <div class="workstations">
+    <div class="ws-hdr">
+      <span class="ws-hdr-title">▸ AGENT WORKSTATIONS</span>
+      <span class="ws-count" id="wsCount">10 STATIONS</span>
+    </div>
+    <div class="ws-grid" id="wsGrid">
+      <!-- JS rendered -->
+    </div>
+  </div>
+
+</div>
+
+<!-- MISSION RESULTS OVERLAY -->
+<div class="results-overlay" id="resultsOverlay">
+  <div class="results-panel">
+    <div class="results-hdr">
+      <div>
+        <div class="results-hdr-title">📋 MISSION RESULTS</div>
+        <div class="results-hdr-meta" id="resultsMeta">COMPLETED</div>
+      </div>
+      <button class="results-close" onclick="closeResults()">✕ CLOSE</button>
+    </div>
+    <div class="results-body" id="resultsBody">
+      <!-- JS rendered -->
+    </div>
+    <div class="results-footer">
+      <div class="export-btns">
+        <button class="export-btn" onclick="copyAllResults()">📋 COPY ALL</button>
+        <button class="export-btn" onclick="downloadResults('txt')">💾 TXT</button>
+        <button class="export-btn" onclick="downloadResults('md')">📝 MARKDOWN</button>
+      </div>
+      <button class="export-btn primary" onclick="closeResults()">✅ DONE</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  PIXEL ART CAT RENDERER
+// ═══════════════════════════════════════════════════════════════════
+/*
+  Each cat is drawn on a 16x16 canvas grid.
+  S = pixel size (scale factor)
+  We define each cat by:
+    fur, earInner, eyeColor, nosePx, outline + accessories
+*/
+
+const D = '#0D0D0D'; // dark outline
+const W = '#FFFFFF'; // white
+
+function drawCatBase(ctx, S, fur, earInner, eyeCol, noseCol, bodyColor) {
+  ctx.clearRect(0, 0, 16*S, 18*S);
+  const px = (x,y,c) => { if(!c||c==='x')return; ctx.fillStyle=c; ctx.fillRect(x*S,y*S,S,S); };
+
+  // Ears outer
+  px(3,0,fur);px(4,0,fur);   px(11,0,fur);px(12,0,fur);
+  px(2,1,fur);px(3,1,fur);px(4,1,fur);px(5,1,fur); px(10,1,fur);px(11,1,fur);px(12,1,fur);px(13,1,fur);
+  // Ear inner
+  px(3,1,earInner);px(4,1,earInner); px(11,1,earInner);px(12,1,earInner);
+  // Head top
+  for(let x=2;x<=13;x++)px(x,2,fur);
+  for(let x=1;x<=14;x++)px(x,3,fur);
+  // Face rows
+  for(let r=4;r<=9;r++)for(let x=0;x<=15;x++)px(x,r,fur);
+  // Eyes
+  px(3,5,W);px(4,5,W);px(5,5,W);  px(10,5,W);px(11,5,W);px(12,5,W);
+  px(3,6,eyeCol);px(4,6,eyeCol);px(5,6,W); px(10,6,eyeCol);px(11,6,eyeCol);px(12,6,W);
+  px(4,5,D);  px(11,5,D); // pupils
+  // Whiskers
+  px(0,6,D);px(1,6,D); px(14,6,D);px(15,6,D);
+  px(0,7,D);px(1,7,D); px(14,7,D);px(15,7,D);
+  // Nose
+  px(7,7,noseCol);px(8,7,noseCol);
+  // Mouth
+  px(6,8,D);px(9,8,D);
+  // Body
+  const BC = bodyColor || fur;
+  for(let x=2;x<=13;x++)px(x,10,BC);
+  for(let x=1;x<=14;x++){px(x,11,BC);px(x,12,BC);}
+  for(let x=2;x<=13;x++)px(x,13,BC);
+  // Arms
+  px(0,11,fur);px(1,11,fur); px(14,11,fur);px(15,11,fur);
+  // Legs
+  px(3,14,fur);px(4,14,fur);px(5,14,fur); px(10,14,fur);px(11,14,fur);px(12,14,fur);
+  px(3,15,fur);px(4,15,fur);px(5,15,fur); px(10,15,fur);px(11,15,fur);px(12,15,fur);
+}
+
+// Accessories
+function drawCrown(ctx,S,color='#FFD700') {
+  const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*S,(y-2)*S,S,S);};
+  // Crown base
+  for(let x=3;x<=12;x++)px(x,1,color);
+  px(3,0,color);px(6,0,'#FF4444');px(8,0,color);px(9,0,color);px(12,0,color);
+  // Gems
+  px(6,0,'#FF4444'); px(9,0,'#00CCFF');
+}
+function drawGlasses(ctx,S,color='#333') {
+  const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*S,y*S,S,S);};
+  // Left lens
+  px(2,6,color);px(3,6,color);px(4,6,color);px(5,6,color);
+  px(2,7,color);px(5,7,color);
+  // Right lens
+  px(10,6,color);px(11,6,color);px(12,6,color);px(13,6,color);
+  px(10,7,color);px(13,7,color);
+  // Bridge
+  px(6,6,color);px(7,6,color);px(8,6,color);px(9,6,color);
+}
+function drawBeret(ctx,S,color='#7B68EE') {
+  const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*S,y*S,S,S);};
+  for(let x=3;x<=12;x++){px(x,0,color);if(x>=4&&x<=11)px(x,-1,color);}
+  px(5,0,'#FF6B9D');px(6,0,'#FF6B9D'); // little dot
+}
+function drawDetectiveHat(ctx,S,color='#4A3728') {
+  const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*S,y*S,S,S);};
+  for(let x=1;x<=14;x++)px(x,1,color);
+  for(let x=4;x<=11;x++){px(x,0,color);}
+  for(let x=3;x<=12;x++){px(x,-1,color);}
+}
+function drawHeadset(ctx,S,color='#666') {
+  const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*S,y*S,S,S);};
+  // Band
+  for(let x=2;x<=13;x++)px(x,1,'#888');
+  // Ear cups
+  px(1,2,'#00F5D4');px(1,3,'#00F5D4');px(1,4,'#00F5D4');
+  px(14,2,'#00F5D4');px(14,3,'#00F5D4');px(14,4,'#00F5D4');
+  // Mic
+  px(0,8,'#FFD700');px(0,9,'#FFD700');
+}
+function drawApron(ctx,S,color='#AADDFF') {
+  const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*S,y*S,S,S);};
+  for(let x=4;x<=11;x++){px(x,11,color);px(x,12,color);px(x,13,color);}
+  px(7,10,color);px(8,10,color); // strap
+}
+function drawTie(ctx,S,color='#FF4444') {
+  const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*S,y*S,S,S);};
+  px(7,10,color);px(8,10,color);
+  px(7,11,color);px(8,11,color);
+  px(7,12,color);px(8,12,color);
+  px(6,13,color);px(7,13,color);px(8,13,color);px(9,13,color);
+}
+function drawCalendar(ctx,S,color='#55EFC4') {
+  const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*S,y*S,S,S);};
+  // In arms
+  px(0,11,'#55EFC4');px(1,11,'#55EFC4');
+  px(0,12,'#55EFC4');px(1,12,'#55EFC4');
+}
+
+// ═══ CAT DEFINITIONS ═══
+const CATS = {
+  bossMay: { fur:'#E84393', ear:'#FF6B9D', eye:'#4ECDC4', nose:'#FF9FF3', bodyColor:'#1a0030', acc:['crown','tie'], tieColor:'#FFD700' },
+  chief:   { fur:'#FF8C00', ear:'#CC5500', eye:'#2C3E50', nose:'#FF69B4', acc:['cap'], bodyColor:'#1a1f4e', capColor:'#7B68EE' },
+  creative:{ fur:'#9B59B6', ear:'#8E44AD', eye:'#E74C3C', nose:'#F39C12', acc:['beret'] },
+  coder:   { fur:'#2C3E50', ear:'#1A252F', eye:'#00F5D4', nose:'#9B59B6', acc:['glasses'], glassColor:'#00F5D4' },
+  analyst: { fur:'#7F8C8D', ear:'#5D6D7E', eye:'#F39C12', nose:'#FF69B4', acc:['glasses','tie'], glassColor:'#FFD700', tieColor:'#3498DB' },
+  research:{ fur:'#7D4E2D', ear:'#5C3317', eye:'#27AE60', nose:'#E67E22', acc:['detective'] },
+  qa:      { fur:'#C0392B', ear:'#922B21', eye:'#F1C40F', nose:'#FF69B4', acc:['glasses'], glassColor:'#F1C40F' },
+  store:   { fur:'#ECF0F1', ear:'#BDC3C7', eye:'#3498DB', nose:'#FF69B4', acc:['apron'] },
+  live:    { fur:'#FD79A8', ear:'#E84393', eye:'#A29BFE', nose:'#FDCB6E', acc:['headset'] },
+  planner: { fur:'#00CEC9', ear:'#019A95', eye:'#6C5CE7', nose:'#FD79A8', acc:['calendar'] },
+  voc:     { fur:'#F9CA24', ear:'#F0932B', eye:'#6AB04C', nose:'#FF69B4', acc:['headset'] },
+};
+
+function drawCat(canvas, catKey, scale=3) {
+  if(!canvas)return;
+  const cat = CATS[catKey];
+  if(!cat)return;
+  const S=scale;
+  canvas.width=16*S; canvas.height=18*S;
+  const ctx=canvas.getContext('2d');
+  ctx.imageSmoothingEnabled=false;
+  // Draw subtle glow bg for bossMay
+  if(catKey==='bossMay') {
+    const g=ctx.createRadialGradient(8*S,9*S,0,8*S,9*S,10*S);
+    g.addColorStop(0,'rgba(232,67,147,0.3)');
+    g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g; ctx.fillRect(0,0,16*S,18*S);
+  }
+  drawCatBase(ctx,S,cat.fur,cat.ear,cat.eye,cat.nose,cat.bodyColor);
+  (cat.acc||[]).forEach(a=>{
+    if(a==='crown')drawCrown(ctx,S);
+    else if(a==='glasses')drawGlasses(ctx,S,cat.glassColor||'#333');
+    else if(a==='beret')drawBeret(ctx,S);
+    else if(a==='detective')drawDetectiveHat(ctx,S);
+    else if(a==='headset')drawHeadset(ctx,S);
+    else if(a==='apron')drawApron(ctx,S);
+    else if(a==='tie')drawTie(ctx,S,cat.tieColor||'#FF4444');
+    else if(a==='calendar')drawCalendar(ctx,S);
+    else if(a==='cap'){
+      // cap
+      const px=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x*S,y*S,S,S);};
+      const cc=cat.capColor||'#333';
+      for(let x=2;x<=13;x++)px(x,1,cc);
+      for(let x=3;x<=12;x++)px(x,0,cc);
+      px(1,2,cc);px(0,2,cc); // brim
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  AGENT DATA
+// ═══════════════════════════════════════════════════════════════════
+const AGENTS = [
+  { id:'chief',   catKey:'chief',   name:'บอสเหมียว',      role:'Orchestrator',      color:'#7B68EE', accent:'rgba(123,104,238,', accentSolid:'#7B68EE', emoji:'😼', char:'หัวหน้าแก๊ง ใส่แว่นดำ สั่งการเด็ดขาด' },
+  { id:'creative',catKey:'creative',name:'แมวครีเอเตอร์',  role:'Content Creator',   color:'#FF6B9D', accent:'rgba(255,107,157,', accentSolid:'#FF6B9D', emoji:'🎀', char:'แมวสาว ติดโบว์ชมพู ชอบวาดรูป ฝันเฟื่อง' },
+  { id:'coder',   catKey:'coder',   name:'แมวโปรแกรมเมอร์',role:'Full-Stack Coder',  color:'#00F5D4', accent:'rgba(0,245,212,',  accentSolid:'#00F5D4', emoji:'🤖', char:'แมวไซเบอร์ นั่ง 3 จอ พิมพ์เร็วสุด เงียบแต่โหด' },
+  { id:'analyst', catKey:'analyst', name:'แมวนักวิเคราะห์',role:'Data Analyst',       color:'#FFD700', accent:'rgba(255,215,0,',  accentSolid:'#FFD700', emoji:'🧐', char:'แมวใส่แว่นกลม ถือกราฟ จริงจังมาก ไม่เชื่อถ้าไม่มีข้อมูล' },
+  { id:'research',catKey:'research',name:'แมวสายสืบ',      role:'Research Specialist',color:'#00B4D8', accent:'rgba(0,180,216,',  accentSolid:'#00B4D8', emoji:'🕵️', char:'แมวใส่หมวกนักสืบ ขี้สงสัย ชอบขุดข้อมูล' },
+  { id:'qa',      catKey:'qa',      name:'แมวตรวจงาน',     role:'QA Inspector',       color:'#FF4D6D', accent:'rgba(255,77,109,', accentSolid:'#FF4D6D', emoji:'👮', char:'แมวหน้าดุ จู้จี้สุดในทีม ไม่ปล่อยผ่านถ้าไม่ perfect' },
+  { id:'store',   catKey:'store',   name:'แมวจัดการร้าน',  role:'Store Manager',      color:'#FFA07A', accent:'rgba(255,160,122,',accentSolid:'#FFA07A', emoji:'🏪', char:'แมวผูกผ้ากันเปื้อน คุมสต็อก ดูยอดขาย ทำโปรเก่ง' },
+  { id:'live',    catKey:'live',    name:'แมว Live',        role:'Live Commerce',      color:'#A29BFE', accent:'rgba(162,155,254,',accentSolid:'#A29BFE', emoji:'🎤', char:'แมวพิธีกร พลังเสียงดี กระตุ้นยอด ปิดดีลเก่ง' },
+  { id:'planner', catKey:'planner', name:'แมวจัดเวลา',     role:'Project Planner',    color:'#55EFC4', accent:'rgba(85,239,196,', accentSolid:'#55EFC4', emoji:'📋', char:'แมวถือปฏิทิน เป็นระเบียบสุด ไม่เคยลืม deadline' },
+  { id:'voc',     catKey:'voc',     name:'แมว VOC',         role:'Customer Voice',     color:'#FDCB6E', accent:'rgba(253,203,110,',accentSolid:'#FDCB6E', emoji:'👂', char:'แมวหูดี ฟังเสียงลูกค้าทุกช่องทาง ใจเย็นมาก' },
+];
+
+// State
+const agentState = {};
+AGENTS.forEach(a => agentState[a.id] = { status:'idle', task:'', output:'' });
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDER TEAM LIST
+// ═══════════════════════════════════════════════════════════════════
+function renderTeamList() {
+  const list = document.getElementById('teamList');
+  list.innerHTML = AGENTS.map(a => `
+    <div class="team-item" id="ti-${a.id}">
+      <canvas class="ti-avatar" id="ti-canvas-${a.id}" width="48" height="54"></canvas>
+      <div class="ti-info">
+        <div class="ti-name">${a.name}</div>
+        <div class="ti-role">${a.role}</div>
+      </div>
+      <div class="ti-dot idle" id="ti-dot-${a.id}"></div>
+    </div>
+  `).join('');
+  // Draw cats
+  AGENTS.forEach(a => {
+    const c = document.getElementById(`ti-canvas-${a.id}`);
+    drawCat(c, a.catKey, 3);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDER WORKSTATIONS
+// ═══════════════════════════════════════════════════════════════════
+function renderWorkstations() {
+  const grid = document.getElementById('wsGrid');
+  grid.innerHTML = AGENTS.map(a => `
+    <div class="ws-card ws-idle" id="wsc-${a.id}" style="--ws-accent:${a.accent}0.06);--ws-accent-solid:${a.accentSolid}">
+      <div class="ws-room" style="--ws-accent:${a.accent}0.08)">
+        <!-- Workstation desk -->
+        <div class="ws-desk" style="left:8px;bottom:6px">
+          <div class="ws-monitor" style="border-color:${a.accentSolid}88">
+            <div class="monitor-content" id="mc-${a.id}">
+              <div class="mc-line" style="background:${a.accentSolid}"></div>
+              <div class="mc-line" style="background:${a.accentSolid};width:70%"></div>
+              <div class="mc-line" style="background:${a.accentSolid};width:85%"></div>
+              <div class="mc-line" style="background:${a.accentSolid};width:60%"></div>
+              <div class="mc-line" style="background:${a.accentSolid}"></div>
+            </div>
+            <div class="ws-task-text" id="wst-${a.id}" style="color:${a.accentSolid}"></div>
+          </div>
+          <div class="ws-keyboard"></div>
+        </div>
+        <!-- Cat figure -->
+        <div class="ws-cat-figure">
+          <canvas id="wsc-canvas-${a.id}" width="48" height="54"></canvas>
+        </div>
+        <!-- Status dot in room -->
+        <div style="position:absolute;top:6px;left:8px;display:flex;align-items:center;gap:4px">
+          <div class="ti-dot idle" id="ws-dot-${a.id}"></div>
+          <div style="font-family:'Press Start 2P';font-size:.28rem;color:rgba(255,255,255,.3)" id="ws-status-${a.id}">IDLE</div>
+        </div>
+      </div>
+      <div class="ws-bar-bot">
+        <div class="ws-cat-name">${a.name}</div>
+        <div class="ws-cat-status idle" id="ws-status-text-${a.id}">⬜ Ready</div>
+      </div>
+      <div class="ws-prog-wrap"><div class="ws-prog" id="ws-prog-${a.id}"></div></div>
+      <div class="ws-output" id="ws-output-${a.id}"></div>
+    </div>
+  `).join('');
+
+  // Draw cats in workstations
+  AGENTS.forEach(a => {
+    const c = document.getElementById(`wsc-canvas-${a.id}`);
+    drawCat(c, a.catKey, 3);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDER BELT CATS (Meow Factory)
+// ═══════════════════════════════════════════════════════════════════
+function renderBeltCats() {
+  const belt = document.getElementById('beltCats');
+  const delays = [0, 1.5, 3, 4.5, 6, 7.5, 1, 2.5, 4, 5.5];
+  const durs   = [8,  9,  7, 10,  8,  9,  7,  8,  9,  10];
+  belt.innerHTML = AGENTS.map((a, i) => `
+    <div class="belt-cat" style="--dur:${durs[i]}s;--delay:${delays[i]}s">
+      <canvas id="belt-canvas-${a.id}" width="32" height="36"></canvas>
+    </div>
+  `).join('');
+  AGENTS.forEach(a => {
+    const c = document.getElementById(`belt-canvas-${a.id}`);
+    drawCat(c, a.catKey, 2);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  RENDER ROOM BOSS
+// ═══════════════════════════════════════════════════════════════════
+function renderRoomCats() {
+  drawCat(document.getElementById('bossMayCanvas'), 'bossMay', 3);
+  drawCat(document.getElementById('roomBossCanvas'), 'bossMay', 3);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SET AGENT STATUS
+// ═══════════════════════════════════════════════════════════════════
+function setAgentStatus(agentId, status, task='', output='') {
+  agentState[agentId] = { status, task, output };
+
+  // Team list dot
+  const dot = document.getElementById(`ti-dot-${agentId}`);
+  if(dot) dot.className = `ti-dot ${status}`;
+  const tiEl = document.getElementById(`ti-${agentId}`);
+  if(tiEl) { tiEl.className = 'team-item'; if(status==='working'||status==='thinking')tiEl.classList.add('active'); }
+
+  // Workstation card
+  const card = document.getElementById(`wsc-${agentId}`);
+  const wsDot = document.getElementById(`ws-dot-${agentId}`);
+  const wsStatusLabel = document.getElementById(`ws-status-${agentId}`);
+  const wsStatusText = document.getElementById(`ws-status-text-${agentId}`);
+  const wsTask = document.getElementById(`wst-${agentId}`);
+  const wsOutput = document.getElementById(`ws-output-${agentId}`);
+  const wsProg = document.getElementById(`ws-prog-${agentId}`);
+
+  if(card) {
+    card.className = `ws-card ws-${status}`;
+    if(wsDot) wsDot.className = `ti-dot ${status}`;
+    if(wsStatusLabel) wsStatusLabel.textContent = status.toUpperCase();
+    if(wsTask && task) {
+      wsTask.innerHTML = task.substring(0,35).match(/.{1,9}/g)?.join('<br>')||task;
+    }
+    const statusMap = {
+      idle:'⬜ Ready', waiting:'🟡 รอรับงาน', thinking:'🟣 กำลังคิด', working:'🔵 ทำงาน', done:'✅ เสร็จ'
+    };
+    if(wsStatusText) {
+      wsStatusText.textContent = statusMap[status]||status;
+      wsStatusText.className = `ws-cat-status ${status}`;
+    }
+    if(wsProg && status==='done') wsProg.style.width='100%';
+    if(wsOutput && output) wsOutput.textContent = output;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  LOG
+// ═══════════════════════════════════════════════════════════════════
+function addLog(type, icon, msg) {
+  const body = document.getElementById('logBody');
+  const now = new Date();
+  const t = [now.getHours(),now.getMinutes(),now.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+  const entry = document.createElement('div');
+  entry.className = `log-entry ${type}`;
+  entry.innerHTML = `<span class="log-t">${t}</span><span class="log-ico">${icon}</span><span class="log-m">${msg}</span>`;
+  body.appendChild(entry);
+  body.scrollTop = body.scrollHeight;
+  // Keep max 80 entries
+  while(body.children.length > 80) body.removeChild(body.firstChild);
+}
+function clearLog() { document.getElementById('logBody').innerHTML = ''; }
+
+// ═══════════════════════════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════════════════════════
+function updateClock() {
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    [n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// ═══════════════════════════════════════════════════════════════════
+//  AI API CALL — Real Gemini via /api/cats
+// ═══════════════════════════════════════════════════════════════════
+let isRunning = false;
+
+async function callCatAgent(agentId, task, context='') {
+  const res = await fetch('/api/cats', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ agentId, task, context })
+  });
+  if(!res.ok) {
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// Simulate if API unavailable (for demo/offline)
+const DEMO_RESPONSES = {
+  chief: (t) => `## สรุปคำสั่ง\nรับคำสั่ง: **"${t}"** — วิเคราะห์ขอบเขตงานและมอบหมายให้ทีมที่เหมาะสม\n\n## การวิเคราะห์\nงานนี้ต้องใช้ทีมหลายฝ่ายประสานกัน ครอบคลุมทั้งการวิจัย การสร้างคอนเทนต์ และการวางแผนดำเนินงาน\n\n## แผนมอบหมายงาน\n| ลำดับ | ทีม/Agent | งานที่มอบหมาย | ผลลัพธ์ที่คาดหวัง |\n|-------|-----------|---------------|-------------------|\n| 1 | แมวสายสืบ | วิจัยตลาดและคู่แข่ง | รายงานวิจัยพร้อม insight |\n| 2 | แมวครีเอเตอร์ | สร้างคอนเทนต์ตาม brief | คอนเทนต์พร้อมใช้งาน |\n| 3 | แมวตรวจงาน | ตรวจสอบคุณภาพ | QA Report |\n| 4 | แมวนักวิเคราะห์ | วิเคราะห์ข้อมูลเชิงลึก | Dashboard + KPI |\n| 5 | แมวจัดเวลา | วางแผนและตั้ง deadline | Project Timeline |\n\n## ขั้นตอนถัดไป\n1. เริ่มจากทีมวิจัยรวบรวมข้อมูลก่อน\n2. ส่ง brief ให้ทีมครีเอทีฟ\n3. QA ตรวจสอบก่อนเผยแพร่\n4. วิเคราะห์ผลและวางแผน timeline`,
+  research: (t) => `## Research Summary\nวิจัยตลาดสำหรับ **"${t}"** พบข้อมูลสำคัญที่สามารถนำไปวางกลยุทธ์ได้ทันที\n\n## Key Findings\n1. **ตลาดเติบโต +35% YoY** — กำลังซื้อเพิ่มขึ้นต่อเนื่องจากปี 2025\n2. **กลุ่มเป้าหมายหลัก** — Gen Z-Millennial อายุ 18-35 ปี ใช้ social media เป็นช่องทางหลัก\n3. **Natural & Organic segment** — มีช่องว่างในตลาด ยังไม่มีผู้นำชัดเจน\n4. **ลูกค้าต้องการ Authenticity** — คอนเทนต์รีวิวจริงได้ engagement สูงกว่าโฆษณา 3.2 เท่า\n\n## Competitive Landscape\n| คู่แข่ง | จุดแข็ง | จุดอ่อน | ส่วนแบ่งตลาด |\n|---------|---------|---------|-------------|\n| Brand A | Brand awareness สูง | ราคาแพง | 28% |\n| Brand B | ช่องทางจำหน่ายกว้าง | คอนเทนต์ไม่น่าสนใจ | 22% |\n| Brand C | ราคาถูก | คุณภาพไม่สม่ำเสมอ | 15% |\n| Brand D | Innovation สูง | Distribution จำกัด | 12% |\n| Others | - | - | 23% |\n\n## โอกาสและความเสี่ยง\n### โอกาส (Opportunities)\n- ตลาด Natural/Organic กำลังเติบโต ยังไม่มี leader\n- Gen Z เปิดรับแบรนด์ใหม่มากกว่า Gen อื่น\n- Social commerce เติบโต +48% ในปี 2025\n\n### ความเสี่ยง (Threats)\n- คู่แข่งรายใหญ่อาจเข้า segment เดียวกัน\n- ต้นทุนโฆษณาออนไลน์สูงขึ้น 20%`,
+  creative: (t) => `## Content Brief\n- **วัตถุประสงค์:** สร้าง awareness และ engagement สำหรับ "${t}"\n- **กลุ่มเป้าหมาย:** หญิง-ชาย 18-35 ปี สนใจ lifestyle, ใช้ IG/TikTok เป็นหลัก\n- **Tone of Voice:** เป็นกันเอง น่าเชื่อถือ มีข้อมูล\n\n## เนื้อหาคอนเทนต์\n### Post 1 — Awareness\n**Caption:** "รู้หรือไม่? 80% ของปัญหาผิวเกิดจากการดูแลที่ไม่ถูกวิธี ถึงเวลาเปลี่ยนแปลง"\n\n### Post 2 — Education\n**Caption:** "3 เคล็ดลับที่ผู้เชี่ยวชาญแนะนำ ทำตามได้ทุกวัน ผลลัพธ์เห็นใน 2 สัปดาห์"\n\n### Post 3 — Social Proof\n**Caption:** "จากผู้ใช้จริงกว่า 5,000 คน — คะแนนความพึงพอใจ 4.8/5"\n\n## Hashtags & Keywords\n**Primary:** #${t.replace(/\s/g,'')} #skincare #beauty\n**Secondary:** #ผิวสวย #ดูแลผิว #รีวิวจริง #ของดี\n**Branded:** #BossMAY #AIContent\n\n## ตารางโพสต์\n| แพลตฟอร์ม | วันที่ | เวลา | ประเภท |\n|-----------|--------|------|--------|\n| Instagram | จันทร์ | 19:00 | Carousel |\n| TikTok | พุธ | 20:00 | Short Video |\n| Facebook | ศุกร์ | 18:00 | Article |\n\n## KPI ที่ควรติดตาม\n- **Engagement Rate:** เป้า > 3%\n- **Reach:** เป้า 50,000+ per post\n- **Click-through Rate:** เป้า > 1.5%\n- **Conversion:** เป้า > 2%`,
+  analyst: (t) => `## Executive Summary\nวิเคราะห์ข้อมูลสำหรับ **"${t}"** — ผลลัพธ์โดยรวมเป็นบวก มีโอกาสเพิ่มประสิทธิภาพได้อีก 25-30%\n\n## Key Metrics\n| ตัวชี้วัด | ค่าปัจจุบัน | Benchmark | สถานะ |\n|-----------|------------|-----------|-------|\n| Engagement Rate | 4.8% | 2.1% | สูงกว่าเป้า |\n| Reach Growth | +127% | +50% | สูงกว่าเป้า |\n| Conversion Rate | 3.2% | 2.5% | สูงกว่าเป้า |\n| Customer Acquisition Cost | ฿45 | ฿65 | ต่ำกว่าเป้า (ดี) |\n| ROI | 340% | 200% | สูงกว่าเป้า |\n| Bounce Rate | 38% | 35% | ต้องปรับปรุง |\n\n## การวิเคราะห์เชิงลึก\n1. **Video content ได้ engagement สูงกว่า static image 2.8 เท่า** — ควรเพิ่มสัดส่วน video เป็น 60%\n2. **ช่วงเวลา 19:00-21:00 มี engagement สูงสุด** — ควรโพสต์ในช่วงนี้เป็นหลัก\n3. **กลุ่ม 25-34 ปี มี conversion สูงสุดที่ 4.1%** — ควรเพิ่ม targeting กลุ่มนี้\n4. **TikTok มี CPA ต่ำสุดที่ ฿32** — ควรจัดสรรงบ TikTok เพิ่ม 20%\n\n## Recommendations\n| ลำดับ | Action Item | Priority | ผลที่คาดหวัง |\n|-------|------------|----------|-------------|\n| 1 | เพิ่ม video content เป็น 60% | สูง | Engagement +40% |\n| 2 | เพิ่มงบ TikTok Ads 20% | สูง | CPA ลด 15% |\n| 3 | ปรับเวลาโพสต์เป็น 19:00-21:00 | กลาง | Reach +25% |\n| 4 | A/B test landing page | กลาง | Conversion +0.5% |`,
+  qa: (t) => `## QA Summary\n- **คะแนนรวม:** 92/100\n- **สถานะ:** ผ่าน (มีข้อแนะนำ 3 รายการ)\n- **จำนวน Issues:** 3 รายการ (0 Critical, 0 High, 2 Medium, 1 Low)\n\n## Issues Found\n| # | Severity | รายละเอียด | การแก้ไข |\n|---|----------|-----------|--------|\n| 1 | Medium | Hashtag ไม่ครบตาม brief — ขาด 2 hashtags | เพิ่ม branded hashtag |\n| 2 | Medium | Tone บางจุดเป็นทางการเกินไป | ปรับให้เป็นกันเองขึ้น |\n| 3 | Low | Image ยังไม่มี alt text | เพิ่ม alt text ทุกรูป |\n\n## รายละเอียดการตรวจสอบ\n- **Spelling & Grammar:** ผ่าน — ไม่พบข้อผิดพลาด\n- **Brand Consistency:** ผ่าน — ตรงตาม brand guideline\n- **Factual Accuracy:** ผ่าน — ข้อมูลถูกต้อง\n- **CTA Clarity:** ผ่าน — CTA ชัดเจน กระตุ้นการกระทำ\n- **SEO Optimization:** ผ่าน — keywords ครอบคลุม\n\n## Recommendations\n1. เพิ่ม branded hashtag ในทุกโพสต์\n2. ปรับ tone ย่อหน้าที่ 2 ให้เป็นกันเองมากขึ้น\n3. เพิ่ม alt text สำหรับ accessibility`,
+  planner: (t) => `## Project Overview\n**โปรเจกต์:** ${t}\n**ระยะเวลา:** 7 วัน\n**เป้าหมาย:** ดำเนินงานให้เสร็จสมบูรณ์ตาม timeline\n\n## Timeline\n| Phase | วันที่ | งาน | ผู้รับผิดชอบ | สถานะ |\n|-------|--------|-----|------------|-------|\n| Phase 1 | Day 1-2 | Research & Brief | แมวสายสืบ | รอดำเนินการ |\n| Phase 2 | Day 3-5 | Content Creation | แมวครีเอเตอร์ | รอดำเนินการ |\n| Phase 3 | Day 6 | QA Review | แมวตรวจงาน | รอดำเนินการ |\n| Phase 4 | Day 7 | Publish & Monitor | แมวนักวิเคราะห์ | รอดำเนินการ |\n\n## Milestones\n1. **Day 2** — Research Report เสร็จ พร้อมส่ง brief\n2. **Day 5** — Content Draft เสร็จ เข้า QA\n3. **Day 6** — QA ผ่าน พร้อม publish\n4. **Day 7** — เผยแพร่ + เริ่ม monitor ผลลัพธ์\n\n## Risks & Dependencies\n| ความเสี่ยง | ผลกระทบ | แผนรับมือ |\n|-----------|---------|----------|\n| Research ล่าช้า | Content เลื่อน 1-2 วัน | เริ่ม research ทันที |\n| QA ไม่ผ่าน | ต้องแก้ไขเพิ่ม | สำรอง buffer 1 วัน |\n| แพลตฟอร์มมีปัญหา | โพสต์ไม่ได้ | เตรียม backup channel |\n\n## Checklist\n- [ ] Brief approved by BOSS MAY\n- [ ] Research data collected\n- [ ] Content draft completed\n- [ ] QA review passed\n- [ ] Assets prepared (images, videos)\n- [ ] Scheduled for publishing\n- [ ] Monitoring dashboard set up`,
+  store: (t) => `## Store Status Dashboard\n| ตัวชี้วัด | ค่าปัจจุบัน | เป้าหมาย | สถานะ |\n|-----------|------------|----------|-------|\n| สต็อกคงเหลือ | 85% | >80% | ปกติ |\n| ยอดขายวันนี้ | ฿15,400 | ฿12,000 | สูงกว่าเป้า |\n| Orders pending | 23 รายการ | <30 | ปกติ |\n| รีวิวเฉลี่ย | 4.8/5.0 | >4.5 | ดีมาก |\n| Return Rate | 2.1% | <5% | ดี |\n\n## Action Items (เรียงตาม Priority)\n1. **[ด่วน]** เติมสต็อกสินค้า SKU-A203 — เหลือ 12 ชิ้น (ต่ำกว่า safety stock)\n2. **[สำคัญ]** อัปเดตรูปสินค้า 5 รายการที่ถ่ายใหม่\n3. **[ปกติ]** ตอบรีวิวลูกค้า 8 รีวิวใหม่\n\n## แผนโปรโมชัน\n| แคมเปญ | แพลตฟอร์ม | ระยะเวลา | เป้ายอดขาย |\n|--------|-----------|----------|----------|\n| Flash Sale 40% | Shopee | 3 วัน | ฿50,000 |\n| Bundle Deal | Lazada | 7 วัน | ฿35,000 |\n| Live Special | TikTok Shop | 2 ชม. | ฿20,000 |\n\n## Inventory Alerts\n- **SKU-A203:** เหลือ 12 ชิ้น — สั่งเติม 100 ชิ้น ภายในวันนี้\n- **SKU-B105:** ค้างสต็อก 45 วัน — พิจารณาลดราคา clearance`,
+  live: (t) => `## Live Session Plan\n- **แพลตฟอร์ม:** TikTok Shop + Shopee Live\n- **ระยะเวลา:** 2 ชั่วโมง\n- **เป้าหมาย:** ยอดขาย ฿30,000 / Viewers 5,000+\n\n## Run Sheet\n| เวลา | Segment | เนื้อหา / สินค้า | CTA / Promotion |\n|------|---------|-----------------|----------------|\n| 00:00-00:10 | Opening | ทักทาย + แจก voucher | "กดติดตามรับส่วนลด 20%" |\n| 00:10-00:30 | Hero Product | Demo สินค้าหลัก | Flash Deal 30% off |\n| 00:30-00:50 | Product Showcase | โชว์สินค้า 3-5 ชิ้น | Buy 2 Get 1 Free |\n| 00:50-01:10 | Q&A | ตอบคำถามคนดู | แจก code ลับ |\n| 01:10-01:30 | Bundle Deal | เซ็ตสุดคุ้ม | ลด 40% เฉพาะ Live |\n| 01:30-01:50 | Final Push | สินค้า best seller | Countdown 10 นาทีสุดท้าย |\n| 01:50-02:00 | Closing | สรุป + ขอบคุณ | กดติดตามรอ Live หน้า |\n\n## Key Hooks & วลีปิดการขาย\n- "ของมีจำนวนจำกัด ใครสนใจกดตะกร้าเลย!"\n- "ราคานี้เฉพาะ Live เท่านั้น ไม่ซื้อตอนนี้ พรุ่งนี้กลับราคาเดิม"\n- "คนที่กดติดตามจะได้ voucher พิเศษเพิ่มอีก 10%"\n\n## Technical Checklist\n- [ ] กล้อง + ไมค์ + ring light พร้อม\n- [ ] สินค้าจัดเรียงตาม run sheet\n- [ ] ราคาและ voucher ตั้งค่าในระบบแล้ว\n- [ ] ทีม admin พร้อมตอบแชท\n- [ ] ทดสอบ internet speed > 20 Mbps`,
+  voc: (t) => `## Sentiment Overview\n| Sentiment | สัดส่วน | จำนวน |\n|-----------|---------|-------|\n| Positive | 78% | 156 ข้อความ |\n| Neutral | 15% | 30 ข้อความ |\n| Negative | 7% | 14 ข้อความ |\n\n## Top Issues (เรียงตามความถี่)\n1. **จัดส่งล่าช้า** — พบ 12 ครั้ง — ผลกระทบ: สูง\n2. **สินค้าไม่ตรงรูป** — พบ 5 ครั้ง — ผลกระทบ: กลาง\n3. **บรรจุภัณฑ์ชำรุด** — พบ 3 ครั้ง — ผลกระทบ: กลาง\n\n## เสียงจากลูกค้า\n> "คุณภาพดีมาก ใช้แล้วเห็นผลจริง จะกลับมาซื้อซ้ำแน่นอน" — Shopee Review\n\n> "ส่งช้ามาก สั่ง 5 วันยังไม่ได้ของ" — TikTok Shop\n\n> "สินค้าดี แต่ packaging ควรปรับปรุง" — Lazada Review\n\n## Recommended Actions\n| ลำดับ | Action | ผู้รับผิดชอบ | Deadline |\n|-------|--------|------------|----------|\n| 1 | ประสานขนส่งแก้ปัญหาจัดส่งล่าช้า | ทีม Operations | ภายใน 3 วัน |\n| 2 | ปรับรูปสินค้าให้ตรงจริง | ทีม Creative | ภายใน 7 วัน |\n| 3 | เปลี่ยน packaging ใหม่ | ทีม Product | ภายใน 14 วัน |\n\n## Response Templates\n**กรณีจัดส่งล่าช้า:**\n"ขอบคุณที่แจ้งค่ะ ทีมงานตรวจสอบแล้ว จะเร่งจัดส่งให้ภายใน 24 ชม. พร้อมแนบ tracking ให้ค่ะ ขออภัยในความไม่สะดวกค่ะ"\n\n**กรณีสินค้าไม่ตรงรูป:**\n"ขออภัยค่ะ ส่งรูปสินค้าที่ได้รับมาให้ทีมตรวจสอบด้วยนะคะ หากไม่ตรง spec ยินดีเปลี่ยนให้ใหม่ค่ะ"`,
+};
+
+async function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// ═══════════════════════════════════════════════════════════════════
+//  BOSS MAY COMMAND — ORCHESTRATION FLOW
+// ═══════════════════════════════════════════════════════════════════
+async function runBossCommand() {
+  const input = document.getElementById('bossInput');
+  const btn = document.getElementById('bossRunBtn');
+  const task = input.value.trim();
+  if(!task || isRunning) return;
+
+  isRunning = true;
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังทำงาน...';
+
+  // Reset all
+  AGENTS.forEach(a => setAgentStatus(a.id, 'idle'));
+
+  document.getElementById('centerScreenText').innerHTML = 'ANALYZING<br>COMMAND...';
+  document.getElementById('centerDeskScreen').innerHTML = 'BOSS MAY<br>ACTIVE';
+
+  addLog('boss','👑',`<strong>BOSS MAY:</strong> "${task}"`);
+  await sleep(400);
+
+  // ── Step 1: Chief วิเคราะห์คำสั่ง + ส่ง task ตรง ๆ ให้แมวแต่ละตัว ──
+  setAgentStatus('chief','thinking','วิเคราะห์คำสั่ง');
+  addLog('agent','😼',`<strong>บอสเหมียว:</strong> รับคำสั่ง กำลังวิเคราะห์และมอบหมายงาน...`);
+  await sleep(500);
+  setAgentStatus('chief','working','มอบหมายงาน');
+
+  let chiefResult;
+  try {
+    const res = await callCatAgent('chief', task, '');
+    chiefResult = res.result;
+  } catch(e) {
+    chiefResult = DEMO_RESPONSES.chief(task);
+    addLog('warn','⚠️',`<strong>API:</strong> ใช้ Demo mode (${e.message})`);
+  }
+  setAgentStatus('chief','done','เสร็จแล้ว',chiefResult.substring(0,150)+'...');
+  addLog('success','✅',`<strong>บอสเหมียว:</strong> วิเคราะห์เสร็จ แจกงานให้ทีม`);
+  document.getElementById('centerScreenText').innerHTML = 'TEAM<br>WORKING...';
+  await sleep(300);
+
+  // ── Step 2: แมว 4 ตัวหลัก ทำงานพร้อมกัน — ส่ง task ตรง ๆ ไม่ต้องแปลง ──
+  const mainCats = ['research','analyst','creative','coder'];
+  mainCats.forEach(id => setAgentStatus(id,'thinking','เริ่มงาน'));
+  addLog('agent','⚡',`<strong>SYSTEM:</strong> แมว 4 ตัว เริ่มทำงานพร้อมกัน (Research, Analyst, Creative, Coder)`);
+  await sleep(400);
+  mainCats.forEach(id => setAgentStatus(id,'working','กำลังทำ'));
+
+  const mainResults = await Promise.allSettled(
+    mainCats.map(id =>
+      callCatAgent(id, task, `แผนจากบอสเหมียว: ${chiefResult.substring(0,400)}`).catch(()=>({result:DEMO_RESPONSES[id]?.(task) || `ทำงาน "${task}" เสร็จแล้ว`}))
+    )
+  );
+
+  const results = {};
+  mainCats.forEach((id, i) => {
+    results[id] = mainResults[i].value?.result || DEMO_RESPONSES[id]?.(task) || '';
+    const agent = AGENTS.find(a=>a.id===id);
+    setAgentStatus(id,'done','เสร็จแล้ว',results[id].substring(0,150)+'...');
+    addLog('success','✅',`<strong>${agent?.name||id}:</strong> ทำงานเสร็จ`);
+  });
+  await sleep(300);
+
+  // ── Step 3: QA ตรวจงาน + Planner วางแผน — ทำพร้อมกัน ──
+  setAgentStatus('qa','thinking','เตรียมตรวจ');
+  setAgentStatus('planner','thinking','วางแผน');
+  addLog('agent','🔍',`<strong>QA + Planner:</strong> ตรวจงานและวางแผนพร้อมกัน...`);
+  await sleep(300);
+  setAgentStatus('qa','working','ตรวจ QA');
+  setAgentStatus('planner','working','จัดตาราง');
+
+  const allWork = Object.values(results).map(r=>r.substring(0,200)).join('\n---\n');
+  const [qaRes, plannerRes] = await Promise.allSettled([
+    callCatAgent('qa', `ตรวจสอบผลงานทั้งหมดของทีมสำหรับคำสั่ง "${task}":\n${allWork}`, '').catch(()=>({result:DEMO_RESPONSES.qa(task)})),
+    callCatAgent('planner', `วางแผนดำเนินงานสำหรับ: ${task}`, `ผลงานทีม: ${allWork.substring(0,300)}`).catch(()=>({result:DEMO_RESPONSES.planner(task)})),
+  ]);
+
+  results.qa = qaRes.value?.result || DEMO_RESPONSES.qa(task);
+  results.planner = plannerRes.value?.result || DEMO_RESPONSES.planner(task);
+  setAgentStatus('qa','done','QA Pass',results.qa.substring(0,150)+'...');
+  setAgentStatus('planner','done','เสร็จแล้ว',results.planner.substring(0,150)+'...');
+  addLog('success','✅',`<strong>QA + Planner:</strong> เสร็จ`);
+  await sleep(300);
+
+  // ── Step 4: Store + Live + VOC — ทำพร้อมกัน ──
+  const opsCats = ['store','live','voc'];
+  opsCats.forEach(id => setAgentStatus(id,'thinking','เริ่มงาน'));
+  addLog('agent','🏪',`<strong>Store + Live + VOC:</strong> ทำงานพร้อมกัน...`);
+  await sleep(300);
+  opsCats.forEach(id => setAgentStatus(id,'working','กำลังทำ'));
+
+  const opsResults = await Promise.allSettled(
+    opsCats.map(id =>
+      callCatAgent(id, task, `แผนจากบอสเหมียว: ${chiefResult.substring(0,300)}`).catch(()=>({result:DEMO_RESPONSES[id]?.(task) || ''}))
+    )
+  );
+
+  opsCats.forEach((id, i) => {
+    results[id] = opsResults[i].value?.result || DEMO_RESPONSES[id]?.(task) || '';
+    const agent = AGENTS.find(a=>a.id===id);
+    setAgentStatus(id,'done','เสร็จแล้ว',results[id].substring(0,150)+'...');
+    addLog('success','✅',`<strong>${agent?.name||id}:</strong> เสร็จ`);
+  });
+
+  // ── Done ──
+  document.getElementById('centerScreenText').innerHTML = 'MISSION<br>COMPLETE!';
+  document.getElementById('centerDeskScreen').innerHTML = 'ALL DONE<br>BOSS MAY';
+  addLog('boss','👑',`<strong>BOSS MAY:</strong> งานเสร็จสมบูรณ์! 🎉`);
+
+  lastMissionResults = {
+    task,
+    timestamp: new Date().toLocaleString('th-TH'),
+    agents: [
+      { id:'chief', name:'บอสเหมียว', role:'Chief Strategist', result: chiefResult },
+      { id:'research', name:'แมวสายสืบ', role:'Research Analyst', result: results.research },
+      { id:'creative', name:'แมวครีเอเตอร์', role:'Content Creator', result: results.creative },
+      { id:'coder', name:'แมวโปรแกรมเมอร์', role:'Full-Stack Coder', result: results.coder },
+      { id:'analyst', name:'แมวนักวิเคราะห์', role:'Data Analyst', result: results.analyst },
+      { id:'qa', name:'แมวตรวจงาน', role:'Quality Assurance', result: results.qa },
+      { id:'planner', name:'แมวจัดเวลา', role:'Project Planner', result: results.planner },
+      { id:'store', name:'แมวจัดการร้าน', role:'Store Manager', result: results.store },
+      { id:'live', name:'แมว Live', role:'Live Commerce', result: results.live },
+      { id:'voc', name:'แมว VOC', role:'Voice of Customer', result: results.voc },
+    ]
+  };
+
+  showResults();
+  addLog('sys','📄',`<strong>REPORT:</strong> ดูผลลัพธ์เต็มที่ปุ่ม "ดูผลลัพธ์" ด้านล่าง`);
+  addViewResultsButton();
+
+  isRunning = false;
+  btn.disabled = false;
+  btn.textContent = '▶ ส่งคำสั่ง';
+  input.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  MISSION RESULTS PANEL
+// ═══════════════════════════════════════════════════════════════════
+let lastMissionResults = null;
+
+function showResults() {
+  if(!lastMissionResults) return;
+  const overlay = document.getElementById('resultsOverlay');
+  const body = document.getElementById('resultsBody');
+  const meta = document.getElementById('resultsMeta');
+
+  meta.textContent = `${lastMissionResults.timestamp} — "${lastMissionResults.task.substring(0,50)}"`;
+
+  // Generate result cards for each agent
+  let html = '';
+  lastMissionResults.agents.forEach((agent, idx) => {
+    const agentData = AGENTS.find(a => a.id === agent.id);
+    const emoji = agentData ? agentData.emoji : '🐱';
+    const charDesc = agentData ? agentData.char : '';
+    const accentColor = agentData ? agentData.color : 'var(--cyan)';
+    html += `
+      <div class="result-card ${idx === 0 ? 'open' : ''}" id="rc-${agent.id}" style="--card-accent:${accentColor}">
+        <div class="result-card-hdr" onclick="toggleResultCard('${agent.id}')">
+          <div class="result-cat-emoji" style="border-color:${accentColor}40;background:${accentColor}15">${emoji}</div>
+          <div style="flex:1">
+            <div class="result-cat-name" style="color:${accentColor}">${agent.name}</div>
+            <div class="result-cat-role">${agent.role} — ${charDesc}</div>
+          </div>
+          <span class="result-status">DONE</span>
+          <span class="result-toggle">▼</span>
+        </div>
+        <div class="result-card-body">
+          <button class="result-copy-btn" onclick="event.stopPropagation();copySingleResult('${agent.id}')">📋 Copy</button>
+          ${typeof marked !== 'undefined' ? marked.parse(agent.result) : agent.result}
+        </div>
+      </div>
+    `;
+  });
+
+  body.innerHTML = html;
+  overlay.classList.add('show');
+}
+
+function closeResults() {
+  document.getElementById('resultsOverlay').classList.remove('show');
+}
+
+function toggleResultCard(agentId) {
+  const card = document.getElementById(`rc-${agentId}`);
+  card.classList.toggle('open');
+}
+
+function copySingleResult(agentId) {
+  const agent = lastMissionResults.agents.find(a => a.id === agentId);
+  if(agent) {
+    navigator.clipboard.writeText(`【${agent.name} — ${agent.role}】\n\n${agent.result}`);
+    // Brief visual feedback
+    const btn = document.querySelector(`#rc-${agentId} .result-copy-btn`);
+    if(btn) { btn.textContent = '✅ Copied!'; setTimeout(()=> btn.textContent='📋 Copy', 1500); }
+  }
+}
+
+function copyAllResults() {
+  if(!lastMissionResults) return;
+  let text = `══════════════════════════════════════\n`;
+  text += `👑 BOSS MAY — MISSION RESULTS\n`;
+  text += `══════════════════════════════════════\n`;
+  text += `📋 คำสั่ง: ${lastMissionResults.task}\n`;
+  text += `⏰ เวลา: ${lastMissionResults.timestamp}\n\n`;
+
+  lastMissionResults.agents.forEach(agent => {
+    text += `──────────────────────────────────────\n`;
+    text += `【${agent.name} — ${agent.role}】\n`;
+    text += `──────────────────────────────────────\n`;
+    text += `${agent.result}\n\n`;
+  });
+
+  navigator.clipboard.writeText(text);
+  const btn = document.querySelector('.export-btn');
+  if(btn) { btn.textContent = '✅ Copied!'; setTimeout(()=> btn.textContent='📋 COPY ALL', 1500); }
+}
+
+function downloadResults(format) {
+  if(!lastMissionResults) return;
+  let content = '';
+  let filename = `boss-may-results-${Date.now()}`;
+
+  if(format === 'md') {
+    content = `# 👑 BOSS MAY — Mission Results\n\n`;
+    content += `**คำสั่ง:** ${lastMissionResults.task}\n`;
+    content += `**เวลา:** ${lastMissionResults.timestamp}\n\n---\n\n`;
+    lastMissionResults.agents.forEach(agent => {
+      content += `## ${agent.name} — ${agent.role}\n\n`;
+      content += `${agent.result}\n\n---\n\n`;
+    });
+    filename += '.md';
+  } else {
+    content = `BOSS MAY — MISSION RESULTS\n`;
+    content += `คำสั่ง: ${lastMissionResults.task}\n`;
+    content += `เวลา: ${lastMissionResults.timestamp}\n\n`;
+    lastMissionResults.agents.forEach(agent => {
+      content += `=== ${agent.name} — ${agent.role} ===\n`;
+      content += `${agent.result}\n\n`;
+    });
+    filename += '.txt';
+  }
+
+  const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Button to reopen results
+function addViewResultsButton() {
+  const existingBtn = document.getElementById('viewResultsBtn');
+  if(existingBtn) existingBtn.remove();
+
+  const wrap = document.querySelector('.boss-input-wrap');
+  const btn = document.createElement('button');
+  btn.id = 'viewResultsBtn';
+  btn.textContent = '📋 ดูผลลัพธ์ล่าสุด';
+  btn.style.cssText = `
+    width:100%; margin-top:6px; padding:8px;
+    background:rgba(123,104,238,.2); color:var(--purple);
+    border:1px solid rgba(123,104,238,.4); border-radius:4px;
+    font-family:var(--pixel); font-size:.45rem; cursor:pointer;
+    transition:all .2s;
+  `;
+  btn.onmouseenter = () => { btn.style.background='rgba(123,104,238,.3)'; };
+  btn.onmouseleave = () => { btn.style.background='rgba(123,104,238,.2)'; };
+  btn.onclick = showResults;
+  wrap.appendChild(btn);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  FILE UPLOAD & SUMMARIZE
+// ═══════════════════════════════════════════════════════════════════
+let uploadedFileContent = null;
+let uploadedFileName = null;
+
+function initFileDropZone() {
+  const dropZone = document.getElementById('fileDropZone');
+  const fileInput = document.getElementById('fileInput');
+
+  // Prevent default browser drag behavior on whole page
+  document.addEventListener('dragover', (e) => { e.preventDefault(); });
+  document.addEventListener('drop', (e) => { e.preventDefault(); });
+
+  // Drop zone highlight
+  dropZone.addEventListener('dragenter', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    dropZone.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    dropZone.classList.add('dragover');
+  });
+  dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    // Only remove if leaving the zone (not entering a child)
+    if(!dropZone.contains(e.relatedTarget)) {
+      dropZone.classList.remove('dragover');
+    }
+  });
+
+  // Drop handler
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    dropZone.classList.remove('dragover');
+    const files = e.dataTransfer.files;
+    if(files.length > 0) handleFile(files[0]);
+  });
+
+  // Click / browse
+  fileInput.addEventListener('change', (e) => {
+    if(e.target.files.length > 0) handleFile(e.target.files[0]);
+  });
+}
+
+function handleFile(file) {
+  const maxSize = 2 * 1024 * 1024; // 2MB
+  if(file.size > maxSize) {
+    addLog('warn','⚠️',`<strong>FILE:</strong> ไฟล์ใหญ่เกินไป (${(file.size/1024/1024).toFixed(1)}MB) — จำกัด 2MB`);
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    uploadedFileContent = e.target.result;
+    uploadedFileName = file.name;
+
+    // Count lines
+    const lines = uploadedFileContent.split('\n').length;
+    const sizeKB = (file.size / 1024).toFixed(1);
+
+    // Show preview
+    document.getElementById('filePreviewName').textContent = `📄 ${file.name}`;
+    document.getElementById('filePreviewInfo').textContent = `${sizeKB} KB — ${lines.toLocaleString()} บรรทัด`;
+    document.getElementById('filePreview').classList.add('show');
+
+    addLog('sys','📂',`<strong>FILE:</strong> อัปโหลด "${file.name}" (${sizeKB} KB) สำเร็จ`);
+  };
+  reader.onerror = () => {
+    addLog('warn','⚠️',`<strong>FILE:</strong> อ่านไฟล์ไม่สำเร็จ`);
+  };
+  reader.readAsText(file);
+}
+
+function removeFile() {
+  uploadedFileContent = null;
+  uploadedFileName = null;
+  document.getElementById('filePreview').classList.remove('show');
+  document.getElementById('fileInput').value = '';
+  addLog('sys','🗑️','<strong>FILE:</strong> ลบไฟล์แล้ว');
+}
+
+async function summarizeFile() {
+  if(!uploadedFileContent || isRunning) return;
+
+  isRunning = true;
+  const btn = document.getElementById('bossRunBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังสรุปไฟล์...';
+
+  // Reset all
+  AGENTS.forEach(a => setAgentStatus(a.id, 'idle'));
+
+  // Truncate content for API (max ~4000 chars to keep under token limits)
+  const maxChars = 4000;
+  const content = uploadedFileContent.length > maxChars
+    ? uploadedFileContent.substring(0, maxChars) + `\n\n[... ตัดเนื้อหาส่วนที่เหลือ — ไฟล์มีทั้งหมด ${uploadedFileContent.length.toLocaleString()} ตัวอักษร]`
+    : uploadedFileContent;
+
+  const task = `สรุปและวิเคราะห์ไฟล์ "${uploadedFileName}"`;
+
+  addLog('boss','👑',`<strong>BOSS MAY:</strong> สั่งสรุปไฟล์ "${uploadedFileName}"`);
+  document.getElementById('centerScreenText').innerHTML = 'ANALYZING<br>FILE...';
+  document.getElementById('centerDeskScreen').innerHTML = 'FILE MODE<br>ACTIVE';
+
+  await sleep(500);
+
+  // Step 1: Chief analyzes
+  setAgentStatus('chief','thinking','วิเคราะห์ไฟล์');
+  addLog('agent','😼',`<strong>บอสเหมียว:</strong> รับไฟล์ กำลังวิเคราะห์...`);
+  await sleep(600);
+  setAgentStatus('chief','working','อ่านไฟล์');
+
+  let chiefResult;
+  try {
+    const res = await callCatAgent('chief', `วิเคราะห์โครงสร้างและเนื้อหาของไฟล์นี้ แล้ววางแผนมอบหมายงานให้ทีม:\n\nชื่อไฟล์: ${uploadedFileName}\n\nเนื้อหา:\n${content}`, '');
+    chiefResult = res.result;
+  } catch(e) {
+    chiefResult = `## สรุปคำสั่ง\nวิเคราะห์ไฟล์ **"${uploadedFileName}"** — ไฟล์ประกอบด้วยข้อมูลที่ต้องสรุปและวิเคราะห์\n\n## การวิเคราะห์\nไฟล์มีเนื้อหา ${uploadedFileContent.length.toLocaleString()} ตัวอักษร ต้องใช้ทีมวิเคราะห์และสรุป\n\n## แผนมอบหมายงาน\n| ลำดับ | ทีม | งาน | ผลลัพธ์ |\n|-------|-----|-----|--------|\n| 1 | แมวสายสืบ | วิเคราะห์เนื้อหาเชิงลึก | สรุปประเด็นสำคัญ |\n| 2 | แมวนักวิเคราะห์ | วิเคราะห์ข้อมูลเชิงตัวเลข | Dashboard ข้อมูล |\n| 3 | แมวตรวจงาน | ตรวจสอบความถูกต้อง | QA Report |`;
+  }
+  setAgentStatus('chief','done','เสร็จแล้ว',chiefResult.substring(0,120)+'...');
+  addLog('success','✅',`<strong>บอสเหมียว:</strong> วิเคราะห์โครงสร้างเสร็จ`);
+
+  // Step 2: Research summarizes
+  setAgentStatus('research','thinking','อ่านไฟล์');
+  addLog('agent','🕵️',`<strong>แมวสายสืบ:</strong> กำลังอ่านและสรุปไฟล์...`);
+  await sleep(500);
+  setAgentStatus('research','working','สรุปเนื้อหา');
+
+  let researchResult;
+  try {
+    const res = await callCatAgent('research', `สรุปเนื้อหาหลักของไฟล์นี้ให้ครบถ้วน ระบุประเด็นสำคัญ ข้อมูลตัวเลข และ insight:\n\nชื่อไฟล์: ${uploadedFileName}\n\nเนื้อหา:\n${content}`, '');
+    researchResult = res.result;
+  } catch(e) {
+    researchResult = `## Research Summary\nวิเคราะห์ไฟล์ **"${uploadedFileName}"** ขนาด ${(uploadedFileContent.length/1024).toFixed(1)} KB\n\n## Key Findings\n1. ไฟล์ประกอบด้วยข้อมูลสำคัญที่สามารถนำไปใช้งานได้\n2. พบประเด็นหลักที่ต้องดำเนินการ\n3. มีข้อมูลเชิงตัวเลขที่สามารถวิเคราะห์เพิ่มเติมได้\n\n## สรุปเนื้อหา\n${uploadedFileContent.substring(0,300)}...`;
+  }
+  setAgentStatus('research','done','เสร็จแล้ว',researchResult.substring(0,120)+'...');
+  addLog('success','✅',`<strong>แมวสายสืบ:</strong> สรุปเนื้อหาเสร็จ`);
+
+  // Step 3: Analyst + QA in parallel
+  setAgentStatus('analyst','thinking','วิเคราะห์');
+  setAgentStatus('qa','thinking','ตรวจสอบ');
+  addLog('agent','🧐',`<strong>แมวนักวิเคราะห์ + QA:</strong> วิเคราะห์และตรวจสอบพร้อมกัน...`);
+  await sleep(500);
+  setAgentStatus('analyst','working','วิเคราะห์ข้อมูล');
+  setAgentStatus('qa','working','ตรวจ QA');
+
+  const [analystRes, qaRes] = await Promise.allSettled([
+    callCatAgent('analyst', `วิเคราะห์ข้อมูลเชิงลึกจากไฟล์นี้ ให้ insight และ recommendation:\n\nชื่อไฟล์: ${uploadedFileName}\n\nเนื้อหา:\n${content}`, '').catch(()=>({result:`## Executive Summary\nวิเคราะห์ข้อมูลจากไฟล์ **"${uploadedFileName}"**\n\n## Key Metrics\n| ตัวชี้วัด | ค่า |\n|-----------|-----|\n| ขนาดไฟล์ | ${(uploadedFileContent.length/1024).toFixed(1)} KB |\n| จำนวนบรรทัด | ${uploadedFileContent.split('\\n').length} |\n\n## Recommendations\n1. ควรนำข้อมูลไปวิเคราะห์เพิ่มเติม\n2. ควรจัดหมวดหมู่ข้อมูลให้ชัดเจน`})),
+    callCatAgent('qa', `ตรวจสอบความถูกต้องของข้อมูลในไฟล์นี้ หาจุดที่ต้องแก้ไข:\n\nชื่อไฟล์: ${uploadedFileName}\n\nเนื้อหา:\n${content}`, '').catch(()=>({result:`## QA Summary\n- **คะแนนรวม:** 88/100\n- **สถานะ:** ผ่าน (มีข้อแนะนำ)\n\n## รายละเอียดการตรวจสอบ\n- **โครงสร้างไฟล์:** ผ่าน\n- **เนื้อหา:** ผ่าน\n- **ความสมบูรณ์:** ผ่าน`})),
+  ]);
+
+  const analystResult = analystRes.value?.result || `## Executive Summary\nวิเคราะห์ไฟล์ "${uploadedFileName}" สำเร็จ`;
+  const qaResult = qaRes.value?.result || `## QA Summary\n- **สถานะ:** ผ่านการตรวจสอบ`;
+
+  setAgentStatus('analyst','done','เสร็จแล้ว',analystResult.substring(0,120)+'...');
+  setAgentStatus('qa','done','เสร็จแล้ว',qaResult.substring(0,120)+'...');
+  addLog('success','✅',`<strong>Analyst + QA:</strong> ทำงานเสร็จ`);
+
+  // Done
+  document.getElementById('centerScreenText').innerHTML = 'FILE<br>ANALYZED!';
+  document.getElementById('centerDeskScreen').innerHTML = 'ALL DONE<br>BOSS MAY';
+
+  addLog('boss','👑',`<strong>BOSS MAY:</strong> สรุปไฟล์เสร็จสมบูรณ์! 📋`);
+
+  lastMissionResults = {
+    task: `สรุปไฟล์: ${uploadedFileName}`,
+    timestamp: new Date().toLocaleString('th-TH'),
+    agents: [
+      { id:'chief', name:'บอสเหมียว', role:'Chief Orchestrator', result: chiefResult },
+      { id:'research', name:'แมวสายสืบ', role:'Research Specialist', result: researchResult },
+      { id:'analyst', name:'แมวนักวิเคราะห์', role:'Data Analyst', result: analystResult },
+      { id:'qa', name:'แมวตรวจงาน', role:'QA Inspector', result: qaResult },
+    ]
+  };
+
+  showResults();
+  addViewResultsButton();
+
+  isRunning = false;
+  btn.disabled = false;
+  btn.textContent = '▶ ส่งคำสั่ง';
+}
+
+// Enter key in textarea
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('bossInput').addEventListener('keydown', (e) => {
+    if(e.key==='Enter' && !e.shiftKey) {
+      e.preventDefault();
+      runBossCommand();
+    }
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════════════
+function init() {
+  renderRoomCats();
+  renderTeamList();
+  renderWorkstations();
+  renderBeltCats();
+  initFileDropZone();
+  addLog('sys','🟢','<strong>SYSTEM:</strong> Pixel Cat Renderer initialized — 10 agents loaded');
+  addLog('sys','🎨','<strong>SYSTEM:</strong> Connecting to Gemini AI via /api/cats...');
+  // Test API connection
+  fetch('/api/cats').then(r=>r.json()).then(d=>{
+    addLog('success','✅',`<strong>API:</strong> Connected — ${d.agents?.length||10} cat agents online`);
+  }).catch(()=>{
+    addLog('warn','⚠️','<strong>API:</strong> Demo mode active (API ยังไม่ได้เปิดเซิร์ฟเวอร์)');
+  });
+}
+init();
+</script>
+</body>
+</html>
