@@ -471,6 +471,7 @@ export default function TeacherPage() {
   const [expandedSides, setExpandedSides] = useState({ teaching: true, documents: true, marketing: true, admin: true });
   const [lang, setLang] = useState('th');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const [toolError, setToolError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -928,26 +929,66 @@ export default function TeacherPage() {
 
           {/* Right side: Language + User (world-class top-right pattern) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', flexShrink: 0 }}>
-            {/* Compact language switcher */}
-            <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '8px', padding: '2px', gap: '1px' }}>
-              {[
+            {/* Language dropdown */}
+            {(() => {
+              const LANGS = [
                 { id: 'th', label: 'ไทย', flag: '🇹🇭' },
                 { id: 'en', label: 'EN', flag: '🇬🇧' },
                 { id: 'zh', label: '中文', flag: '🇨🇳' },
                 { id: 'ja', label: '日本語', flag: '🇯🇵' },
-              ].map(l => (
-                <button key={l.id} onClick={() => setLang(l.id)} style={{
-                  padding: isMobile ? '5px 6px' : '5px 10px', borderRadius: '6px', border: 'none', cursor: 'pointer',
-                  background: lang === l.id ? '#fff' : 'transparent',
-                  color: lang === l.id ? CI.cyan : '#94a3b8',
-                  fontSize: isMobile ? '11px' : '12px', fontWeight: lang === l.id ? 700 : 500, fontFamily: 'inherit',
-                  boxShadow: lang === l.id ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                  whiteSpace: 'nowrap', transition: 'all 0.15s',
-                }}>
-                  {isMobile ? l.flag : `${l.flag} ${l.label}`}
-                </button>
-              ))}
-            </div>
+              ];
+              const current = LANGS.find(l => l.id === lang) || LANGS[0];
+              return (
+                <div style={{ position: 'relative' }}>
+                  <button
+                    onClick={() => setShowLangMenu(prev => !prev)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '6px',
+                      padding: '6px 12px', borderRadius: '10px',
+                      border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer',
+                      fontSize: '14px', fontWeight: 600, color: '#475569', fontFamily: 'inherit',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = CI.cyan; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                  >
+                    <span style={{ fontSize: '16px' }}>{current.flag}</span>
+                    <span>{current.label}</span>
+                    <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '2px' }}>▼</span>
+                  </button>
+                  {showLangMenu && (
+                    <>
+                      <div onClick={() => setShowLangMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 998 }} />
+                      <div style={{
+                        position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 999,
+                        background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)', padding: '4px', minWidth: '140px',
+                        animation: 'fadeInDown 0.15s ease-out',
+                      }}>
+                        <style>{`@keyframes fadeInDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }`}</style>
+                        {LANGS.map(l => (
+                          <button key={l.id} onClick={() => { setLang(l.id); setShowLangMenu(false); }} style={{
+                            width: '100%', display: 'flex', alignItems: 'center', gap: '10px',
+                            padding: '10px 14px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                            background: lang === l.id ? `${CI.cyan}10` : 'transparent',
+                            color: lang === l.id ? CI.cyan : '#475569',
+                            fontSize: '14px', fontWeight: lang === l.id ? 700 : 500, fontFamily: 'inherit',
+                            transition: 'background 0.1s', textAlign: 'left',
+                          }}
+                          onMouseEnter={e => { if (lang !== l.id) e.currentTarget.style.background = '#f8fafc'; }}
+                          onMouseLeave={e => { if (lang !== l.id) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            <span style={{ fontSize: '18px' }}>{l.flag}</span>
+                            <span>{l.label}</span>
+                            {lang === l.id && <span style={{ marginLeft: 'auto', fontSize: '13px' }}>✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* User avatar + dropdown */}
             <div style={{ position: 'relative' }}>
