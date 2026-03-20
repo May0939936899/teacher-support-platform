@@ -60,6 +60,7 @@ function formatDistance(meters) {
 
 export default function AttendanceTracker() {
   const [mode, setMode] = useState('teacher');
+  const [isStudentLocked, setIsStudentLocked] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [newSession, setNewSession] = useState({
@@ -136,6 +137,7 @@ export default function AttendanceTracker() {
       const attCode = params.get('att');
       if (attCode) {
         setMode('student');
+        setIsStudentLocked(true);
         setStudentView(v => ({ ...v, code: attCode }));
       }
     }
@@ -335,24 +337,26 @@ export default function AttendanceTracker() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: FONT }}>
-      {/* Mode toggle */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: '#f1f5f9', padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
-        {[{ id: 'teacher', label: '👩‍🏫 อาจารย์' }, { id: 'student', label: '👨‍🎓 นักศึกษา' }].map(m => (
-          <button key={m.id} onClick={() => setMode(m.id)} style={{
-            padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-            background: mode === m.id ? '#fff' : 'none',
-            color: mode === m.id ? CI.cyan : '#64748b',
-            fontWeight: mode === m.id ? 700 : 400,
-            boxShadow: mode === m.id ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-            fontSize: '16px', fontFamily: 'inherit',
-          }}>
-            {m.label}
-          </button>
-        ))}
-      </div>
+      {/* Mode toggle — hidden when student came via QR/URL */}
+      {!isStudentLocked && (
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: '#f1f5f9', padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
+          {[{ id: 'teacher', label: '👩‍🏫 อาจารย์' }, { id: 'student', label: '👨‍🎓 นักศึกษา' }].map(m => (
+            <button key={m.id} onClick={() => setMode(m.id)} style={{
+              padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              background: mode === m.id ? '#fff' : 'none',
+              color: mode === m.id ? CI.cyan : '#64748b',
+              fontWeight: mode === m.id ? 700 : 400,
+              boxShadow: mode === m.id ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+              fontSize: '16px', fontFamily: 'inherit',
+            }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ===== TEACHER ===== */}
-      {mode === 'teacher' && (
+      {mode === 'teacher' && !isStudentLocked && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           {/* Create session */}
           <div>

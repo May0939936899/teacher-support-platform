@@ -21,6 +21,7 @@ function generateQR(text, canvas) {
 
 export default function SmartQuiz() {
   const [mode, setMode] = useState('teacher');
+  const [isStudentLocked, setIsStudentLocked] = useState(false); // true = came via QR/URL, lock to student mode
   const [quiz, setQuiz] = useState({ title: '', description: '', timeLimit: 30, questions: [] });
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
@@ -438,7 +439,7 @@ export default function SmartQuiz() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const quizCode = params.get('quiz');
-      if (quizCode) { setMode('student'); setStudentView(v => ({ ...v, sessionCode: quizCode })); }
+      if (quizCode) { setMode('student'); setIsStudentLocked(true); setStudentView(v => ({ ...v, sessionCode: quizCode })); }
     }
   }, []);
 
@@ -446,18 +447,20 @@ export default function SmartQuiz() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: FONT }}>
-      {/* Mode toggle */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: '#f1f5f9', padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
-        {[{ id: 'teacher', label: '👩‍🏫 อาจารย์' }, { id: 'student', label: '👨‍🎓 นักศึกษา' }].map(m => (
-          <button key={m.id} onClick={() => setMode(m.id)} style={{
-            padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-            background: mode === m.id ? '#fff' : 'none',
-            color: mode === m.id ? CI.purple : '#64748b',
-            fontWeight: mode === m.id ? 700 : 400, fontSize: '16px', fontFamily: 'inherit',
-            boxShadow: mode === m.id ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
-          }}>{m.label}</button>
-        ))}
-      </div>
+      {/* Mode toggle — hidden when student came via QR/URL */}
+      {!isStudentLocked && (
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', background: '#f1f5f9', padding: '4px', borderRadius: '12px', width: 'fit-content' }}>
+          {[{ id: 'teacher', label: '👩‍🏫 อาจารย์' }, { id: 'student', label: '👨‍🎓 นักศึกษา' }].map(m => (
+            <button key={m.id} onClick={() => setMode(m.id)} style={{
+              padding: '10px 24px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+              background: mode === m.id ? '#fff' : 'none',
+              color: mode === m.id ? CI.purple : '#64748b',
+              fontWeight: mode === m.id ? 700 : 400, fontSize: '16px', fontFamily: 'inherit',
+              boxShadow: mode === m.id ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
+            }}>{m.label}</button>
+          ))}
+        </div>
+      )}
 
       {/* ===== TEACHER MODE ===== */}
       {mode === 'teacher' && (
@@ -1018,8 +1021,8 @@ export default function SmartQuiz() {
         </div>
       )}
 
-      {/* Past sessions */}
-      {mode === 'teacher' && sessions.length > 0 && (
+      {/* Past sessions — only for teacher, never for locked student */}
+      {mode === 'teacher' && !isStudentLocked && sessions.length > 0 && (
         <div style={{ marginTop: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <h3 style={{ fontSize: '17px', color: '#1e293b', margin: 0, fontWeight: 700 }}>📋 Session ที่ผ่านมา</h3>

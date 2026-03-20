@@ -256,6 +256,9 @@ function BusSplashScreen({ onFinish }) {
         @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
         @keyframes twinkle { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.9; } }
         @keyframes subtitleSlide { 0% { opacity: 0; letter-spacing: 16px; } 100% { opacity: 0.55; letter-spacing: 8px; } }
+        @keyframes gradientFlow { 0% { stop-color: #00b4e6; } 25% { stop-color: #7c4dff; } 50% { stop-color: #e6007e; } 75% { stop-color: #ffc107; } 100% { stop-color: #00b4e6; } }
+        @keyframes gradientFlow2 { 0% { stop-color: #e6007e; } 25% { stop-color: #ffc107; } 50% { stop-color: #00b4e6; } 75% { stop-color: #7c4dff; } 100% { stop-color: #e6007e; } }
+        @keyframes gradientFlow3 { 0% { stop-color: #7c4dff; } 25% { stop-color: #00b4e6; } 50% { stop-color: #ffc107; } 75% { stop-color: #e6007e; } 100% { stop-color: #7c4dff; } }
       `}</style>
 
       {/* Floating pixel stars */}
@@ -271,24 +274,19 @@ function BusSplashScreen({ onFinish }) {
         }} />
       ))}
 
-      {/* Logo */}
-      <div style={{ animation: 'fadeInUp 0.6s ease-out', marginBottom: '12px', zIndex: 2 }}>
-        <img src="/logo-spubus.png" alt="SPUBUS" style={{ height: '60px', objectFit: 'contain', filter: 'drop-shadow(0 4px 20px rgba(0,180,230,0.4))' }} />
-      </div>
-
-      {/* Pixel Title: SPUBUS — CI gradient pixel art */}
+      {/* Pixel Title: SPUBUS — Animated flowing gradient pixel art */}
       <div style={{ animation: 'fadeInScale 0.8s ease-out 0.15s both', zIndex: 2, marginBottom: '6px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <svg viewBox="0 0 600 120" style={{ width: '90vw', maxWidth: '760px', height: 'auto' }}>
           <defs>
-            <linearGradient id="gradCyan" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#33ccff" />
-              <stop offset="50%" stopColor={CI.cyan} />
-              <stop offset="100%" stopColor="#0088b3" />
+            <linearGradient id="gradCyan" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"><animate attributeName="stop-color" values="#00b4e6;#7c4dff;#e6007e;#ffc107;#00b4e6" dur="4s" repeatCount="indefinite" /></stop>
+              <stop offset="50%"><animate attributeName="stop-color" values="#7c4dff;#e6007e;#ffc107;#00b4e6;#7c4dff" dur="4s" repeatCount="indefinite" /></stop>
+              <stop offset="100%"><animate attributeName="stop-color" values="#e6007e;#ffc107;#00b4e6;#7c4dff;#e6007e" dur="4s" repeatCount="indefinite" /></stop>
             </linearGradient>
-            <linearGradient id="gradMagenta" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#ff4da6" />
-              <stop offset="50%" stopColor={CI.magenta} />
-              <stop offset="100%" stopColor="#b3005e" />
+            <linearGradient id="gradMagenta" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"><animate attributeName="stop-color" values="#e6007e;#ffc107;#00b4e6;#7c4dff;#e6007e" dur="4s" repeatCount="indefinite" /></stop>
+              <stop offset="50%"><animate attributeName="stop-color" values="#ffc107;#00b4e6;#7c4dff;#e6007e;#ffc107" dur="4s" repeatCount="indefinite" /></stop>
+              <stop offset="100%"><animate attributeName="stop-color" values="#00b4e6;#7c4dff;#e6007e;#ffc107;#00b4e6" dur="4s" repeatCount="indefinite" /></stop>
             </linearGradient>
             <filter id="glowC" x="-30%" y="-30%" width="160%" height="160%">
               <feGaussianBlur stdDeviation="4" result="b" />
