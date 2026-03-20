@@ -119,7 +119,8 @@ export default function SmartQuiz() {
               if (result.text && result.text.trim().length > 20) {
                 setExtractedText(result.text);
                 setAiText(result.text);
-                toast.success(`อ่าน PDF สำเร็จ (${result.numPages} หน้า)`);
+                toast.success(`อ่าน PDF สำเร็จ (${result.numPages} หน้า) — กำลังสรุปเนื้อหา...`);
+                autoSummarizeAfterExtract(result.text);
                 return;
               }
             }
@@ -129,7 +130,8 @@ export default function SmartQuiz() {
           const trimmedText = allText.length > 50000 ? allText.substring(0, 50000) + '\n\n[...ข้อความถูกตัดเนื่องจากยาวเกินไป]' : allText;
           setExtractedText(trimmedText);
           setAiText(trimmedText);
-          toast.success(`อ่าน PDF สำเร็จ (${numPages} หน้า, ${allText.length.toLocaleString()} ตัวอักษร)`);
+          toast.success(`อ่าน PDF สำเร็จ (${numPages} หน้า) — กำลังสรุปเนื้อหา...`);
+          autoSummarizeAfterExtract(trimmedText);
         }
       } catch (err) {
         console.error('PDF parse error:', err);
@@ -144,7 +146,8 @@ export default function SmartQuiz() {
               if (result.text && result.text.trim().length > 20) {
                 setExtractedText(result.text);
                 setAiText(result.text);
-                toast.success(`อ่าน PDF สำเร็จ (${result.numPages} หน้า, ${result.totalChars.toLocaleString()} ตัวอักษร)`);
+                toast.success(`อ่าน PDF สำเร็จ — กำลังสรุปเนื้อหา...`);
+                autoSummarizeAfterExtract(result.text);
                 return;
               }
             }
@@ -164,7 +167,8 @@ export default function SmartQuiz() {
           const text = await file.text();
           setExtractedText(text);
           setAiText(text);
-          toast.success(`อ่าน Text สำเร็จ (${text.length.toLocaleString()} ตัวอักษร)`);
+          toast.success(`อ่าน Text สำเร็จ — กำลังสรุปเนื้อหา...`);
+          autoSummarizeAfterExtract(text);
         } else {
           // PPTX: use server if under 4MB, else try client-side JSZip
           if (file.size <= 4 * 1024 * 1024) {
@@ -176,7 +180,8 @@ export default function SmartQuiz() {
             if (result.text && result.text.trim().length > 10) {
               setExtractedText(result.text);
               setAiText(result.text);
-              toast.success(`อ่าน ${fileLabel} สำเร็จ (${result.numSlides} slides, ${result.totalChars.toLocaleString()} ตัวอักษร)`);
+              toast.success(`อ่าน ${fileLabel} สำเร็จ — กำลังสรุปเนื้อหา...`);
+              autoSummarizeAfterExtract(result.text);
             } else {
               toast.error(`ไม่พบข้อความใน ${fileLabel} — ลอง copy-paste เนื้อหาแทน`);
             }
@@ -193,9 +198,11 @@ export default function SmartQuiz() {
 
   // ===== AI SUMMARIZE CONTENT FROM IMAGE/FILE =====
   const [aiSummarizing, setAiSummarizing] = useState(false);
+  const [aiSummary, setAiSummary] = useState('');
 
-  const summarizeWithAI = async () => {
-    if (!aiFilePreview && !extractedText && aiText.trim().length < 10) {
+  const summarizeWithAI = async (textOverride) => {
+    const textToUse = textOverride || aiText || extractedText;
+    if (!aiFilePreview && (!textToUse || textToUse.trim().length < 10)) {
       toast.error('กรุณาอัพโหลดไฟล์ หรือวางเนื้อหาก่อน');
       return;
     }
@@ -203,10 +210,9 @@ export default function SmartQuiz() {
     setAiSummarizing(true);
     try {
       let body;
-      const isImage = aiFilePreview && !extractedText;
+      const isImage = aiFilePreview && !extractedText && !textOverride;
 
       if (isImage) {
-        // Use vision to read & summarize image
         const base64 = aiFilePreview.split(',')[1];
         const mediaType = aiFilePreview.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
         body = {
@@ -214,10 +220,9 @@ export default function SmartQuiz() {
           payload: { imageBase64: base64, mediaType },
         };
       } else {
-        // Summarize text content
         body = {
           tool: 'content_summarizer',
-          payload: { content: aiText || extractedText },
+          payload: { content: textToUse },
         };
       }
 
@@ -229,14 +234,21 @@ export default function SmartQuiz() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'เกิดข้อผิดพลาด');
 
+      setAiSummary(data.result);
       setAiText(data.result);
-      setExtractedText(data.result);
       toast.success('AI สรุปเนื้อหาสำเร็จ! พร้อมสร้างข้อสอบ');
     } catch (err) {
       console.error(err);
-      toast.error(err.message);
+      toast.error('สรุปเนื้อหาไม่สำเร็จ: ' + err.message);
     } finally {
       setAiSummarizing(false);
+    }
+  };
+
+  // Auto-summarize after file text extraction
+  const autoSummarizeAfterExtract = (text) => {
+    if (text && text.trim().length > 30) {
+      setTimeout(() => summarizeWithAI(text), 300);
     }
   };
 
@@ -456,37 +468,43 @@ export default function SmartQuiz() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
                 {/* Card: Manual */}
                 <button onClick={() => setCreateMode('manual')} style={{
-                  padding: '28px 20px', borderRadius: '20px',
-                  border: `3px solid ${createMode === 'manual' ? CI.cyan : '#e2e8f0'}`,
+                  padding: '14px 16px', borderRadius: '14px',
+                  border: `2px solid ${createMode === 'manual' ? CI.cyan : '#e2e8f0'}`,
                   background: createMode === 'manual' ? `linear-gradient(135deg, ${CI.cyan}08, ${CI.cyan}15)` : '#fff',
-                  cursor: 'pointer', textAlign: 'center', transition: 'all 0.25s', fontFamily: 'inherit',
-                  boxShadow: createMode === 'manual' ? `0 8px 24px ${CI.cyan}20` : '0 2px 8px rgba(0,0,0,0.04)',
-                  transform: createMode === 'manual' ? 'scale(1.02)' : 'scale(1)',
+                  cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s', fontFamily: 'inherit',
+                  boxShadow: createMode === 'manual' ? `0 4px 16px ${CI.cyan}20` : '0 1px 4px rgba(0,0,0,0.04)',
                 }}
-                onMouseEnter={e => { if (createMode !== 'manual') { e.currentTarget.style.borderColor = CI.cyan + '60'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
-                onMouseLeave={e => { if (createMode !== 'manual') { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; } }}
+                onMouseEnter={e => { if (createMode !== 'manual') { e.currentTarget.style.borderColor = CI.cyan + '60'; } }}
+                onMouseLeave={e => { if (createMode !== 'manual') { e.currentTarget.style.borderColor = '#e2e8f0'; } }}
                 >
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>✏️</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: createMode === 'manual' ? CI.cyan : '#1e293b', marginBottom: '6px' }}>สร้างเอง</div>
-                  <div style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.6 }}>พิมพ์คำถามและตัวเลือกทีละข้อ<br/>เหมาะสำหรับข้อสอบเฉพาะทาง</div>
-                  {createMode === 'manual' && <div style={{ marginTop: '10px', fontSize: '13px', color: CI.cyan, fontWeight: 700 }}>✓ เลือกแล้ว</div>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '24px' }}>✏️</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: createMode === 'manual' ? CI.cyan : '#1e293b' }}>สร้างเอง</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.4 }}>พิมพ์คำถามและตัวเลือกทีละข้อ</div>
+                    </div>
+                    {createMode === 'manual' && <span style={{ fontSize: '12px', color: CI.cyan, fontWeight: 700 }}>✓</span>}
+                  </div>
                 </button>
                 {/* Card: AI */}
                 <button onClick={() => setCreateMode('ai')} style={{
-                  padding: '28px 20px', borderRadius: '20px',
-                  border: `3px solid ${createMode === 'ai' ? CI.purple : '#e2e8f0'}`,
+                  padding: '14px 16px', borderRadius: '14px',
+                  border: `2px solid ${createMode === 'ai' ? CI.purple : '#e2e8f0'}`,
                   background: createMode === 'ai' ? `linear-gradient(135deg, ${CI.purple}08, ${CI.magenta}10)` : '#fff',
-                  cursor: 'pointer', textAlign: 'center', transition: 'all 0.25s', fontFamily: 'inherit',
-                  boxShadow: createMode === 'ai' ? `0 8px 24px ${CI.purple}20` : '0 2px 8px rgba(0,0,0,0.04)',
-                  transform: createMode === 'ai' ? 'scale(1.02)' : 'scale(1)',
+                  cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s', fontFamily: 'inherit',
+                  boxShadow: createMode === 'ai' ? `0 4px 16px ${CI.purple}20` : '0 1px 4px rgba(0,0,0,0.04)',
                 }}
-                onMouseEnter={e => { if (createMode !== 'ai') { e.currentTarget.style.borderColor = CI.purple + '60'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
-                onMouseLeave={e => { if (createMode !== 'ai') { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.transform = 'scale(1)'; } }}
+                onMouseEnter={e => { if (createMode !== 'ai') { e.currentTarget.style.borderColor = CI.purple + '60'; } }}
+                onMouseLeave={e => { if (createMode !== 'ai') { e.currentTarget.style.borderColor = '#e2e8f0'; } }}
                 >
-                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>🤖</div>
-                  <div style={{ fontSize: '18px', fontWeight: 800, color: createMode === 'ai' ? CI.purple : '#1e293b', marginBottom: '6px' }}>AI สร้างจากเนื้อหา</div>
-                  <div style={{ fontSize: '14px', color: '#94a3b8', lineHeight: 1.6 }}>อัปโหลดไฟล์ / วางเนื้อหา<br/>AI อ่าน สรุป แล้วสร้างข้อสอบให้</div>
-                  {createMode === 'ai' && <div style={{ marginTop: '10px', fontSize: '13px', color: CI.purple, fontWeight: 700 }}>✓ เลือกแล้ว</div>}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '24px' }}>✨</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: createMode === 'ai' ? CI.purple : '#1e293b' }}>AI สร้างจากเนื้อหา</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.4 }}>อัปโหลดไฟล์ / วางเนื้อหา แล้ว AI สร้างให้</div>
+                    </div>
+                    {createMode === 'ai' && <span style={{ fontSize: '12px', color: CI.purple, fontWeight: 700 }}>✓</span>}
+                  </div>
                 </button>
               </div>
 
@@ -556,7 +574,7 @@ export default function SmartQuiz() {
                           {aiFilePreview && !extractedText && ' • พร้อมส่ง AI วิเคราะห์'}
                         </div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); setAiFile(null); setAiFilePreview(null); setExtractedText(''); setAiText(''); }}
+                      <button onClick={(e) => { e.stopPropagation(); setAiFile(null); setAiFilePreview(null); setExtractedText(''); setAiText(''); setAiSummary(''); }}
                         style={{ background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '8px', padding: '6px 12px', cursor: 'pointer', fontSize: '14px', fontFamily: 'inherit' }}>
                         ✕ ลบ
                       </button>
@@ -571,41 +589,91 @@ export default function SmartQuiz() {
                   </div>
                 )}
 
-                {/* Or paste text */}
-                <div style={{ position: 'relative', marginBottom: '16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-                    <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 600 }}>หรือวางเนื้อหาเอง</span>
-                    <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                {/* AI Summary display or loading */}
+                {aiSummarizing && (
+                  <div style={{
+                    background: `linear-gradient(135deg, ${CI.purple}08, ${CI.cyan}08)`,
+                    borderRadius: '14px', padding: '28px', textAlign: 'center', marginBottom: '16px',
+                    border: `2px solid ${CI.purple}20`,
+                  }}>
+                    <div style={{ fontSize: '36px', marginBottom: '12px', animation: 'spin 2s linear infinite' }}>🧠</div>
+                    <div style={{ fontSize: '16px', fontWeight: 700, color: CI.purple, marginBottom: '6px' }}>
+                      AI กำลังอ่านและสรุปเนื้อหาจากไฟล์...
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#94a3b8' }}>อาจใช้เวลาสักครู่ ขึ้นอยู่กับความยาวเนื้อหา</div>
+                    <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
                   </div>
-                  <textarea
-                    placeholder="วางเนื้อหาจาก slide, เอกสาร, หรือบทเรียนที่นี่..."
-                    value={aiText}
-                    onChange={e => { setAiText(e.target.value); setExtractedText(''); }}
-                    style={{ ...inp, minHeight: '120px', resize: 'vertical', lineHeight: 1.7 }}
-                  />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                    <div style={{ fontSize: '13px', color: '#94a3b8' }}>
-                      {aiText.length} ตัวอักษร {aiText.length > 0 && aiText.length < 20 && <span style={{ color: CI.magenta }}>• ต้องมีอย่างน้อย 20 ตัวอักษร</span>}
+                )}
+
+                {/* AI Summary result */}
+                {!aiSummarizing && aiSummary && (
+                  <div style={{
+                    background: `linear-gradient(135deg, ${CI.purple}05, ${CI.cyan}05)`,
+                    borderRadius: '14px', padding: '20px', marginBottom: '16px',
+                    border: `2px solid ${CI.purple}25`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '20px' }}>🧠</span>
+                        <span style={{ fontSize: '15px', fontWeight: 700, color: CI.purple }}>AI สรุปเนื้อหาจากไฟล์</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button onClick={() => summarizeWithAI()} style={{
+                          background: `${CI.purple}12`, border: `1px solid ${CI.purple}30`, color: CI.purple,
+                          borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit', fontWeight: 600,
+                        }}>🔄 สรุปใหม่</button>
+                        <button onClick={() => { setAiSummary(''); setAiText(''); setExtractedText(''); }} style={{
+                          background: '#fee2e2', border: 'none', color: '#ef4444',
+                          borderRadius: '8px', padding: '5px 12px', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit',
+                        }}>✕ ล้าง</button>
+                      </div>
+                    </div>
+                    <div style={{
+                      background: '#fff', borderRadius: '10px', padding: '16px',
+                      fontSize: '14px', color: '#374151', lineHeight: 1.8,
+                      maxHeight: '250px', overflowY: 'auto',
+                      whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                      border: '1px solid #e2e8f0',
+                    }}>
+                      {aiSummary}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      ✅ สรุปเนื้อหาพร้อมแล้ว — กดปุ่ม "สร้างข้อสอบด้วย AI" ด้านล่างได้เลย
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* AI Summarize button */}
-                {(aiFilePreview || aiText.length > 10 || extractedText.length > 10) && (
-                  <button onClick={summarizeWithAI} disabled={aiSummarizing} style={{
-                    width: '100%', padding: '14px', borderRadius: '12px', border: `2px solid ${CI.purple}30`,
-                    background: aiSummarizing ? '#f1f5f9' : `linear-gradient(135deg, ${CI.purple}10, ${CI.cyan}10)`,
-                    color: aiSummarizing ? '#94a3b8' : CI.purple,
-                    cursor: aiSummarizing ? 'wait' : 'pointer', fontWeight: 700, fontSize: '16px', fontFamily: 'inherit',
-                    marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                  }}>
-                    {aiSummarizing ? (
-                      <>🔄 AI กำลังอ่านและสรุปเนื้อหา...</>
-                    ) : (
-                      <>🧠 AI อ่านและสรุปเนื้อหาสำคัญ (เตรียมออกข้อสอบ)</>
+                {/* Manual text input — only show when no file and no summary */}
+                {!aiFile && !aiSummary && !aiSummarizing && (
+                  <div style={{ position: 'relative', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                      <span style={{ fontSize: '14px', color: '#94a3b8', fontWeight: 600 }}>หรือวางเนื้อหาเอง</span>
+                      <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
+                    </div>
+                    <textarea
+                      placeholder="วางเนื้อหาจาก slide, เอกสาร, หรือบทเรียนที่นี่..."
+                      value={aiText}
+                      onChange={e => { setAiText(e.target.value); setExtractedText(''); }}
+                      style={{ ...inp, minHeight: '120px', resize: 'vertical', lineHeight: 1.7 }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                      <div style={{ fontSize: '13px', color: '#94a3b8' }}>
+                        {aiText.length} ตัวอักษร {aiText.length > 0 && aiText.length < 20 && <span style={{ color: CI.magenta }}>• ต้องมีอย่างน้อย 20 ตัวอักษร</span>}
+                      </div>
+                    </div>
+                    {/* Manual summarize button */}
+                    {aiText.length > 30 && (
+                      <button onClick={() => summarizeWithAI()} disabled={aiSummarizing} style={{
+                        width: '100%', padding: '12px', borderRadius: '10px', border: `2px solid ${CI.purple}30`,
+                        background: `linear-gradient(135deg, ${CI.purple}10, ${CI.cyan}10)`,
+                        color: CI.purple, cursor: 'pointer', fontWeight: 700, fontSize: '15px', fontFamily: 'inherit',
+                        marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      }}>
+                        🧠 AI สรุปเนื้อหา (เตรียมออกข้อสอบ)
+                      </button>
                     )}
-                  </button>
+                  </div>
                 )}
 
                 {/* AI Options */}
