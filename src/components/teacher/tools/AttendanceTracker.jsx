@@ -71,7 +71,7 @@ export default function AttendanceTracker() {
     locationName: '', // Custom name for the location
     locationLat: null,
     locationLng: null,
-    locationRadius: 20, // Allowed radius in meters
+    locationRadius: 10, // Allowed radius in meters
   });
   const [studentView, setStudentView] = useState({ code: '', name: '', studentId: '', step: 'join' });
   const [studentLocation, setStudentLocation] = useState(null); // { lat, lng, address, accuracy }
@@ -518,7 +518,7 @@ export default function AttendanceTracker() {
                       <div style={{ marginTop: '10px' }}>
                         <label style={{ ...lbl, fontSize: '13px' }}>รัศมีที่อนุญาต (เมตร)</label>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          {[20, 50, 100, 200].map(r => (
+                          {[10, 20, 50, 100].map(r => (
                             <button key={r} onClick={() => setNewSession(s => ({ ...s, locationRadius: r }))}
                               style={{
                                 padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
