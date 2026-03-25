@@ -62,6 +62,8 @@ export default function LINEBroadcast() {
   const [filterCat, setFilterCat] = useState('all');
   const [customForm, setCustomForm] = useState({ title: '', content: '', category: 'general' });
   const [showCustomForm, setShowCustomForm] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
 
   useEffect(() => {
     try { const s = localStorage.getItem(STORAGE_KEY); if (s) setCustomTemplates(JSON.parse(s)); } catch {}
@@ -121,6 +123,31 @@ export default function LINEBroadcast() {
     toast.success('ลบ Template แล้ว');
   };
 
+  const generateWithAI = async () => {
+    if (!aiPrompt.trim()) { toast.error('กรุณาระบุสิ่งที่ต้องการประกาศ'); return; }
+    setAiLoading(true);
+    const tid = toast.loading('AI กำลังเขียนข้อความ...');
+    try {
+      const res = await fetch('/api/teacher/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'line_broadcast',
+          payload: { prompt: aiPrompt },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI error');
+      setPreview(data.result || '');
+      setSelectedTemplate({ title: 'AI Generated', content: data.result || '', placeholders: [] });
+      toast.success('AI สร้างข้อความสำเร็จ!', { id: tid });
+    } catch (e) {
+      toast.error(e.message, { id: tid });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const btnStyle = (bg) => ({
     padding: '10px 20px', border: 'none', borderRadius: 10, color: '#fff', fontFamily: FONT,
     fontSize: 15, cursor: 'pointer', background: bg || `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`, fontWeight: 600,
@@ -167,6 +194,27 @@ export default function LINEBroadcast() {
           </div>
         </div>
       )}
+
+      {/* AI Quick Generate */}
+      <div style={{ ...cardStyle, marginBottom: 16, background: `linear-gradient(135deg, ${CI.dark}08, ${CI.purple}08)` }}>
+        <h4 style={{ margin: '0 0 10px', fontSize: 16, color: CI.dark }}>✨ AI เขียนข้อความให้</h4>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <input
+            style={{ ...inputStyle, flex: 1 }}
+            placeholder='เช่น "แจ้งงดเรียนวิชา MK201 วันพุธที่ 26 มี.ค." หรือ "เตือนสอบ Final วิชา BA301"'
+            value={aiPrompt}
+            onChange={e => setAiPrompt(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && generateWithAI()}
+          />
+          <button
+            style={{ ...btnStyle(`linear-gradient(135deg, ${CI.purple}, ${CI.magenta})`), opacity: aiLoading ? 0.6 : 1, whiteSpace: 'nowrap' }}
+            onClick={generateWithAI}
+            disabled={aiLoading}
+          >
+            {aiLoading ? '⏳' : '✨ สร้าง'}
+          </button>
+        </div>
+      </div>
 
       {/* Template Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>

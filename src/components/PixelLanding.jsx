@@ -2,6 +2,30 @@
 import { useState, useEffect, useRef } from 'react';
 
 const PIXEL_CHARS = [
+  // S
+  [
+    [0,1,1,1],
+    [1,0,0,0],
+    [0,1,1,0],
+    [0,0,0,1],
+    [1,1,1,0],
+  ],
+  // P
+  [
+    [1,1,1,0],
+    [1,0,0,1],
+    [1,1,1,0],
+    [1,0,0,0],
+    [1,0,0,0],
+  ],
+  // U
+  [
+    [1,0,0,1],
+    [1,0,0,1],
+    [1,0,0,1],
+    [1,0,0,1],
+    [0,1,1,0],
+  ],
   // B
   [
     [1,1,1,0],
@@ -10,25 +34,25 @@ const PIXEL_CHARS = [
     [1,0,0,1],
     [1,1,1,0],
   ],
-  // i
+  // U
   [
-    [1],
-    [0],
-    [1],
-    [1],
-    [1],
+    [1,0,0,1],
+    [1,0,0,1],
+    [1,0,0,1],
+    [1,0,0,1],
+    [0,1,1,0],
   ],
-  // Z
+  // S
   [
-    [1,1,1,1],
-    [0,0,1,0],
-    [0,1,0,0],
+    [0,1,1,1],
     [1,0,0,0],
-    [1,1,1,1],
+    [0,1,1,0],
+    [0,0,0,1],
+    [1,1,1,0],
   ],
 ];
 
-const COLORS = ['#00ADEF', '#E3007E', '#004175', '#00ADEF', '#E3007E'];
+const COLORS = ['#00ADEF', '#4A7FF7', '#8B5CF6', '#C044E0', '#E3007E', '#FF4D8D'];
 
 export default function PixelLanding({ onComplete }) {
   const canvasRef = useRef(null);
@@ -44,10 +68,11 @@ export default function PixelLanding({ onComplete }) {
   }, []);
 
   // Main animation timeline
+  // Total: 7000ms | Pixel phase: 0→0.57 (4000ms) | Title: 0.57→0.87 (2100ms) | Fade: 0.87→1 (900ms)
   useEffect(() => {
     let frame;
     let start = null;
-    const duration = 3500; // total animation ms
+    const duration = 7000; // total animation ms — SPU pixels visible ~4s
 
     function animate(ts) {
       if (!start) start = ts;
@@ -55,8 +80,8 @@ export default function PixelLanding({ onComplete }) {
       const p = Math.min(elapsed / duration, 1);
       setProgress(p);
 
-      if (p < 0.4) setPhase('pixels');
-      else if (p < 0.85) setPhase('title');
+      if (p < 0.57) setPhase('pixels');
+      else if (p < 0.87) setPhase('title');
       else setPhase('fade');
 
       if (p >= 1) {
@@ -84,9 +109,9 @@ export default function PixelLanding({ onComplete }) {
     setParticles(pts);
   }, []);
 
-  const pixelOpacity = phase === 'pixels' ? 1 : phase === 'title' ? Math.max(0, 1 - (progress - 0.4) * 4) : 0;
-  const titleOpacity = phase === 'title' ? Math.min(1, (progress - 0.4) * 3) : phase === 'fade' ? Math.max(0, 1 - (progress - 0.85) * 6) : 0;
-  const fadeOverlay = phase === 'fade' ? Math.min(1, (progress - 0.85) * 6.5) : 0;
+  const pixelOpacity = phase === 'pixels' ? 1 : phase === 'title' ? Math.max(0, 1 - (progress - 0.57) * 6) : 0;
+  const titleOpacity = phase === 'title' ? Math.min(1, (progress - 0.57) * 4) : phase === 'fade' ? Math.max(0, 1 - (progress - 0.87) * 8) : 0;
+  const fadeOverlay = phase === 'fade' ? Math.min(1, (progress - 0.87) * 8) : 0;
 
   return (
     <div className="pixel-landing" style={{ opacity: fadeOverlay < 1 ? 1 : 0 }}>
@@ -132,13 +157,13 @@ export default function PixelLanding({ onComplete }) {
             </div>
           ))}
         </div>
-        <div className="pixel-subtitle-text">CONTENT</div>
+        <div className="pixel-subtitle-text">BiZ CONTENT</div>
       </div>
 
       {/* Full title reveal */}
       <div className="pixel-title-area" style={{ opacity: titleOpacity, transform: `translateY(${(1 - titleOpacity) * 30}px)` }}>
         <h1 className="pixel-main-title">
-          <span className="pixel-biz">SPUBUS</span> BIZ CONTENT
+          <span className="pixel-biz">SPUBUS</span> BiZ CONTENT
         </h1>
         <p className="pixel-tagline">AI-Powered Content Generator</p>
         <p className="pixel-school">คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม</p>

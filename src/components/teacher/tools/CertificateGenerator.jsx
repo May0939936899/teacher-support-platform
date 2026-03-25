@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
+import DownloadDropdown from './DownloadDropdown';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -135,6 +136,34 @@ export default function CertificateGenerator() {
     });
   };
 
+  const downloadPNG = () => {
+    drawCertificate(form.name);
+    setTimeout(() => {
+      const link = document.createElement('a');
+      link.download = `certificate_${form.name || 'cert'}.png`;
+      link.href = canvasRef.current.toDataURL('image/png');
+      link.click();
+      toast.success('ดาวน์โหลด PNG แล้ว');
+    }, 100);
+  };
+
+  const downloadJPG = () => {
+    drawCertificate(form.name);
+    setTimeout(() => {
+      const canvas = canvasRef.current;
+      const offscreen = document.createElement('canvas');
+      offscreen.width = canvas.width; offscreen.height = canvas.height;
+      const ctx = offscreen.getContext('2d');
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, offscreen.width, offscreen.height);
+      ctx.drawImage(canvas, 0, 0);
+      const link = document.createElement('a');
+      link.download = `certificate_${form.name || 'cert'}.jpg`;
+      link.href = offscreen.toDataURL('image/jpeg', 0.95);
+      link.click();
+      toast.success('ดาวน์โหลด JPG แล้ว');
+    }, 100);
+  };
+
   const parseCsv = () => {
     const names = csvInput.split('\n').map(l => l.trim()).filter(Boolean);
     setBatchNames(names);
@@ -217,11 +246,13 @@ export default function CertificateGenerator() {
               background: '#f8fafc', color: '#374151', cursor: 'pointer', fontSize: '16px',
               fontFamily: 'inherit', fontWeight: 600,
             }}>👁 ดูตัวอย่าง</button>
-            <button onClick={downloadPDF} style={{
-              padding: '12px', borderRadius: '10px', border: 'none',
-              background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`, color: '#fff',
-              cursor: 'pointer', fontSize: '16px', fontFamily: 'inherit', fontWeight: 700,
-            }}>⬇️ Download PDF</button>
+            <DownloadDropdown
+              options={[
+                { label: 'PDF (แนะนำ)', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: downloadPDF },
+                { label: 'PNG', icon: '🖼️', ext: 'PNG', color: '#2563eb', onClick: downloadPNG },
+                { label: 'JPG', icon: '📷', ext: 'JPG', color: '#0369a1', onClick: downloadJPG },
+              ]}
+            />
           </div>
 
           {/* Batch mode */}

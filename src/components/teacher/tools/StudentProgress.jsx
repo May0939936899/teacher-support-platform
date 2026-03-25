@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import DownloadDropdown from './DownloadDropdown';
+import { downloadExcel, buildTableHTML, downloadHTMLAsPDF } from '@/lib/teacher/exportUtils';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -96,15 +98,21 @@ export default function StudentProgress() {
     return 'F';
   };
 
-  const exportCSV = () => {
-    if (students.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
-    let csv = 'รหัสนักศึกษา,ชื่อ,' + assignments.map(a => a.name).join(',') + ',เฉลี่ย\n';
-    students.forEach(s => {
+  const getProgressData = () => {
+    const headers = ['รหัสนักศึกษา', 'ชื่อ', ...assignments.map(a => a.name), 'เฉลี่ย', 'เกรด'];
+    const rows = students.map(s => {
       const sg = grades[s.id] || {};
       const avg = getStudentAvg(s.id);
-      csv += `${s.studentId},${s.name},${assignments.map(a => sg[a.id] ?? '').join(',')},${avg ?? ''}\n`;
+      return [s.studentId, s.name, ...assignments.map(a => sg[a.id] ?? ''), avg ?? '', getGrade(avg)];
     });
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    return { headers, rows };
+  };
+
+  const exportCSV = () => {
+    if (students.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
+    const { headers, rows } = getProgressData();
+    const lines = [headers.join(','), ...rows.map(r => r.join(','))];
+    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -112,6 +120,21 @@ export default function StudentProgress() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Export CSV สำเร็จ');
+  };
+
+  const exportExcelData = () => {
+    if (students.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
+    const { headers, rows } = getProgressData();
+    downloadExcel(headers, rows, `student_progress_${new Date().toISOString().slice(0, 10)}`, 'Progress');
+    toast.success('Export Excel สำเร็จ');
+  };
+
+  const exportPDFData = async () => {
+    if (students.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
+    const { headers, rows } = getProgressData();
+    const html = buildTableHTML('รายงานผลการเรียน', headers, rows);
+    await downloadHTMLAsPDF(html, `student_progress_${new Date().toISOString().slice(0, 10)}`);
+    toast.success('Export PDF สำเร็จ');
   };
 
   const selectedStudentData = selectedStudent ? students.find(s => s.id === selectedStudent) : null;
@@ -187,7 +210,13 @@ export default function StudentProgress() {
               onKeyDown={e => e.key === 'Enter' && addAssignment()} />
           </div>
           <button onClick={addAssignment} style={btnStyle}>+ เพิ่มงาน</button>
-          <button onClick={exportCSV} style={{ ...btnStyle, background: CI.gold, color: CI.dark }}>⬇ Export CSV</button>
+          <DownloadDropdown
+            options={[
+              { label: 'CSV', icon: '📊', ext: 'CSV', color: '#0369a1', onClick: exportCSV },
+              { label: 'Excel', icon: '📗', ext: 'XLS', color: '#16a34a', onClick: exportExcelData },
+              { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: exportPDFData },
+            ]}
+          />
         </div>
 
         {/* Table View */}

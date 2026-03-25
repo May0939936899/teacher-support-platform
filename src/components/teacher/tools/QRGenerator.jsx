@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import DownloadDropdown from './DownloadDropdown';
 
 export default function QRGenerator() {
   const [url, setUrl] = useState('');
@@ -57,6 +58,29 @@ export default function QRGenerator() {
     link.href = canvasRef.current.toDataURL('image/png');
     link.click();
     toast.success('ดาวน์โหลด PNG แล้ว');
+  };
+
+  const downloadJPG = () => {
+    // Draw on white background first (JPG has no alpha)
+    const canvas = canvasRef.current;
+    const offscreen = document.createElement('canvas');
+    offscreen.width = canvas.width;
+    offscreen.height = canvas.height;
+    const ctx = offscreen.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, offscreen.width, offscreen.height);
+    ctx.drawImage(canvas, 0, 0);
+    const link = document.createElement('a');
+    link.download = 'qrcode.jpg';
+    link.href = offscreen.toDataURL('image/jpeg', 0.95);
+    link.click();
+    toast.success('ดาวน์โหลด JPG แล้ว');
+  };
+
+  const downloadPDF = async () => {
+    const { downloadCanvasAsPDF } = await import('@/lib/teacher/exportUtils');
+    await downloadCanvasAsPDF(canvasRef.current, 'qrcode');
+    toast.success('ดาวน์โหลด PDF แล้ว');
   };
 
   const downloadSVG = async () => {
@@ -210,22 +234,16 @@ export default function QRGenerator() {
           </div>
 
           {generated && (
-            <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-              <button onClick={downloadPNG} style={{
-                flex: 1, padding: '10px', borderRadius: '10px', border: 'none',
-                background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 600,
-                fontSize: '13px', fontFamily: 'inherit',
-              }}>
-                ⬇️ PNG
-              </button>
-              <button onClick={downloadSVG} style={{
-                flex: 1, padding: '10px', borderRadius: '10px', border: '1px solid #e2e8f0',
-                background: '#fff', color: '#374151', cursor: 'pointer', fontWeight: 600,
-                fontSize: '13px', fontFamily: 'inherit',
-              }}>
-                ⬇️ SVG
-              </button>
-            </div>
+            <DownloadDropdown
+              style={{ width: '100%' }}
+              btnStyle={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+              options={[
+                { label: 'PNG (แนะนำ)', icon: '🖼️', ext: 'PNG', color: '#2563eb', onClick: downloadPNG },
+                { label: 'JPG', icon: '📷', ext: 'JPG', color: '#0369a1', onClick: downloadJPG },
+                { label: 'SVG (Vector)', icon: '✏️', ext: 'SVG', color: '#7c3aed', onClick: downloadSVG },
+                { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: downloadPDF },
+              ]}
+            />
           )}
 
           {generated && (

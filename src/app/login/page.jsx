@@ -119,7 +119,7 @@ function LoginContent() {
 
         {/* Brand */}
         <div className="login-brand">
-          <h1><span className="text-gradient">SPUBUS BIZ CONTENT</span></h1>
+          <h1><span className="text-gradient">SPUBUS BiZ CONTENT</span></h1>
           <p>AI-Powered Content Generator</p>
           <p className="login-sub">คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม</p>
         </div>

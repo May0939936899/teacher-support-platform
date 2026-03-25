@@ -112,7 +112,7 @@ export default function ContentForm({ onContentGenerated, preview, setPreview, p
   return (
     <div className="form-card">
       <div className="form-header">
-        <h2>สร้างคอนเทนต์ด้วย AI</h2>
+        <h2 style={{ width:'100%', textAlign:'center', background:'linear-gradient(135deg, #f0f9ff 0%, #e8f4fd 100%)', padding:'14px 24px', borderRadius:'12px', color:'#0c4a6e', border:'1px solid rgba(186,230,253,0.4)' }}>✨ สร้างคอนเทนต์ด้วย AI</h2>
         <p>ระบุเพื่อช่วยแต่งแคปชั่นให้ปังตามแพลตฟอร์มต่างๆ ทันที</p>
       </div>
 

@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import DownloadDropdown from './DownloadDropdown';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -104,10 +105,12 @@ export default function SlideMaker() {
     toast.success('📋 คัดลอกทั้งหมดแล้ว');
   };
 
+  const getSlidesText = () => slides.map((s, i) =>
+    `=== Slide ${i + 1}: ${s.title} ===\n${(s.bullets || []).map(b => `• ${b}`).join('\n')}\n\nSpeaker Notes:\n${s.speakerNotes || ''}`
+  ).join('\n\n' + '='.repeat(50) + '\n\n');
+
   const downloadText = () => {
-    const text = slides.map((s, i) => (
-      `=== Slide ${i + 1}: ${s.title} ===\n${(s.bullets || []).map(b => `• ${b}`).join('\n')}\n\nSpeaker Notes:\n${s.speakerNotes || ''}`
-    )).join('\n\n' + '='.repeat(50) + '\n\n');
+    const text = getSlidesText();
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -115,7 +118,14 @@ export default function SlideMaker() {
     a.download = `slides-${topic.replace(/\s+/g, '-')}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('💾 ดาวน์โหลดสำเร็จ');
+    toast.success('💾 ดาวน์โหลด TXT สำเร็จ');
+  };
+
+  const downloadPDF = async () => {
+    const { buildTextHTML, downloadHTMLAsPDF } = await import('@/lib/teacher/exportUtils');
+    const html = buildTextHTML(`สไลด์: ${topic}`, getSlidesText());
+    await downloadHTMLAsPDF(html, `slides-${topic.replace(/\s+/g, '-')}`);
+    toast.success('💾 ดาวน์โหลด PDF สำเร็จ');
   };
 
   const STYLES = [
@@ -253,10 +263,12 @@ export default function SlideMaker() {
                 padding: '10px 20px', borderRadius: '10px', border: `2px solid ${CI.cyan}`,
                 background: '#fff', color: CI.cyan, fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
               }}>📋 คัดลอกทั้งหมด</button>
-              <button onClick={downloadText} style={{
-                padding: '10px 20px', borderRadius: '10px', border: 'none',
-                background: CI.purple, color: '#fff', fontSize: '14px', fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
-              }}>💾 ดาวน์โหลด .txt</button>
+              <DownloadDropdown
+                options={[
+                  { label: 'Text', icon: '📝', ext: 'TXT', color: '#64748b', onClick: downloadText },
+                  { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: downloadPDF },
+                ]}
+              />
             </div>
           </div>
 

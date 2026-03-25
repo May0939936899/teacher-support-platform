@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import DownloadDropdown from './DownloadDropdown';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -272,7 +273,46 @@ export default function AutoPosterMaker() {
       link.download = `poster-${platform}-${Date.now()}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
-      toast.success('ดาวน์โหลดสำเร็จ!');
+      toast.success('ดาวน์โหลด PNG สำเร็จ!');
+    } catch (e) {
+      toast.error('ไม่สามารถ Export ได้: ' + e.message);
+    } finally {
+      setExporting(false);
+    }
+  }, [platform]);
+
+  const exportJPG = useCallback(async () => {
+    if (!posterRef.current) return;
+    setExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(posterRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: posterRef.current.scrollWidth, height: posterRef.current.scrollHeight });
+      const link = document.createElement('a');
+      link.download = `poster-${platform}-${Date.now()}.jpg`;
+      link.href = canvas.toDataURL('image/jpeg', 0.92);
+      link.click();
+      toast.success('ดาวน์โหลด JPG สำเร็จ!');
+    } catch (e) {
+      toast.error('ไม่สามารถ Export ได้: ' + e.message);
+    } finally {
+      setExporting(false);
+    }
+  }, [platform]);
+
+  const exportPDF = useCallback(async () => {
+    if (!posterRef.current) return;
+    setExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(posterRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: posterRef.current.scrollWidth, height: posterRef.current.scrollHeight });
+      const imgData = canvas.toDataURL('image/png');
+      const { jsPDF } = await import('jspdf');
+      const w = canvas.width * 0.75;
+      const h = canvas.height * 0.75;
+      const pdf = new jsPDF({ orientation: w > h ? 'l' : 'p', unit: 'pt', format: [w, h] });
+      pdf.addImage(imgData, 'PNG', 0, 0, w, h);
+      pdf.save(`poster-${platform}-${Date.now()}.pdf`);
+      toast.success('ดาวน์โหลด PDF สำเร็จ!');
     } catch (e) {
       toast.error('ไม่สามารถ Export ได้: ' + e.message);
     } finally {
@@ -712,25 +752,17 @@ export default function AutoPosterMaker() {
 
               {/* Action Buttons */}
               <div style={{ display: 'flex', gap: '12px', marginTop: '16px', width: '100%' }}>
-                <button
-                  onClick={exportPNG}
+                <DownloadDropdown
+                  style={{ flex: 1 }}
+                  btnStyle={{ width: '100%', justifyContent: 'center', padding: '12px', fontSize: '15px', opacity: exporting ? 0.6 : 1 }}
                   disabled={exporting}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`,
-                    color: '#fff',
-                    cursor: exporting ? 'not-allowed' : 'pointer',
-                    fontWeight: 700,
-                    fontSize: '15px',
-                    fontFamily: 'inherit',
-                    opacity: exporting ? 0.6 : 1,
-                  }}
-                >
-                  {exporting ? '⏳ กำลัง Export...' : '📥 ดาวน์โหลด PNG'}
-                </button>
+                  label={exporting ? 'กำลัง Export...' : 'ดาวน์โหลด'}
+                  options={[
+                    { label: 'PNG (แนะนำ)', icon: '🖼️', ext: 'PNG', color: '#2563eb', onClick: exportPNG },
+                    { label: 'JPG', icon: '📷', ext: 'JPG', color: '#0369a1', onClick: exportJPG },
+                    { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: exportPDF },
+                  ]}
+                />
                 <button
                   onClick={generatePoster}
                   disabled={loading}

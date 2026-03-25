@@ -5,20 +5,41 @@ import { createAdminClient } from '@/lib/supabase-server';
 // Attendance API — Hybrid: Supabase (if table exists) + In-Memory fallback
 // ============================================================
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+function jsonRes(data, statusOrObj = 200) {
+  const status = typeof statusOrObj === 'number' ? statusOrObj : (statusOrObj?.status || 200);
+  return NextResponse.json(data, { status, headers: corsHeaders });
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
 const memoryStore = globalThis.__attendanceSessions || (globalThis.__attendanceSessions = new Map());
 
 let supabaseAvailable = null;
+let supabaseCheckedAt = 0;
 
 async function checkSupabase() {
-  if (supabaseAvailable !== null) return supabaseAvailable;
+  // Re-check every 60 seconds in case table was created
+  if (supabaseAvailable !== null && Date.now() - supabaseCheckedAt < 60000) return supabaseAvailable;
   try {
     const supabase = createAdminClient();
-    if (!supabase) { supabaseAvailable = false; return false; }
+    if (!supabase) { supabaseAvailable = false; supabaseCheckedAt = Date.now(); return false; }
     const { error } = await supabase.from('attendance_sessions').select('id').limit(1);
     supabaseAvailable = !error || (error.code !== 'PGRST205' && error.code !== '42P01');
+    supabaseCheckedAt = Date.now();
+    console.log('[Attendance] Supabase check:', supabaseAvailable ? 'AVAILABLE' : 'NOT AVAILABLE', error?.message || '');
     return supabaseAvailable;
-  } catch {
+  } catch (e) {
+    console.error('[Attendance] Supabase check error:', e.message);
     supabaseAvailable = false;
+    supabaseCheckedAt = Date.now();
     return false;
   }
 }
@@ -88,20 +109,20 @@ export async function GET(request) {
 
     if (action === 'list') {
       const sessions = await listSessions();
-      return NextResponse.json({ sessions });
+      return jsonRes({ sessions });
     }
 
-    if (!code) return NextResponse.json({ error: 'Missing session code' }, { status: 400 });
+    if (!code) return jsonRes({ error: 'Missing session code' }, { status: 400 });
 
     const session = await getSession(code.toUpperCase());
     if (!session) {
-      return NextResponse.json({ error: 'ไม่พบ Session หรือหมดเวลาแล้ว' }, { status: 404 });
+      return jsonRes({ error: 'ไม่พบ Session หรือหมดเวลาแล้ว' }, { status: 404 });
     }
 
-    return NextResponse.json({ session });
+    return jsonRes({ session });
   } catch (err) {
     console.error('Attendance GET error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return jsonRes({ error: err.message }, { status: 500 });
   }
 }
 
@@ -110,7 +131,7 @@ export async function POST(request) {
   try {
     const body = await request.json();
     if (!body.courseName) {
-      return NextResponse.json({ error: 'Missing course name' }, { status: 400 });
+      return jsonRes({ error: 'Missing course name' }, { status: 400 });
     }
 
     const code = Math.random().toString(36).substring(2, 7).toUpperCase();
@@ -134,10 +155,10 @@ export async function POST(request) {
 
     const saved = await saveSession(session);
     const useSupabase = await checkSupabase();
-    return NextResponse.json({ session: saved, code, storage: useSupabase ? 'supabase' : 'memory' });
+    return jsonRes({ session: saved, code, storage: useSupabase ? 'supabase' : 'memory' });
   } catch (err) {
     console.error('Attendance POST error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return jsonRes({ error: err.message }, { status: 500 });
   }
 }
 
@@ -145,38 +166,41 @@ export async function POST(request) {
 export async function PUT(request) {
   try {
     const { code, action } = await request.json();
-    if (!code) return NextResponse.json({ error: 'Missing code' }, { status: 400 });
+    if (!code) return jsonRes({ error: 'Missing code' }, { status: 400 });
 
     if (action === 'close') {
       const session = await updateSession(code.toUpperCase(), { active: false });
-      if (!session) return NextResponse.json({ error: 'ไม่พบ Session' }, { status: 404 });
-      return NextResponse.json({ session });
+      if (!session) return jsonRes({ error: 'ไม่พบ Session' }, { status: 404 });
+      return jsonRes({ session });
     }
 
-    return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+    return jsonRes({ error: 'Unknown action' }, { status: 400 });
   } catch (err) {
     console.error('Attendance PUT error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return jsonRes({ error: err.message }, { status: 500 });
   }
 }
 
 // PATCH — student check-in
 export async function PATCH(request) {
   try {
-    const { code, name, studentId, deviceId, gps } = await request.json();
-    if (!code || !name) return NextResponse.json({ error: 'กรุณากรอกรหัสและชื่อ' }, { status: 400 });
+    let body;
+    try { body = await request.json(); } catch { return jsonRes({ error: 'Invalid request body' }, { status: 400 }); }
+    const { code, name, studentId, deviceId, gps } = body;
+    console.log('[Attendance PATCH] code:', code, 'name:', name, 'studentId:', studentId);
+    if (!code || !name) return jsonRes({ error: 'กรุณากรอกรหัสและชื่อ' }, { status: 400 });
 
     const upperCode = code.toUpperCase();
     const session = await getSession(upperCode);
-    if (!session) return NextResponse.json({ error: 'ไม่พบ Session หรือหมดเวลาแล้ว' }, { status: 404 });
+    if (!session) return jsonRes({ error: 'ไม่พบ Session หรือหมดเวลาแล้ว' }, { status: 404 });
     if (!session.active || Date.now() > session.expires_at) {
-      return NextResponse.json({ error: 'Session หมดเวลาแล้ว' }, { status: 400 });
+      return jsonRes({ error: 'Session หมดเวลาแล้ว' }, { status: 400 });
     }
 
     // Check duplicate
     const records = session.records || [];
     const alreadyChecked = records.some(r => r.deviceId === deviceId || (studentId && r.studentId === studentId));
-    if (alreadyChecked) return NextResponse.json({ error: 'เช็กชื่อไปแล้ว' }, { status: 400 });
+    if (alreadyChecked) return jsonRes({ error: 'เช็กชื่อไปแล้ว' }, { status: 400 });
 
     // Calculate distance
     let distance = null;
@@ -205,10 +229,10 @@ export async function PATCH(request) {
     const updatedRecords = [...records, record];
     const updated = await updateSession(upperCode, { records: updatedRecords });
 
-    return NextResponse.json({ session: updated, record, withinRange, distance });
+    return jsonRes({ session: updated, record, withinRange, distance });
   } catch (err) {
     console.error('Attendance PATCH error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return jsonRes({ error: err.message }, { status: 500 });
   }
 }
 
@@ -225,17 +249,17 @@ export async function DELETE(request) {
       for (const s of sessions) {
         await deleteSession(s.id);
       }
-      return NextResponse.json({ ok: true, deleted: sessions.length });
+      return jsonRes({ ok: true, deleted: sessions.length });
     }
 
     if (code) {
       await deleteSession(code.toUpperCase());
-      return NextResponse.json({ ok: true });
+      return jsonRes({ ok: true });
     }
 
-    return NextResponse.json({ error: 'Missing code' }, { status: 400 });
+    return jsonRes({ error: 'Missing code' }, { status: 400 });
   } catch (err) {
     console.error('Attendance DELETE error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return jsonRes({ error: err.message }, { status: 500 });
   }
 }

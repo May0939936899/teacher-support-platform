@@ -11,26 +11,16 @@ const CI = {
 
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
 
-const PHASE1_TOOLS = [
-  { id: 'smart-quiz', labelKey: 'tool_smart_quiz', icon: '📝', descKey: 'desc_smart_quiz', color: 'cyan' },
-  { id: 'attendance-tracker', labelKey: 'tool_attendance', icon: '📅', descKey: 'desc_attendance', color: 'magenta' },
-  { id: 'letter-writer', labelKey: 'tool_letter', icon: '✉️', descKey: 'desc_letter', color: 'purple' },
-  { id: 'plagiarism-checker', labelKey: 'tool_plagiarism', icon: '🔍', descKey: 'desc_plagiarism', color: 'purple' },
-  { id: 'ai-detector', labelKey: 'tool_ai_detector', icon: '🤖', descKey: 'desc_ai_detector', color: 'cyan' },
-  { id: 'qr-generator', labelKey: 'tool_qr', icon: '🔲', descKey: 'desc_qr', color: 'magenta' },
-  { id: 'url-shortener', labelKey: 'tool_url', icon: '🔗', descKey: 'desc_url', color: 'purple' },
+const HIGHLIGHT_TOOLS = [
+  { id: 'smart-quiz', labelKey: 'tool_smart_quiz', icon: '📝', desc: 'AI ออกข้อสอบ + QR ให้นักศึกษาทำ', color: 'cyan' },
+  { id: 'live-quiz', labelKey: 'tool_live_quiz', icon: '🎮', desc: 'เกมตอบคำถาม Real-time + Leaderboard', color: 'cyan' },
+  { id: 'interactive-activity', labelKey: 'tool_interactive', icon: '🎯', desc: 'Word Cloud / Poll / Brainstorm + QR', color: 'cyan' },
+  { id: 'attendance-tracker', labelKey: 'tool_attendance', icon: '📅', desc: 'เช็กชื่อด้วย QR Code + GPS', color: 'magenta' },
+  { id: 'marketing-content', labelKey: 'tool_marketing_content', icon: '✨', desc: 'AI สร้างคอนเทนต์สไตล์ SPUBUS', color: 'magenta' },
+  { id: 'lesson-planner', labelKey: 'tool_lesson_planner', icon: '📋', desc: 'AI สร้างแผนการสอน TQF', color: 'purple' },
+  { id: 'ebook-builder', labelKey: 'tool_ebook', icon: '📖', desc: 'AI สร้าง E-book ทีละบท', color: 'purple' },
+  { id: 'letter-writer', labelKey: 'tool_letter', icon: '✉️', desc: 'AI เขียนจดหมายราชการ', color: 'purple' },
 ];
-
-// Fallback descriptions (if i18n key not found)
-const DESC_FALLBACK = {
-  desc_smart_quiz: 'ออกข้อสอบ + QR Code สำหรับนักศึกษา',
-  desc_attendance: 'เช็กชื่อด้วย QR Code + GPS',
-  desc_letter: 'สร้างจดหมายราชการภาษาไทย',
-  desc_plagiarism: 'ตรวจ Similarity ของงานนักศึกษา',
-  desc_ai_detector: 'ตรวจว่า AI เขียนหรือมนุษย์เขียน',
-  desc_qr: 'สร้าง QR Code จาก URL',
-  desc_url: 'ย่อลิงก์ + Track Clicks',
-};
 
 const COLOR_STYLES = {
   cyan: { bg: CI.cyan, light: '#e6f9ff', border: '#80daff', text: '#0090b8' },
@@ -40,9 +30,9 @@ const COLOR_STYLES = {
 
 export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, lang = 'th' }) {
   const stats = [
-    { label: t(lang, 'stat_total_tools'), value: '35', icon: '🛠️', color: CI.cyan },
-    { label: t(lang, 'stat_phase1_ready'), value: '7', icon: '✅', color: CI.magenta },
-    { label: 'AI Features', value: '12', icon: '🤖', color: CI.purple },
+    { label: t(lang, 'stat_total_tools'), value: '38', icon: '🛠️', color: CI.cyan },
+    { label: t(lang, 'stat_phase1_ready'), value: '38', icon: '✅', color: '#10b981' },
+    { label: 'AI Features', value: '20', icon: '🤖', color: CI.purple },
     { label: t(lang, 'stat_main_areas'), value: '4', icon: '🎓', color: CI.gold },
   ];
 
@@ -98,8 +88,8 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
         {/* Title */}
         <div style={{ position: 'relative', zIndex: 2, marginBottom: '12px' }}>
           <h1 style={{ margin: '0 0 2px', fontSize: '28px', fontWeight: 800, letterSpacing: '0.02em' }}>
-            <span style={{ color: CI.cyan }}>SPU</span><span style={{ color: CI.magenta }}>BUS</span>
-            <span style={{ color: '#fff', marginLeft: '10px', fontWeight: 600 }}>Teacher Support</span>
+            <span style={{ color: '#fff' }}>SPUBUS</span>
+            <span style={{ color: '#fff', marginLeft: '10px', fontWeight: 600 }}>SUPPORT</span>
           </h1>
         </div>
 
@@ -169,39 +159,22 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
         </div>
       </div>
 
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '28px', padding: '24px 24px 0' }}>
-        {stats.map(s => (
-          <div key={s.label} style={{
-            background: '#fff', borderRadius: '14px', padding: '18px',
-            border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px',
-          }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: s.color + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
-              {s.icon}
-            </div>
-            <div>
-              <div style={{ fontSize: '30px', fontWeight: 800, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: '15px', color: '#64748b' }}>{s.label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Phase 1 - Ready to use */}
       <div style={{ marginBottom: '28px', padding: '0 24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
           <div style={{ width: '4px', height: '24px', borderRadius: '2px', background: CI.cyan }} />
           <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: '#1e293b' }}>
-            🚀 {t(lang, 'dashboard_phase1')}
+            🚀 เครื่องมือแนะนำ
           </h2>
           <span style={{ padding: '2px 10px', borderRadius: '20px', background: '#dcfce7', color: '#16a34a', fontSize: '15px', fontWeight: 600 }}>
-            7 {t(lang, 'tools_count')}
+            ✓ พร้อมใช้ทั้ง 38 เครื่องมือ
           </span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
-          {PHASE1_TOOLS.map(tool => {
+          {HIGHLIGHT_TOOLS.map(tool => {
             const c = COLOR_STYLES[tool.color];
-            const desc = t(lang, tool.descKey) !== tool.descKey ? t(lang, tool.descKey) : DESC_FALLBACK[tool.descKey] || '';
+            const desc = tool.desc;
             return (
               <button
                 key={tool.id}

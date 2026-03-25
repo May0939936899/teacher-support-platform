@@ -86,7 +86,7 @@ function BusSplashScreen({ onFinish }) {
           background: 'linear-gradient(90deg, #00b4e6, #7c4dff, #e6007e)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
-          SPUBUS Teacher Support
+          SPUBUS SUPPORT
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', marginTop: '8px' }}>
           ระบบสนับสนุนการสอนสำหรับอาจารย์
@@ -226,7 +226,7 @@ function TeacherLanding() {
       submitLogin: 'เข้าสู่ระบบ',
       submitReg: 'สมัครสมาชิก',
       close: 'ปิด',
-      footer: '© 2026 SPUBUS Teacher Support — คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม',
+      footer: '© 2026 SPUBUS SUPPORT — คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม',
     },
     en: {
       hero_pre: 'AI-Powered Platform',
@@ -259,7 +259,7 @@ function TeacherLanding() {
       submitLogin: 'Sign In',
       submitReg: 'Sign Up',
       close: 'Close',
-      footer: '© 2026 SPUBUS Teacher Support — School of Business, Sripatum University',
+      footer: '© 2026 SPUBUS SUPPORT — School of Business, Sripatum University',
     },
   }[lang];
 
@@ -344,7 +344,6 @@ function TeacherLanding() {
         <div style={{ width: '1px', height: '28px', background: 'rgba(255,255,255,0.1)' }} />
         <span style={{ fontSize: '24px', fontWeight: 800, letterSpacing: '1.5px' }}>
           <span style={{ color: '#fff' }}>SPUBUS</span>{' '}
-          <span style={{ color: CI.cyan }}>TEACHER</span>{' '}
           <span style={{ color: CI.magenta }}>SUPPORT</span>
         </span>
         <div style={{ flex: 1 }} />
@@ -580,7 +579,6 @@ function TeacherLanding() {
               <img src="/spu-bus-logo.png" alt="SPUBUS" style={{ height: '38px', marginBottom: '14px' }} />
               <h2 style={{ fontSize: '26px', fontWeight: 800, margin: 0 }}>
                 <span style={{ color: '#fff' }}>SPUBUS </span>
-                <span style={{ color: CI.cyan }}>TEACHER </span>
                 <span style={{ color: CI.magenta }}>SUPPORT</span>
               </h2>
             </div>

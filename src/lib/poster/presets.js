@@ -3,14 +3,24 @@
 // ===================================================
 
 export const PLATFORM_PRESETS = [
-  { id: 'fb-post',    name: 'Facebook Post',    w: 1200, h: 1200, icon: '📘', group: 'square' },
-  { id: 'fb-cover',   name: 'Facebook Cover',   w: 1640, h: 624,  icon: '📘', group: 'horizontal' },
-  { id: 'ig-post',    name: 'Instagram Post',   w: 1080, h: 1080, icon: '📸', group: 'square' },
-  { id: 'ig-story',   name: 'Instagram Story',  w: 1080, h: 1920, icon: '📸', group: 'vertical' },
-  { id: 'tiktok',     name: 'TikTok Story',     w: 1080, h: 1920, icon: '🎵', group: 'vertical' },
-  { id: 'yt-thumb',   name: 'YouTube Thumbnail',w: 1280, h: 720,  icon: '▶️', group: 'horizontal' },
-  { id: 'line-banner', name: 'LINE Banner',     w: 1200, h: 628,  icon: '💬', group: 'horizontal' },
-  { id: 'lemon8',     name: 'Lemon8 Cover',     w: 1242, h: 1660, icon: '🍋', group: 'vertical' },
+  // ── Social Media ───────────────────────────────────────────────
+  { id: 'fb-post',    name: 'Facebook Post',    w: 1200, h: 1200, icon: '📘', group: 'square',     category: 'social' },
+  { id: 'fb-cover',   name: 'Facebook Cover',   w: 1640, h: 624,  icon: '📘', group: 'horizontal', category: 'social' },
+  { id: 'ig-post',    name: 'Instagram Post',   w: 1080, h: 1080, icon: '📸', group: 'square',     category: 'social' },
+  { id: 'ig-story',   name: 'Instagram Story',  w: 1080, h: 1920, icon: '📸', group: 'vertical',   category: 'social' },
+  { id: 'tiktok',     name: 'TikTok Story',     w: 1080, h: 1920, icon: '🎵', group: 'vertical',   category: 'social' },
+  { id: 'yt-thumb',   name: 'YouTube Thumbnail',w: 1280, h: 720,  icon: '▶️', group: 'horizontal', category: 'social' },
+  { id: 'line-banner', name: 'LINE Banner',     w: 1200, h: 628,  icon: '💬', group: 'horizontal', category: 'social' },
+  { id: 'lemon8',     name: 'Lemon8 Cover',     w: 1242, h: 1660, icon: '🍋', group: 'vertical',   category: 'social' },
+  // ── Device / Print ─────────────────────────────────────────────
+  { id: 'desktop-hd',  name: 'จอคอมพิวเตอร์ HD',  w: 1920, h: 1080, icon: '🖥️', group: 'horizontal', category: 'device' },
+  { id: 'desktop-4k',  name: 'จอคอมพิวเตอร์ 4K',  w: 3840, h: 2160, icon: '🖥️', group: 'horizontal', category: 'device' },
+  { id: 'tablet-land', name: 'แท็บเล็ต แนวนอน',   w: 2048, h: 1536, icon: '📱', group: 'horizontal', category: 'device' },
+  { id: 'tablet-port', name: 'แท็บเล็ต แนวตั้ง',   w: 1536, h: 2048, icon: '📱', group: 'vertical',   category: 'device' },
+  { id: 'mobile-port', name: 'มือถือ แนวตั้ง',      w: 1080, h: 1920, icon: '📲', group: 'vertical',   category: 'device' },
+  { id: 'mobile-land', name: 'มือถือ แนวนอน',       w: 1920, h: 1080, icon: '📲', group: 'horizontal', category: 'device' },
+  { id: 'a4-port',     name: 'A4 แนวตั้ง (พิมพ์)', w: 2480, h: 3508, icon: '🖨️', group: 'vertical',   category: 'print' },
+  { id: 'a4-land',     name: 'A4 แนวนอน (พิมพ์)', w: 3508, h: 2480, icon: '🖨️', group: 'horizontal', category: 'print' },
 ];
 
 // ===================================================

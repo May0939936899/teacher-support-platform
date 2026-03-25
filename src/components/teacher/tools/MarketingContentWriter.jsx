@@ -6,13 +6,16 @@ const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc10
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
 
 const HEADLINES = [
-  'โปรโมทหลักสูตรและเปิดรับสมัครนักศึกษาใหม่',
-  'แนะนำจุดเด่นและบรรยากาศการเรียนการสอนของคณะ',
-  'แชร์ความสำเร็จและประสบการณ์ของศิษย์เก่า/นักศึกษาปัจจุบัน',
   'ประชาสัมพันธ์กิจกรรม โครงการ หรือเวิร์กชอปของคณะ',
+  'โปรโมทหลักสูตรและเปิดรับสมัครนักศึกษาใหม่',
+  'แชร์ความสำเร็จและประสบการณ์ของศิษย์เก่า/นักศึกษาปัจจุบัน',
+  'สรุปกิจกรรม ศึกษาดูงาน หรือ Business Trip',
+  'แนะนำจุดเด่นและบรรยากาศการเรียนการสอนของคณะ',
   'ให้ความรู้ ทริคทางธุรกิจ หรือเทรนด์ใหม่ๆ ที่น่าสนใจ',
   'เชิญชวนร่วมงาน Open House และแนะแนวการศึกษา',
   'ประกาศข่าวสารและความร่วมมือกับองค์กรธุรกิจชั้นนำ',
+  'แนะนำวิทยากรพิเศษ / Guest Speaker',
+  'รับสมัคร Workshop / อบรมพิเศษ',
 ];
 
 const CATEGORIES = [
@@ -47,6 +50,10 @@ export default function MarketingContentWriter() {
     category: '',
     platform: 'facebook',
     tone: 'professional',
+    eventName: '',
+    speaker: '',
+    dateInfo: '',
+    location: '',
     keyPoints: '',
   });
   const [preview, setPreview] = useState(null);
@@ -106,6 +113,10 @@ export default function MarketingContentWriter() {
             category: form.category,
             platform: form.platform,
             tone: form.tone,
+            eventName: form.eventName,
+            speaker: form.speaker,
+            dateInfo: form.dateInfo,
+            location: form.location,
             keyPoints: form.keyPoints,
           },
         }),
@@ -128,7 +139,7 @@ export default function MarketingContentWriter() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', fontFamily: FONT }}>
-      <div style={{ display: 'grid', gridTemplateColumns: result ? '420px 1fr' : '1fr', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: result ? '480px 1fr' : '1fr', gap: '24px' }}>
         {/* ---- Form Card ---- */}
         <div style={card}>
           <h3 style={{ margin: '0 0 4px', fontSize: '22px', color: '#1e293b', fontWeight: 700 }}>
@@ -140,15 +151,32 @@ export default function MarketingContentWriter() {
 
           {/* Headline */}
           <div style={{ marginBottom: '16px' }}>
-            <label style={lbl}>หัวข้อโพสต์ (Headline) *</label>
-            <select
+            <label style={lbl}>เป้าหมายของโพสต์ *</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+              {HEADLINES.map((h, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setForm(v => ({ ...v, title: h }))}
+                  style={{
+                    padding: '6px 12px', borderRadius: '8px', fontSize: '13px',
+                    border: form.title === h ? `2px solid ${CI.cyan}` : '1px solid #e2e8f0',
+                    background: form.title === h ? '#e0f7fa' : '#f8fafc',
+                    color: form.title === h ? CI.dark : '#64748b',
+                    cursor: 'pointer', fontFamily: 'inherit', fontWeight: form.title === h ? 700 : 500,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {h}
+                </button>
+              ))}
+            </div>
+            <input
               value={form.title}
               onChange={e => setForm(v => ({ ...v, title: e.target.value }))}
-              style={{ ...inp, color: form.title ? '#1e293b' : '#94a3b8' }}
-            >
-              <option value="" disabled hidden>เลือกเป้าหมายของคอนเทนต์...</option>
-              {HEADLINES.map((h, i) => <option key={i} value={h} style={{ color: '#1e293b' }}>{h}</option>)}
-            </select>
+              placeholder="หรือพิมพ์เป้าหมายเอง..."
+              style={inp}
+            />
           </div>
 
           {/* Category */}
@@ -218,6 +246,50 @@ export default function MarketingContentWriter() {
                   {t.icon} {t.name}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Event Name */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={lbl}>ชื่อกิจกรรม / โครงการ / ซีรีส์</label>
+            <input
+              value={form.eventName}
+              onChange={e => setForm(v => ({ ...v, eventName: e.target.value }))}
+              placeholder='เช่น "SPUBUS MANAGEMENT TALK : THE WINNER STORIES"'
+              style={inp}
+            />
+          </div>
+
+          {/* Speaker */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={lbl}>วิทยากร / บุคคลสำคัญ (ถ้ามี)</label>
+            <input
+              value={form.speaker}
+              onChange={e => setForm(v => ({ ...v, speaker: e.target.value }))}
+              placeholder='เช่น "คุณศรศักดิ์ อังสุภานิช ประธานสภาอุตฯ จ.สตูล"'
+              style={inp}
+            />
+          </div>
+
+          {/* Date & Location row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <label style={lbl}>วัน/เวลา (ถ้ามี)</label>
+              <input
+                value={form.dateInfo}
+                onChange={e => setForm(v => ({ ...v, dateInfo: e.target.value }))}
+                placeholder='เช่น "4-7 มีนาคม 2569"'
+                style={inp}
+              />
+            </div>
+            <div>
+              <label style={lbl}>สถานที่ (ถ้ามี)</label>
+              <input
+                value={form.location}
+                onChange={e => setForm(v => ({ ...v, location: e.target.value }))}
+                placeholder='เช่น "ไต้หวัน" หรือ "ห้อง Auditorium"'
+                style={inp}
+              />
             </div>
           </div>
 

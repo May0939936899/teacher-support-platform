@@ -26,7 +26,7 @@ export default function SmartQuiz() {
   const [quiz, setQuiz] = useState({ title: '', description: '', timeLimit: 30, questions: [] });
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
-  const [studentView, setStudentView] = useState({ sessionCode: '', step: 'join', answers: {}, submitted: false });
+  const [studentView, setStudentView] = useState({ sessionCode: '', step: 'join', answers: {}, submitted: false, studentId: '', firstName: '', lastName: '' });
   const qrRef = useRef(null);
   const fileRef = useRef(null);
 
@@ -366,6 +366,8 @@ export default function SmartQuiz() {
     if (!quiz.title || quiz.questions.length === 0) { toast.error('กรุณากรอกชื่อ Quiz และเพิ่มคำถามอย่างน้อย 1 ข้อ'); return; }
     const emptyQ = quiz.questions.find(q => !q.text.trim());
     if (emptyQ) { toast.error('มีคำถามที่ยังไม่ได้กรอก กรุณาตรวจสอบ'); return; }
+    const missingAnswer = quiz.questions.find(q => (q.type === 'MC' || q.type === 'TF') && !q.answer);
+    if (missingAnswer) { toast.error('มีข้อที่ยังไม่ได้ติ๊กเฉลย กรุณาเลือกคำตอบที่ถูกต้องก่อน'); return; }
     try {
       const res = await fetch(QUIZ_API, {
         method: 'POST',
@@ -397,6 +399,12 @@ export default function SmartQuiz() {
 
   const joinSession = async () => {
     const code = studentView.sessionCode.toUpperCase();
+    const { studentId, firstName, lastName } = studentView;
+    if (!studentId.trim() || !/^\d{8}$/.test(studentId.trim())) {
+      toast.error('กรุณากรอกรหัสนักศึกษา 8 หลัก (ตัวเลขเท่านั้น)'); return;
+    }
+    if (!firstName.trim()) { toast.error('กรุณากรอกชื่อจริง'); return; }
+    if (!lastName.trim()) { toast.error('กรุณากรอกนามสกุล'); return; }
     try {
       const res = await fetch(`${QUIZ_API}?code=${code}`);
       const data = await res.json();
@@ -418,7 +426,7 @@ export default function SmartQuiz() {
       const res = await fetch(QUIZ_API, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: session.id, fingerprint: fp, answers: studentView.answers }),
+        body: JSON.stringify({ code: session.id, fingerprint: fp, answers: studentView.answers, studentId: studentView.studentId, studentName: `${studentView.firstName} ${studentView.lastName}`.trim() }),
       });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error || 'ไม่สามารถส่งคำตอบ'); return; }
@@ -785,25 +793,49 @@ export default function SmartQuiz() {
 
                     {q.type === 'MC' && (
                       <div style={{ marginTop: '12px' }}>
-                        {q.options.map((opt, oi) => (
-                          <div key={oi} style={{ display: 'flex', gap: '10px', marginBottom: '8px', alignItems: 'center' }}>
-                            <div style={{
-                              width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '14px', fontWeight: 700, flexShrink: 0,
-                              background: q.answer === String.fromCharCode(65 + oi) ? CI.cyan : '#f1f5f9',
-                              color: q.answer === String.fromCharCode(65 + oi) ? '#fff' : '#64748b',
-                              cursor: 'pointer', transition: 'all 0.15s',
-                            }} onClick={() => updateQuestion(idx, 'answer', String.fromCharCode(65 + oi))}>
-                              {String.fromCharCode(65 + oi)}
-                            </div>
-                            <input placeholder={`ตัวเลือก ${String.fromCharCode(65 + oi)}`}
-                              value={opt} onChange={e => updateOption(idx, oi, e.target.value)}
-                              style={{ ...inp, flex: 1, fontSize: '15px' }} />
-                          </div>
-                        ))}
-                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
-                          💡 คลิกตัวอักษร A-D เพื่อเลือกคำตอบที่ถูก {q.answer && <span style={{ color: CI.cyan, fontWeight: 600 }}>— เฉลย: {q.answer}</span>}
+                        <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', fontWeight: 600 }}>
+                          ✏️ กรอกตัวเลือก แล้ว <span style={{ color: '#16a34a' }}>คลิก ✓ เพื่อติ๊กเฉลย</span>
+                          {q.answer && <span style={{ marginLeft: '8px', background: '#dcfce7', color: '#16a34a', borderRadius: '6px', padding: '2px 8px', fontWeight: 700 }}>เฉลย: ข้อ {q.answer}</span>}
                         </div>
+                        {q.options.map((opt, oi) => {
+                          const letter = String.fromCharCode(65 + oi);
+                          const isCorrect = q.answer === letter;
+                          return (
+                            <div key={oi} style={{
+                              display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center',
+                              background: isCorrect ? '#f0fdf4' : '#fafafa',
+                              border: `1.5px solid ${isCorrect ? '#16a34a' : '#e2e8f0'}`,
+                              borderRadius: '10px', padding: '6px 10px', transition: 'all 0.15s',
+                            }}>
+                              <span style={{
+                                width: '26px', height: '26px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '13px', fontWeight: 700, flexShrink: 0,
+                                background: isCorrect ? '#16a34a' : '#e2e8f0',
+                                color: isCorrect ? '#fff' : '#64748b',
+                              }}>{letter}</span>
+                              <input placeholder={`ตัวเลือก ${letter}`}
+                                value={opt} onChange={e => updateOption(idx, oi, e.target.value)}
+                                style={{ ...inp, flex: 1, fontSize: '15px', background: 'transparent', border: 'none', boxShadow: 'none', padding: '4px 0' }} />
+                              <button
+                                onClick={() => updateQuestion(idx, 'answer', isCorrect ? '' : letter)}
+                                title={isCorrect ? 'ยกเลิกเฉลย' : 'ติ๊กเป็นเฉลย'}
+                                style={{
+                                  flexShrink: 0, width: '34px', height: '34px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                                  background: isCorrect ? '#16a34a' : '#e2e8f0',
+                                  color: isCorrect ? '#fff' : '#94a3b8',
+                                  fontSize: '18px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  transition: 'all 0.15s',
+                                }}>
+                                {isCorrect ? '✓' : '○'}
+                              </button>
+                            </div>
+                          );
+                        })}
+                        {!q.answer && (
+                          <div style={{ fontSize: '12px', color: '#f59e0b', marginTop: '4px', fontWeight: 600 }}>
+                            ⚠️ ยังไม่ได้เลือกเฉลย — กดปุ่ม ○ ข้างตัวเลือกที่ถูกต้อง
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -915,20 +947,58 @@ export default function SmartQuiz() {
       {mode === 'student' && (
         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
           {studentView.step === 'join' && (
-            <div style={{ background: '#fff', borderRadius: '16px', padding: '36px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-              <div style={{ fontSize: '56px', marginBottom: '16px' }}>📝</div>
-              <h2 style={{ margin: '0 0 8px', color: '#1e293b', fontSize: '22px' }}>เข้าร่วม Quiz</h2>
-              <p style={{ color: '#64748b', marginBottom: '24px', fontSize: '16px' }}>กรอก Session Code ที่อาจารย์ให้</p>
-              <input placeholder="Session Code" value={studentView.sessionCode}
-                onChange={e => setStudentView(v => ({ ...v, sessionCode: e.target.value.toUpperCase() }))}
-                style={{ ...inp, fontSize: '28px', textAlign: 'center', letterSpacing: '8px', fontWeight: 800, marginBottom: '16px', padding: '16px' }} />
-              <button onClick={joinSession} style={{
-                width: '100%', padding: '16px', borderRadius: '12px', border: 'none',
-                background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`, color: '#fff',
-                cursor: 'pointer', fontWeight: 700, fontSize: '17px', fontFamily: 'inherit',
-              }}>
-                เข้าร่วม →
-              </button>
+            <div style={{ background: '#fff', borderRadius: '16px', padding: '36px', border: '1px solid #e2e8f0' }}>
+              <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+                <div style={{ fontSize: '56px', marginBottom: '12px' }}>🎮</div>
+                <h2 style={{ margin: '0 0 6px', color: '#1e293b', fontSize: '22px', fontWeight: 800 }}>เข้าร่วม Quiz</h2>
+                <p style={{ color: '#64748b', margin: 0, fontSize: '15px' }}>กรอกข้อมูลให้ครบก่อนเข้าสอบ</p>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px' }}>Session Code *</label>
+                  <input placeholder="XXXXX" value={studentView.sessionCode}
+                    onChange={e => setStudentView(v => ({ ...v, sessionCode: e.target.value.toUpperCase() }))}
+                    style={{ ...inp, fontSize: '24px', textAlign: 'center', letterSpacing: '8px', fontWeight: 800 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px' }}>
+                    รหัสนักศึกษา * <span style={{ color: '#94a3b8', fontWeight: 400 }}>(8 หลัก)</span>
+                  </label>
+                  <input
+                    placeholder="00000000"
+                    value={studentView.studentId}
+                    onChange={e => setStudentView(v => ({ ...v, studentId: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
+                    maxLength={8}
+                    inputMode="numeric"
+                    style={{ ...inp, letterSpacing: '4px', fontWeight: 700, fontSize: '18px', textAlign: 'center',
+                      borderColor: studentView.studentId && !/^\d{8}$/.test(studentView.studentId) ? '#ef4444' : '#e2e8f0' }}
+                  />
+                  {studentView.studentId && !/^\d{8}$/.test(studentView.studentId) && (
+                    <div style={{ fontSize: '12px', color: '#ef4444', marginTop: '4px' }}>ต้องเป็นตัวเลข 8 หลัก</div>
+                  )}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px' }}>ชื่อจริง *</label>
+                    <input placeholder="ชื่อ" value={studentView.firstName}
+                      onChange={e => setStudentView(v => ({ ...v, firstName: e.target.value }))} style={inp} />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '6px' }}>นามสกุล *</label>
+                    <input placeholder="นามสกุล" value={studentView.lastName}
+                      onChange={e => setStudentView(v => ({ ...v, lastName: e.target.value }))} style={inp} />
+                  </div>
+                </div>
+                <button onClick={joinSession} style={{
+                  width: '100%', padding: '16px', borderRadius: '12px', border: 'none',
+                  background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`, color: '#fff',
+                  cursor: 'pointer', fontWeight: 700, fontSize: '17px', fontFamily: 'inherit',
+                  marginTop: '4px',
+                }}>
+                  เข้าร่วม →
+                </button>
+              </div>
             </div>
           )}
 
@@ -1017,8 +1087,10 @@ export default function SmartQuiz() {
           {studentView.submitted && (
             <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', border: `2px solid ${CI.cyan}30`, textAlign: 'center' }}>
               <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎉</div>
-              <h2 style={{ color: CI.cyan, margin: '0 0 8px', fontSize: '24px' }}>ส่งคำตอบแล้ว!</h2>
-              <p style={{ color: '#64748b', marginBottom: '24px', fontSize: '16px' }}>ขอบคุณที่ตอบแบบทดสอบ</p>
+              <h2 style={{ color: CI.cyan, margin: '0 0 6px', fontSize: '24px' }}>ส่งคำตอบแล้ว!</h2>
+              <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '15px' }}>
+                {studentView.firstName} {studentView.lastName} ({studentView.studentId})
+              </p>
               <div style={{ background: `${CI.cyan}10`, borderRadius: '16px', padding: '24px', display: 'inline-block' }}>
                 <div style={{ fontSize: '56px', fontWeight: 800, color: CI.cyan }}>{studentView.score}/{studentView.total}</div>
                 <div style={{ color: '#64748b', fontSize: '16px' }}>คะแนน</div>

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
@@ -26,6 +26,19 @@ export default function FormBuilder() {
   const [dragIdx, setDragIdx] = useState(null);
   const [editingField, setEditingField] = useState(null);
   const [shareLink, setShareLink] = useState('');
+  const qrRef = useRef(null);
+
+  // Generate QR when shareLink changes
+  useEffect(() => {
+    if (shareLink && qrRef.current) {
+      import('qrcode').then(QRCode => {
+        QRCode.toCanvas(qrRef.current, shareLink, {
+          width: 200, margin: 2, color: { dark: '#1e293b', light: '#ffffff' },
+          errorCorrectionLevel: 'H',
+        });
+      }).catch(() => {});
+    }
+  }, [shareLink]);
 
   const addField = (type) => {
     const newField = {
@@ -290,8 +303,12 @@ export default function FormBuilder() {
               </div>
             )}
             {shareLink && (
-              <div style={{ marginTop: 12, padding: 12, background: 'rgba(0,180,230,0.1)', borderRadius: 10, fontSize: 14, wordBreak: 'break-all' }}>
-                🔗 {shareLink}
+              <div style={{ marginTop: 12, padding: 16, background: 'rgba(0,180,230,0.08)', borderRadius: 14, border: `1px solid ${CI.cyan}30` }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ flex: 1, fontSize: 13, wordBreak: 'break-all', color: '#94a3b8', fontFamily: 'monospace' }}>🔗 {shareLink}</div>
+                  <button onClick={() => { navigator.clipboard.writeText(shareLink); toast.success('คัดลอกแล้ว'); }} style={{ ...btnStyle(CI.cyan), padding: '6px 14px', fontSize: 13, whiteSpace: 'nowrap' }}>📋 คัดลอก</button>
+                </div>
+                <canvas ref={qrRef} style={{ display: 'block', margin: '0 auto', borderRadius: 10 }} />
               </div>
             )}
           </div>

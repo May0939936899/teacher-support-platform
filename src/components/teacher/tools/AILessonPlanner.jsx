@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import DownloadDropdown from './DownloadDropdown';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -86,11 +87,21 @@ export default function AILessonPlanner() {
               <h3 style={{ margin: 0, fontSize: '20px', color: '#1e293b', fontWeight: 700 }}>📄 แผนการสอน</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button onClick={() => { navigator.clipboard.writeText(result); toast.success('คัดลอกแล้ว'); }} style={actBtn}>📋 คัดลอก</button>
-                <button onClick={() => {
-                  const blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
-                  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-                  a.download = `lesson_plan_${form.topic}.txt`; a.click(); toast.success('ดาวน์โหลดแล้ว');
-                }} style={{ ...actBtn, background: CI.cyan, color: '#fff', border: 'none' }}>⬇️ Download</button>
+                <DownloadDropdown
+                  options={[
+                    { label: 'Text', icon: '📝', ext: 'TXT', color: '#64748b', onClick: () => {
+                      const blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
+                      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+                      a.download = `lesson_plan_${form.topic}.txt`; a.click(); toast.success('ดาวน์โหลด TXT แล้ว');
+                    }},
+                    { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: async () => {
+                      const { buildTextHTML, downloadHTMLAsPDF } = await import('@/lib/teacher/exportUtils');
+                      const html = buildTextHTML(`แผนการสอน: ${form.topic}`, result);
+                      await downloadHTMLAsPDF(html, `lesson_plan_${form.topic}`);
+                      toast.success('ดาวน์โหลด PDF แล้ว');
+                    }},
+                  ]}
+                />
               </div>
             </div>
             <div style={{

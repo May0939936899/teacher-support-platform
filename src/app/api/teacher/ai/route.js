@@ -1,43 +1,21 @@
 import { NextResponse } from 'next/server';
 
 // ============================================================
-// Teacher AI API — supports Anthropic (primary) + Gemini (fallback)
+// Teacher AI API — Gemini 2.5 Pro (primary) → Flash fallbacks
 // ============================================================
 
-async function callAnthropic(messages, maxTokens = 4096) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5-20250514',
-      max_tokens: maxTokens,
-      messages,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    console.warn('Anthropic API error:', err.error?.message || res.status);
-    return null; // Fall through to Gemini
-  }
-
-  const data = await res.json();
-  return data.content?.[0]?.text || '';
-}
+// Gemini models — { name, apiVersion }
+// v1beta สำหรับ model ใหม่, v1 สำหรับ stable models
+const GEMINI_MODELS = [
+  { name: 'gemini-2.0-flash',        api: 'v1beta' },
+  { name: 'gemini-2.0-flash-exp',    api: 'v1beta' },
+  { name: 'gemini-1.5-flash-latest', api: 'v1beta' },
+  { name: 'gemini-1.5-pro-latest',   api: 'v1beta' },
+];
 
 async function callGemini(prompt, imageData = null) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error('ไม่มี AI API key — กรุณาตั้งค่า ANTHROPIC_API_KEY หรือ GEMINI_API_KEY ใน .env.local');
-
-  const model = imageData ? 'gemini-2.5-flash-preview-05-20' : 'gemini-2.5-flash-preview-05-20';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  if (!apiKey) throw new Error('ไม่มี AI API key — กรุณาตั้งค่า GEMINI_API_KEY ใน .env.local');
 
   const parts = [];
   if (imageData) {
@@ -50,25 +28,50 @@ async function callGemini(prompt, imageData = null) {
   }
   parts.push({ text: prompt });
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 4096,
-      },
-    }),
+  const body = JSON.stringify({
+    contents: [{ parts }],
+    systemInstruction: {
+      parts: [{ text: 'คุณเป็น AI ผู้ช่วยอาจารย์มหาวิทยาลัยที่เก่งมาก ตอบเป็นภาษาไทยเสมอ (ยกเว้นถูกขอให้ใช้ภาษาอื่น) ตอบอย่างละเอียด มีคุณภาพ เป็นมืออาชีพ ถูกต้องตามหลักวิชาการ' }],
+    },
+    generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
   });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(`Gemini API error: ${err.error?.message || res.status}`);
-  }
+  let lastError = null;
+  for (const { name: model, api } of GEMINI_MODELS) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/${api}/models/${model}:generateContent?key=${apiKey}`;
+      console.log(`[AI] Trying ${model}...`);
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      });
 
-  const data = await res.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (res.status === 429 || res.status === 503) {
+        console.warn(`[AI] ${model} rate limited, trying next...`);
+        continue;
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = err.error?.message || String(res.status);
+        console.warn(`[AI] ${model} error:`, msg);
+        lastError = new Error(msg);
+        continue; // ลอง model ถัดไป
+      }
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (text) {
+        console.log(`[AI] Success with ${model}`);
+        return text;
+      }
+    } catch (e) {
+      console.warn(`[AI] ${model} failed:`, e.message);
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('AI ไม่สามารถใช้งานได้ กรุณาลองใหม่');
 }
 
 export async function POST(request) {
@@ -78,9 +81,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing tool or payload' }, { status: 400 });
     }
 
-    // Check if at least one API key exists
-    if (!process.env.ANTHROPIC_API_KEY && !process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'ไม่มี AI API key — กรุณาตั้งค่า ANTHROPIC_API_KEY หรือ GEMINI_API_KEY ใน .env.local' }, { status: 500 });
+    // Check Gemini API key
+    if (!process.env.GEMINI_API_KEY) {
+      return NextResponse.json({ error: 'ไม่มี GEMINI_API_KEY — กรุณาตั้งค่าใน .env.local' }, { status: 500 });
     }
 
     let prompt = '';
@@ -284,29 +287,39 @@ ${payload.content}
         break;
 
       case 'auto_grader':
-        prompt = `คุณเป็นผู้เชี่ยวชาญด้านการตรวจและให้คะแนนงานนักศึกษา
+        prompt = `คุณเป็นผู้ตรวจงานนักศึกษาระดับอุดมศึกษาที่มีความเชี่ยวชาญและเข้มงวด
 
-ตรวจงานนักศึกษาตาม Rubric ที่กำหนด:
+กฎสำคัญในการตรวจ:
+1. ให้คะแนนตาม Rubric ที่กำหนดเท่านั้น — ห้ามให้คะแนนสูงกว่าที่ Rubric กำหนด
+2. ถ้างานนักศึกษาไม่ครบตามเกณฑ์ ต้องหักคะแนนตามจริง ห้ามหลอก ห้ามปรับคะแนนให้สูงโดยไม่มีเหตุผล
+3. ถ้างานขาดหลักฐาน/การอ้างอิง/การวิเคราะห์ตาม Rubric ให้สะท้อนออกมาในคะแนนอย่างตรงไปตรงมา
+4. ผลการตรวจต้องมีเหตุผลและอ้างอิงจากเนื้อหาจริง
 
-Rubric และเฉลย:
+Rubric (เกณฑ์การให้คะแนน):
 ${payload.rubric}
 
 งานนักศึกษา:
 ${payload.submission}
 
-ให้ประเมินและตอบใน JSON format:
+คะแนนเต็มรวม: ${payload.maxScore || 100}
+
+ตอบเป็น JSON เท่านั้น (ไม่มี markdown):
 {
-  "total_score": (คะแนนรวม),
-  "max_score": (คะแนนเต็ม),
+  "total_score": (คะแนนรวมที่ได้จริง ตามเกณฑ์),
+  "max_score": ${payload.maxScore || 100},
   "percentage": (เปอร์เซ็นต์),
-  "grade": "A/B/C/D/F",
+  "grade": "A/B+/B/C+/C/D+/D/F",
   "criteria_scores": [
-    {"criterion": "เกณฑ์", "score": 8, "max": 10, "comment": "ความคิดเห็น"}
+    {"criterion": "ชื่อเกณฑ์", "score": (คะแนนที่ได้), "max": (คะแนนเต็มของเกณฑ์นี้), "comment": "เหตุผลที่ให้คะแนนนี้ อ้างอิงจากงานจริง"}
   ],
-  "strengths": ["จุดเด่น 1", "จุดเด่น 2"],
-  "improvements": ["สิ่งที่ควรปรับปรุง"],
-  "overall_feedback": "ความคิดเห็นโดยรวม"
+  "strengths": ["จุดแข็งที่พบจริงในงาน"],
+  "improvements": ["สิ่งที่ขาดหรือต้องปรับปรุง อ้างอิงจาก Rubric"],
+  "overall_feedback": "ความคิดเห็นโดยรวมที่ตรงไปตรงมา"
 }`;
+        break;
+
+      case 'auto_grader_vision':
+        prompt = 'auto_grader_vision';
         break;
 
       case 'quiz_generator_vision':
@@ -513,26 +526,63 @@ ${payload.content}
         break;
 
       case 'marketing_content':
-        prompt = `คุณเป็นผู้เชี่ยวชาญด้านการเขียนคอนเทนต์การตลาดสำหรับมหาวิทยาลัย โดยเฉพาะคณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
+        prompt = `คุณเป็นทีม Social Media ของคณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม (SPUBUS) ที่เชี่ยวชาญการเขียนคอนเทนต์แบบมืออาชีพ
 
-เขียนคอนเทนต์สำหรับโพสต์บน ${payload.platform || 'Facebook'}:
-- เป้าหมาย: ${payload.title}
+สร้างคอนเทนต์สำหรับโพสต์บน ${payload.platform || 'Facebook'}
+
+ข้อมูลสำหรับสร้างคอนเทนต์:
+- เป้าหมาย/ประเภทโพสต์: ${payload.title}
 - หมวดหมู่/สาขา: ${payload.category}
-- โทนการเขียน: ${payload.tone === 'professional' ? 'ทางการ น่าเชื่อถือ' : payload.tone === 'fun' ? 'สนุกสนาน เป็นกันเอง ใช้คำที่วัยรุ่นเข้าถึง' : payload.tone === 'concise' ? 'สั้น กระชับ ตรงประเด็น' : 'เน้นอิโมจิ สีสันสะดุดตา ดึงดูดความสนใจ'}
-${payload.keyPoints ? `- ประเด็นสำคัญ/ข้อมูลเพิ่มเติม: ${payload.keyPoints}` : ''}
+- โทนการเขียน: ${payload.tone === 'professional' ? 'ทางการ น่าเชื่อถือ สง่า เป็นสถาบัน' : payload.tone === 'fun' ? 'สนุกสนาน เป็นกันเอง ใช้คำที่วัยรุ่นเข้าถึง' : payload.tone === 'concise' ? 'สั้น กระชับ ตรงประเด็น ไม่เยิ่นเย้อ' : 'เน้นอิโมจิ สีสันสะดุดตา ดึงดูดความสนใจ'}
+${payload.eventName ? `- ชื่อกิจกรรม/โครงการ: ${payload.eventName}` : ''}
+${payload.speaker ? `- วิทยากร/บุคคลสำคัญ: ${payload.speaker}` : ''}
+${payload.dateInfo ? `- วัน/เวลา: ${payload.dateInfo}` : ''}
+${payload.location ? `- สถานที่: ${payload.location}` : ''}
+${payload.keyPoints ? `- ประเด็นสำคัญ/รายละเอียดเพิ่มเติม: ${payload.keyPoints}` : ''}
 
-กรุณาเขียน:
-1. หัวข้อที่ดึงดูดความสนใจ (Hook)
-2. เนื้อหาหลัก (Body) - อธิบายประโยชน์/จุดเด่น
-3. Call to Action (CTA) - กระตุ้นให้ดำเนินการ
-4. Hashtags ที่เกี่ยวข้อง (5-8 อัน)
+===== รูปแบบที่ต้องเขียนตาม (สำคัญมาก) =====
 
-เขียนเป็นภาษาไทย เหมาะกับแพลตฟอร์ม ${payload.platform} โดยเฉพาะ
-${payload.platform === 'tiktok' ? '- ใช้ภาษาวัยรุ่น สั้น ติดหู' : ''}
-${payload.platform === 'instagram' ? '- เน้น visual storytelling มี emoji' : ''}
-${payload.platform === 'line' ? '- กระชับ อ่านง่ายในแชท' : ''}
-${payload.platform === 'lemon8' ? '- สไตล์ review/รีวิว แชร์ประสบการณ์' : ''}
-${payload.platform === 'youtube' ? '- เขียนเป็น description + title ที่ SEO ดี' : ''}`;
+ให้เขียนคอนเทนต์ตามโครงสร้างแบบ SPUBUS ดังตัวอย่างนี้:
+
+--- ตัวอย่างสไตล์ SPUBUS ---
+SPUBUS MANAGEMENT TALK : THE WINNER STORIES
+🌍 People Beyond Borders การบริหาร HR และแรงงานข้ามชาติในองค์กรยุคใหม่
+
+📌 สาขาการบริหารและการจัดการสมัยใหม่
+พานักศึกษาเรียนรู้ประสบการณ์จริงจากผู้บริหารตัวจริง
+เข้าใจการทำงานกับคนหลากหลายวัฒนธรรมในโลกธุรกิจ
+
+🎤 วิทยากรพิเศษ
+คุณศรศักดิ์ อังสุภานิช
+ประธานสภาอุตสาหกรรมจังหวัดสตูล
+ศิษย์เก่าดีเด่น คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
+
+💡 เพราะผู้นำยุคใหม่ ต้องบริหาร "ความหลากหลาย"
+ให้กลายเป็นพลังขององค์กร
+
+#SPUBUS #SPU #สาขาการบริหารและการจัดการสมัยใหม่ #คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม #เรียนกับตัวจริงประสบการณ์จริง
+--- จบตัวอย่าง ---
+
+===== กฎการเขียนที่ต้องทำตาม =====
+
+1. **เปิดด้วย SPUBUS + ชื่อซีรีส์/แคมเปญ** — สร้างชื่อซีรีส์ที่เป็นเอกลักษณ์ เช่น "SPUBUS MANAGEMENT TALK" "SPUBUS Go Inter" "SPUBUS Business Insights" ฯลฯ ตามเนื้อหาที่ได้รับ
+2. **Subtitle ทั้งไทย-อังกฤษ** — มีทั้งชื่อไทยและชื่ออังกฤษที่ดูเป็นสากล
+3. **ระบุสาขา/คณะ** — ชัดเจนว่าเป็นสาขาไหน ใช้ 📌 นำหน้า
+4. **อธิบายสิ่งที่นักศึกษาจะได้** — เขียนให้เห็นภาพว่าจะได้เรียนรู้อะไร ประสบการณ์จริง ลงมือทำจริง
+5. **ระบุวิทยากร/สถานที่ (ถ้ามี)** — ใช้ 🎤 หรือ 📍 นำหน้า พร้อมตำแหน่งและสังกัด
+6. **ปิดด้วย Inspirational Quote** — ใช้ 💡 หรือ ✨ ประโยคปิดที่ทรงพลัง สร้างแรงบันดาลใจ ใช้เครื่องหมายคำพูดเน้นคำสำคัญ
+7. **Hashtags 8-15 อัน** — ต้องมี #SPUBUS #SPU #คณะบริหารธุรกิจ #มหาวิทยาลัยศรีปทุม #เรียนกับตัวจริงประสบการณ์จริง เสมอ แล้วเพิ่มแฮชแท็กเฉพาะตามเนื้อหา
+8. **ใช้ Emoji อย่างมีกลยุทธ์** — ไม่มากเกินไป แต่ใช้เพื่อแบ่ง section เช่น 🌍 📌 🎤 💡 🚀 📍 🎓 ✨
+9. **ภาษา** — ภาษาไทยที่สง่า เป็นมืออาชีพ ไม่ใช้ศัพท์สแลงเว้นแต่โทนจะเป็นแบบสนุก
+10. **ห้ามใช้คำว่า "Hook" "Body" "CTA"** ในเนื้อหา — เขียนเป็นคอนเทนต์สำเร็จรูปพร้อมโพสต์ ไม่ใช่ template
+
+${payload.platform === 'tiktok' ? '- สำหรับ TikTok: ใช้ภาษากระชับ ติดหู เน้นคำ trending' : ''}
+${payload.platform === 'instagram' ? '- สำหรับ Instagram: เน้น visual storytelling' : ''}
+${payload.platform === 'line' ? '- สำหรับ LINE: กระชับ อ่านง่ายในแชท' : ''}
+${payload.platform === 'lemon8' ? '- สำหรับ Lemon8: สไตล์ review/รีวิว แชร์ประสบการณ์' : ''}
+${payload.platform === 'youtube' ? '- สำหรับ YouTube: เขียนเป็น description + title ที่ SEO ดี' : ''}
+
+สำคัญ: เขียนเป็นคอนเทนต์พร้อมโพสต์ทันที ไม่ต้องมีคำอธิบายหรือหัวข้อ section ภาษาอังกฤษ`;
         break;
 
       case 'poster_content':
@@ -556,6 +606,22 @@ ${payload.platform === 'youtube' ? '- เขียนเป็น description + 
 เขียนเป็นภาษาไทย กระชับ อ่านง่าย เหมาะกับการทำโปสเตอร์`;
         break;
 
+      case 'line_broadcast':
+        prompt = `คุณเป็นอาจารย์มหาวิทยาลัยที่ต้องเขียนข้อความประกาศถึงนักศึกษา
+
+เขียนข้อความประกาศสำหรับส่งผ่าน LINE หรือ Email จากคำสั่ง:
+"${payload.prompt}"
+
+กฎการเขียน:
+1. ใช้ Emoji เปิดหัวข้อแต่ละส่วน (📢 📚 📅 ⏰ 🏫 📌 💡 ✅ ❌)
+2. เขียนกระชับ อ่านง่ายในมือถือ
+3. มีข้อมูลครบ: วิชา วันที่ เวลา สถานที่ (ถ้ามี)
+4. ลงท้ายด้วยข้อความสุภาพ เช่น "หากมีข้อสงสัย สอบถามได้ค่ะ/ครับ 🙏"
+5. ใช้ภาษาไทยที่เป็นกันเองแต่สุภาพ
+6. ความยาวไม่เกิน 10 บรรทัด
+7. เขียนเป็นข้อความพร้อมส่งทันที ไม่ต้องมีคำอธิบายเพิ่ม`;
+        break;
+
       case 'content_summarizer':
         prompt = `คุณเป็นผู้เชี่ยวชาญด้านการสรุปเนื้อหาการศึกษา
 
@@ -577,11 +643,36 @@ ${payload.content}
     }
 
     // ===== Vision tools (image-based) =====
-    const isVisionTool = (tool === 'quiz_generator_vision' || tool === 'image_to_content') && payload.imageBase64;
+    const isVisionTool = (tool === 'quiz_generator_vision' || tool === 'image_to_content' || tool === 'auto_grader_vision') && payload.imageBase64;
 
     let visionPrompt = '';
     if (isVisionTool) {
-      visionPrompt = tool === 'quiz_generator_vision'
+      if (tool === 'auto_grader_vision') {
+        visionPrompt = `คุณเป็นผู้ตรวจงานนักศึกษาที่มีความเชี่ยวชาญและเข้มงวด
+
+กฎสำคัญ: ให้คะแนนตาม Rubric เท่านั้น — ห้ามให้คะแนนสูงกว่าที่กำหนด ถ้างานไม่ครบต้องหักคะแนนตามจริง ห้ามหลอก
+
+Rubric (เกณฑ์การให้คะแนน):
+${payload.rubric}
+
+คะแนนเต็มรวม: ${payload.maxScore || 100}
+
+ดูรูปภาพงานนักศึกษาด้านบน แล้วตรวจตาม Rubric ที่กำหนด
+
+ตอบเป็น JSON เท่านั้น (ไม่มี markdown):
+{
+  "total_score": (คะแนนรวมที่ได้จริง),
+  "max_score": ${payload.maxScore || 100},
+  "percentage": (เปอร์เซ็นต์),
+  "grade": "A/B+/B/C+/C/D+/D/F",
+  "criteria_scores": [
+    {"criterion": "ชื่อเกณฑ์", "score": (คะแนน), "max": (คะแนนเต็มเกณฑ์นี้), "comment": "เหตุผลอ้างอิงจากงาน"}
+  ],
+  "strengths": ["จุดแข็งที่พบในงาน"],
+  "improvements": ["สิ่งที่ขาด อ้างอิงจาก Rubric"],
+  "overall_feedback": "ความคิดเห็นโดยรวม"
+}`;
+      } else visionPrompt = tool === 'quiz_generator_vision'
         ? `คุณเป็นผู้เชี่ยวชาญด้านการออกข้อสอบระดับอุดมศึกษา
 
 ดูรูปภาพนี้ (อาจเป็น slide, เอกสาร, หรือเนื้อหาการสอน) แล้วสร้างข้อสอบ ${payload.numQuestions || 5} ข้อ
@@ -608,56 +699,23 @@ ${payload.content}
         : `คุณเป็น AI ที่อ่านรูปภาพได้ ดูรูปภาพนี้และสรุปเนื้อหาเป็นภาษาไทย`;
     }
 
-    // ===== Try Anthropic first, fallback to Gemini =====
+    // ===== Provider chain: OpenRouter → Anthropic → Gemini =====
     let result = null;
     let usedProvider = '';
 
-    // === Attempt Anthropic ===
-    if (process.env.ANTHROPIC_API_KEY) {
-      try {
-        let messages;
-        if (isVisionTool) {
-          messages = [{
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: payload.mediaType || 'image/png',
-                  data: payload.imageBase64,
-                },
-              },
-              { type: 'text', text: visionPrompt },
-            ],
-          }];
-        } else {
-          messages = [{ role: 'user', content: prompt }];
-        }
-
-        result = await callAnthropic(messages);
-        if (result) usedProvider = 'anthropic';
-      } catch (e) {
-        console.warn('Anthropic failed, falling back to Gemini:', e.message);
-      }
-    }
-
-    // === Fallback to Gemini ===
-    if (!result && process.env.GEMINI_API_KEY) {
-      try {
-        const textPrompt = isVisionTool ? visionPrompt : prompt;
-        const imageData = isVisionTool ? { base64: payload.imageBase64, mediaType: payload.mediaType || 'image/png' } : null;
-
-        result = await callGemini(textPrompt, imageData);
-        if (result) usedProvider = 'gemini';
-      } catch (e) {
-        console.error('Gemini also failed:', e.message);
-        throw e;
-      }
+    // === Primary: Gemini 2.5 Pro (ฉลาดที่สุด) → Flash fallbacks ===
+    try {
+      const textPrompt = isVisionTool ? visionPrompt : prompt;
+      const imageData = isVisionTool ? { base64: payload.imageBase64, mediaType: payload.mediaType || 'image/png' } : null;
+      result = await callGemini(textPrompt, imageData);
+      if (result) usedProvider = 'gemini-2.5-pro';
+    } catch (e) {
+      console.error('Gemini failed:', e.message);
+      throw e;
     }
 
     if (!result) {
-      throw new Error('ทั้ง Anthropic และ Gemini ไม่สามารถใช้งานได้ — กรุณาตรวจสอบ API key และเครดิต');
+      throw new Error('AI ไม่สามารถใช้งานได้ — กรุณาตรวจสอบ GEMINI_API_KEY');
     }
 
     return NextResponse.json({ result, provider: usedProvider });

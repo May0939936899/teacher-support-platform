@@ -9,6 +9,7 @@ import ContentPreview from '@/components/ContentPreview';
 import ContentManagement from '@/components/ContentManagement';
 import ContentTips from '@/components/ContentTips';
 import MemoryBox from '@/components/MemoryBox';
+import BtsHeroScene from '@/components/BtsHeroScene';
 import toast from 'react-hot-toast';
 
 export default function ContentPage() {
@@ -102,12 +103,7 @@ export default function ContentPage() {
     <div className="app-container">
       <Navbar />
 
-      <header className="hero-header">
-        <div className="hero-content">
-          <h1><span className="text-gradient">SPUBUS BIZ CONTENT</span></h1>
-          <p className="subtitle">AI-Powered Content Generator for SPU Business School</p>
-        </div>
-      </header>
+      <BtsHeroScene />
 
       <main className="main-wrapper">
         <div className="form-column">

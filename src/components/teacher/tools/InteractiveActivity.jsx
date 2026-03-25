@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
@@ -8,10 +8,140 @@ const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif
 const COLORS = ['#00b4e6', '#e6007e', '#7c4dff', '#ffc107', '#10b981', '#f97316', '#ef4444', '#6366f1', '#ec4899', '#14b8a6'];
 const STICKY_COLORS = ['#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca', '#e9d5ff', '#fed7aa', '#ccfbf1', '#fce7f3'];
 
+function genRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// ========= QR CODE PANEL =========
+function QRPanel({ roomCode, mode, onClose }) {
+  const canvasRef = useRef(null);
+  const [studentUrl, setStudentUrl] = useState('');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const base = window.location.origin;
+      const url = `${base}/student/interactive?room=${roomCode}&mode=${mode}`;
+      setStudentUrl(url);
+
+      // Generate QR
+      import('qrcode').then(QRCode => {
+        if (canvasRef.current) {
+          QRCode.toCanvas(canvasRef.current, url, {
+            width: 280,
+            margin: 2,
+            color: { dark: CI.dark, light: '#ffffff' },
+            errorCorrectionLevel: 'H',
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [roomCode, mode]);
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(studentUrl);
+    toast.success('คัดลอกลิงก์แล้ว!');
+  };
+
+  const modeLabel = mode === 'wordcloud' ? 'Word Cloud' : mode === 'poll' ? 'Live Poll' : 'Brainstorm';
+
+  return (
+    <div style={{
+      background: '#fff', borderRadius: '16px', border: `2px solid ${CI.cyan}`,
+      padding: '24px', textAlign: 'center', marginBottom: '20px',
+      boxShadow: '0 4px 20px rgba(0,180,230,0.12)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h4 style={{ margin: 0, fontSize: '18px', color: CI.dark }}>
+          📱 สแกน QR เข้าร่วม {modeLabel}
+        </h4>
+        <button onClick={onClose} style={{
+          background: 'none', border: 'none', fontSize: '20px', color: '#94a3b8',
+          cursor: 'pointer', padding: '4px',
+        }}>✕</button>
+      </div>
+
+      {/* Room Code */}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: '10px',
+        background: `linear-gradient(135deg, ${CI.cyan}15, ${CI.purple}15)`,
+        borderRadius: '12px', padding: '12px 24px', marginBottom: '16px',
+      }}>
+        <span style={{ fontSize: '14px', color: '#64748b', fontWeight: 600 }}>Room Code</span>
+        <span style={{
+          fontSize: '32px', fontWeight: 800, color: CI.dark,
+          letterSpacing: '6px', fontFamily: "'Courier New', monospace",
+        }}>{roomCode}</span>
+      </div>
+
+      {/* QR Canvas */}
+      <div style={{ marginBottom: '16px' }}>
+        <canvas ref={canvasRef} style={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} />
+      </div>
+
+      {/* URL + copy */}
+      <div style={{
+        display: 'flex', gap: '8px', alignItems: 'center',
+        background: '#f8fafc', borderRadius: '10px', padding: '10px 14px',
+        border: '1px solid #e2e8f0', marginBottom: '12px',
+      }}>
+        <input
+          value={studentUrl}
+          readOnly
+          style={{
+            flex: 1, border: 'none', background: 'none', fontSize: '13px',
+            color: '#64748b', outline: 'none', fontFamily: 'monospace',
+          }}
+        />
+        <button onClick={copyLink} style={{
+          padding: '6px 14px', borderRadius: '8px', border: 'none',
+          background: CI.cyan, color: '#fff', cursor: 'pointer',
+          fontSize: '13px', fontWeight: 700, fontFamily: 'inherit',
+          whiteSpace: 'nowrap',
+        }}>📋 คัดลอก</button>
+      </div>
+
+      <p style={{ margin: 0, fontSize: '13px', color: '#94a3b8' }}>
+        นักศึกษาสแกน QR หรือเปิดลิงก์เพื่อส่ง{mode === 'wordcloud' ? 'คำ' : mode === 'poll' ? 'โหวต' : 'ไอเดีย'}เข้ามาได้ทันที
+      </p>
+    </div>
+  );
+}
+
 // ========= WORD CLOUD MODE =========
-function WordCloudMode() {
+function WordCloudMode({ roomCode, showQR }) {
   const [input, setInput] = useState('');
   const [words, setWords] = useState([]);
+
+  // Poll for student submissions
+  useEffect(() => {
+    if (!roomCode) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/teacher/interactive?room=${roomCode}&action=get`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.submissions?.length > 0) {
+            setWords(prev => {
+              const updated = [...prev];
+              data.submissions.forEach(sub => {
+                const wordTexts = (sub.text || '').split(/[,\n]+/).map(w => w.trim()).filter(Boolean);
+                wordTexts.forEach(word => {
+                  const existing = updated.find(w => w.text.toLowerCase() === word.toLowerCase());
+                  if (existing) existing.count++;
+                  else updated.push({ text: word, count: 1, color: COLORS[Math.floor(Math.random() * COLORS.length)] });
+                });
+              });
+              return updated;
+            });
+          }
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [roomCode]);
 
   const addWords = () => {
     if (!input.trim()) { toast.error('กรุณาพิมพ์คำ'); return; }
@@ -50,6 +180,8 @@ function WordCloudMode() {
 
   return (
     <div>
+      {showQR && roomCode && <QRPanel roomCode={roomCode} mode="wordcloud" onClose={() => {}} />}
+
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
         <input
           value={input}
@@ -62,7 +194,6 @@ function WordCloudMode() {
         <button onClick={addSampleWords} style={{ ...actBtn, whiteSpace: 'nowrap' }}>📌 ตัวอย่าง</button>
       </div>
 
-      {/* Word Cloud Visual */}
       <div style={{
         background: '#fff', borderRadius: '16px', padding: '40px', border: '1px solid #e2e8f0',
         minHeight: '300px', display: 'flex', flexWrap: 'wrap', gap: '12px',
@@ -98,10 +229,37 @@ function WordCloudMode() {
 }
 
 // ========= LIVE POLL MODE =========
-function LivePollMode() {
+function LivePollMode({ roomCode, showQR }) {
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '', '', '']);
   const [results, setResults] = useState(null);
+
+  // Poll for student votes
+  useEffect(() => {
+    if (!roomCode || !results) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/teacher/interactive?room=${roomCode}&action=get`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.submissions?.length > 0) {
+            setResults(prev => {
+              if (!prev) return prev;
+              const newVotes = [...prev.votes];
+              data.submissions.forEach(sub => {
+                const idx = parseInt(sub.text);
+                if (!isNaN(idx) && idx >= 0 && idx < newVotes.length) {
+                  newVotes[idx]++;
+                }
+              });
+              return { ...prev, votes: newVotes };
+            });
+          }
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [roomCode, results]);
 
   const updateOption = (idx, val) => {
     setOptions(prev => { const c = [...prev]; c[idx] = val; return c; });
@@ -113,14 +271,28 @@ function LivePollMode() {
     setOptions(prev => prev.filter((_, i) => i !== idx));
   };
 
-  const startPoll = () => {
+  const startPoll = async () => {
     if (!question.trim()) { toast.error('กรุณาพิมพ์คำถาม'); return; }
     const validOpts = options.filter(o => o.trim());
     if (validOpts.length < 2) { toast.error('ต้องมีตัวเลือกอย่างน้อย 2 ข้อ'); return; }
-    // Generate mock results
-    const mockVotes = validOpts.map(() => Math.floor(Math.random() * 30) + 5);
+
+    // Save poll data for students
+    if (roomCode) {
+      try {
+        await fetch('/api/teacher/interactive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            room: roomCode, action: 'set_poll',
+            question, options: validOpts,
+          }),
+        });
+      } catch {}
+    }
+
+    const mockVotes = validOpts.map(() => 0);
     setResults({ question, options: validOpts, votes: mockVotes });
-    toast.success('เริ่ม Poll แล้ว! (แสดงผลจำลอง)');
+    toast.success('เริ่ม Poll แล้ว! นักศึกษาสแกน QR เพื่อโหวต');
   };
 
   const totalVotes = results ? results.votes.reduce((a, b) => a + b, 0) : 0;
@@ -128,6 +300,8 @@ function LivePollMode() {
 
   return (
     <div>
+      {showQR && roomCode && <QRPanel roomCode={roomCode} mode="poll" onClose={() => {}} />}
+
       <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
         <div style={{ marginBottom: '16px' }}>
           <label style={lbl}>คำถาม Poll *</label>
@@ -149,10 +323,9 @@ function LivePollMode() {
         </div>
       </div>
 
-      {/* Results */}
       {results && (
         <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ margin: '0 0 8px', fontSize: '20px', color: CI.dark }}>📊 ผล Poll</h3>
+          <h3 style={{ margin: '0 0 8px', fontSize: '20px', color: CI.dark }}>📊 ผล Poll (Live)</h3>
           <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: '15px' }}>
             {results.question} — ผู้ตอบ: {totalVotes} คน
           </p>
@@ -183,18 +356,48 @@ function LivePollMode() {
 }
 
 // ========= BRAINSTORM BOARD MODE =========
-function BrainstormMode() {
+function BrainstormMode({ roomCode, showQR }) {
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
+  const [selectedColor, setSelectedColor] = useState(STICKY_COLORS[0]);
+
+  // Poll for student ideas
+  useEffect(() => {
+    if (!roomCode) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/teacher/interactive?room=${roomCode}&action=get`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.submissions?.length > 0) {
+            setNotes(prev => {
+              const newNotes = [...prev];
+              data.submissions.forEach(sub => {
+                if (sub.text && !newNotes.find(n => n.text === sub.text && n.from === sub.from)) {
+                  newNotes.push({
+                    id: Date.now().toString() + Math.random(),
+                    text: sub.text,
+                    from: sub.from || 'นักศึกษา',
+                    color: sub.color || STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)],
+                  });
+                }
+              });
+              return newNotes;
+            });
+          }
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [roomCode]);
 
   const addNote = () => {
     if (!newNote.trim()) { toast.error('กรุณาพิมพ์ไอเดีย'); return; }
     setNotes(prev => [...prev, {
       id: Date.now().toString(),
       text: newNote.trim(),
-      color: STICKY_COLORS[Math.floor(Math.random() * STICKY_COLORS.length)],
-      x: Math.random() * 60,
-      y: Math.random() * 40,
+      from: 'อาจารย์',
+      color: selectedColor,
     }]);
     setNewNote('');
   };
@@ -208,9 +411,8 @@ function BrainstormMode() {
     const newNotes = samples.map((text, i) => ({
       id: (Date.now() + i).toString(),
       text,
+      from: 'ตัวอย่าง',
       color: STICKY_COLORS[i % STICKY_COLORS.length],
-      x: 5 + (i % 4) * 24,
-      y: 5 + Math.floor(i / 4) * 35,
     }));
     setNotes(prev => [...prev, ...newNotes]);
     toast.success('เพิ่มไอเดียตัวอย่างแล้ว');
@@ -220,7 +422,9 @@ function BrainstormMode() {
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+      {showQR && roomCode && <QRPanel roomCode={roomCode} mode="brainstorm" onClose={() => {}} />}
+
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
         <input
           value={newNote}
           onChange={e => setNewNote(e.target.value)}
@@ -231,8 +435,23 @@ function BrainstormMode() {
         <button onClick={addNote} style={gradBtn}>+ เพิ่ม</button>
         <button onClick={addSamples} style={{ ...actBtn, whiteSpace: 'nowrap' }}>📌 ตัวอย่าง</button>
       </div>
+      {/* Color picker */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', alignItems: 'center' }}>
+        <span style={{ fontSize: '13px', color: '#94a3b8', marginRight: '4px' }}>สีโพสอิท:</span>
+        {STICKY_COLORS.map(c => (
+          <button
+            key={c}
+            onClick={() => setSelectedColor(c)}
+            style={{
+              width: '28px', height: '28px', borderRadius: '8px', border: selectedColor === c ? '3px solid #475569' : '2px solid #e2e8f0',
+              background: c, cursor: 'pointer', transition: 'all 0.15s',
+              transform: selectedColor === c ? 'scale(1.15)' : 'scale(1)',
+              boxShadow: selectedColor === c ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+            }}
+          />
+        ))}
+      </div>
 
-      {/* Brainstorm Board */}
       <div style={{
         background: '#f8fafc', borderRadius: '16px', padding: '20px', border: '1px solid #e2e8f0',
         minHeight: '450px', position: 'relative', display: 'flex', flexWrap: 'wrap', gap: '14px',
@@ -269,6 +488,9 @@ function BrainstormMode() {
             <p style={{ margin: 0, fontSize: '15px', color: '#1e293b', lineHeight: 1.5, fontWeight: 500 }}>
               {note.text}
             </p>
+            {note.from && (
+              <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px' }}>— {note.from}</span>
+            )}
           </div>
         ))}
       </div>
@@ -283,9 +505,87 @@ function BrainstormMode() {
   );
 }
 
+// ========= TIMER DISPLAY =========
+const TIMER_OPTIONS = [
+  { label: '∞ ไม่จำกัด', value: 0 },
+  { label: '1 นาที', value: 60 },
+  { label: '3 นาที', value: 180 },
+  { label: '5 นาที', value: 300 },
+  { label: '10 นาที', value: 600 },
+  { label: '15 นาที', value: 900 },
+  { label: '20 นาที', value: 1200 },
+];
+
+function formatTime(secs) {
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 // ========= MAIN COMPONENT =========
 export default function InteractiveActivity() {
-  const [mode, setMode] = useState('wordcloud'); // wordcloud | poll | brainstorm
+  const [mode, setMode] = useState('wordcloud');
+  const [roomCode, setRoomCode] = useState('');
+  const [showQR, setShowQR] = useState(false);
+  const [timerDuration, setTimerDuration] = useState(300); // default 5 min
+  const [timeLeft, setTimeLeft] = useState(null); // null = not started
+  const [timerRunning, setTimerRunning] = useState(false);
+  const timerRef = useRef(null);
+
+  // Countdown logic
+  useEffect(() => {
+    if (!timerRunning || timeLeft === null) return;
+    if (timeLeft <= 0) {
+      setTimerRunning(false);
+      toast('⏰ หมดเวลาแล้ว!', { icon: '🔔', duration: 5000 });
+      return;
+    }
+    timerRef.current = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearTimeout(timerRef.current);
+  }, [timerRunning, timeLeft]);
+
+  const startSession = () => {
+    const code = genRoomCode();
+    setRoomCode(code);
+    setShowQR(true);
+
+    // Start timer if set
+    if (timerDuration > 0) {
+      setTimeLeft(timerDuration);
+      setTimerRunning(true);
+    } else {
+      setTimeLeft(null);
+      setTimerRunning(false);
+    }
+
+    fetch('/api/teacher/interactive', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room: code, action: 'create', mode }),
+    }).catch(() => {});
+
+    toast.success(`เปิดห้อง ${code} สำเร็จ!`);
+  };
+
+  const resetTimer = () => {
+    clearTimeout(timerRef.current);
+    if (timerDuration > 0) {
+      setTimeLeft(timerDuration);
+      setTimerRunning(true);
+    } else {
+      setTimeLeft(null);
+      setTimerRunning(false);
+    }
+  };
+
+  const pauseTimer = () => {
+    setTimerRunning(v => !v);
+  };
+
+  // Timer color
+  const isUrgent = timeLeft !== null && timeLeft <= 30;
+  const isWarning = timeLeft !== null && timeLeft <= 60 && timeLeft > 30;
+  const timerColor = isUrgent ? '#ef4444' : isWarning ? '#f97316' : CI.cyan;
 
   const modes = [
     { id: 'wordcloud', label: '☁️ Word Cloud', desc: 'สร้าง Word Cloud จากคำของนักศึกษา' },
@@ -295,7 +595,97 @@ export default function InteractiveActivity() {
 
   return (
     <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: FONT }}>
-      <h3 style={{ margin: '0 0 20px', fontSize: '22px', color: CI.dark, fontWeight: 700 }}>🎯 Interactive Activities</h3>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+        <h3 style={{ margin: 0, fontSize: '22px', color: CI.dark, fontWeight: 700 }}>🎯 Interactive Activities</h3>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+
+          {/* Timer display when running */}
+          {timeLeft !== null && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              background: isUrgent ? '#fef2f2' : isWarning ? '#fff7ed' : '#f0fdff',
+              border: `2px solid ${timerColor}`,
+              borderRadius: '12px', padding: '8px 16px',
+              animation: isUrgent ? 'pulse 0.8s infinite' : 'none',
+            }}>
+              <span style={{ fontSize: '13px', color: timerColor, fontWeight: 600 }}>⏱️ เวลา</span>
+              <span style={{
+                fontSize: '26px', fontWeight: 900, color: timerColor,
+                fontFamily: "'Courier New', monospace", minWidth: '60px', textAlign: 'center',
+                letterSpacing: '2px',
+              }}>
+                {timeLeft <= 0 ? '00:00' : formatTime(timeLeft)}
+              </span>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button onClick={pauseTimer} title={timerRunning ? 'หยุด' : 'เดิน'} style={{
+                  background: 'none', border: `1px solid ${timerColor}`, borderRadius: '6px',
+                  padding: '2px 8px', cursor: 'pointer', color: timerColor, fontSize: '14px',
+                }}>{timerRunning ? '⏸' : '▶'}</button>
+                <button onClick={resetTimer} title="รีเซ็ต" style={{
+                  background: 'none', border: `1px solid ${timerColor}`, borderRadius: '6px',
+                  padding: '2px 8px', cursor: 'pointer', color: timerColor, fontSize: '14px',
+                }}>↺</button>
+              </div>
+            </div>
+          )}
+
+          {/* Room code */}
+          {roomCode && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              background: '#e0f7fa', borderRadius: '10px', padding: '8px 16px',
+            }}>
+              <span style={{ fontSize: '13px', color: '#64748b' }}>Room:</span>
+              <span style={{ fontSize: '18px', fontWeight: 800, color: CI.dark, letterSpacing: '3px', fontFamily: "'Courier New', monospace" }}>{roomCode}</span>
+              <button onClick={() => setShowQR(v => !v)} style={{
+                padding: '4px 10px', borderRadius: '6px',
+                background: showQR ? CI.cyan : '#fff', color: showQR ? '#fff' : CI.cyan,
+                cursor: 'pointer', fontSize: '13px', fontWeight: 700, fontFamily: 'inherit',
+                border: `1px solid ${CI.cyan}`,
+              }}>
+                {showQR ? '🔽 ซ่อน QR' : '📱 แสดง QR'}
+              </button>
+            </div>
+          )}
+
+          {/* Timer selector + start button */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <select
+              value={timerDuration}
+              onChange={e => setTimerDuration(Number(e.target.value))}
+              style={{
+                padding: '8px 12px', borderRadius: '10px', border: '1px solid #e2e8f0',
+                fontSize: '14px', fontFamily: FONT, color: CI.dark, background: '#fff',
+                cursor: 'pointer', outline: 'none',
+              }}
+            >
+              {TIMER_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+            <button onClick={startSession} style={{
+              padding: '10px 20px', borderRadius: '10px', border: 'none',
+              background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`,
+              color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: '15px',
+              fontFamily: 'inherit', whiteSpace: 'nowrap',
+            }}>
+              {roomCode ? '🔄 สร้างห้องใหม่' : '📱 เปิดห้อง + QR'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Timer progress bar */}
+      {timeLeft !== null && timerDuration > 0 && (
+        <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '4px', marginBottom: '16px', overflow: 'hidden' }}>
+          <div style={{
+            height: '100%', borderRadius: '4px', transition: 'width 1s linear, background 0.5s',
+            width: `${Math.max(0, (timeLeft / timerDuration) * 100)}%`,
+            background: isUrgent ? '#ef4444' : isWarning ? '#f97316' : `linear-gradient(90deg, ${CI.cyan}, ${CI.purple})`,
+          }} />
+        </div>
+      )}
 
       {/* Mode selector */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
@@ -314,9 +704,11 @@ export default function InteractiveActivity() {
       </div>
 
       {/* Content */}
-      {mode === 'wordcloud' && <WordCloudMode />}
-      {mode === 'poll' && <LivePollMode />}
-      {mode === 'brainstorm' && <BrainstormMode />}
+      {mode === 'wordcloud' && <WordCloudMode roomCode={roomCode} showQR={showQR} />}
+      {mode === 'poll' && <LivePollMode roomCode={roomCode} showQR={showQR} />}
+      {mode === 'brainstorm' && <BrainstormMode roomCode={roomCode} showQR={showQR} />}
+
+      <style>{`@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.6 } }`}</style>
     </div>
   );
 }

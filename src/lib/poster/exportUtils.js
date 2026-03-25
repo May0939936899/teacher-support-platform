@@ -77,7 +77,7 @@ export async function exportToPptx(formData, preset, nodeId = 'poster-canvas', s
   else { slideH = 10; slideW = 10 * ratio; }
 
   const pptx = new window.PptxGenJS();
-  pptx.author = 'SPUBUS BIZ CONTENT';
+  pptx.author = 'SPUBUS BiZ CONTENT';
   pptx.title = formData.title || 'AI Poster';
   pptx.defineLayout({ name: 'POSTER', width: slideW, height: slideH });
   pptx.layout = 'POSTER';

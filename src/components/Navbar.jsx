@@ -25,7 +25,7 @@ export default function Navbar() {
   const navLinks = [
     { href: '/', icon: <Home size={16} />, label: 'หน้าหลัก', id: 'home' },
     { href: '/content', icon: <ImageIcon size={16} />, label: 'Content', id: 'content' },
-    { href: '/poster', icon: <Wand2 size={16} />, label: 'Poster', id: 'poster' },
+    { href: '/poster', icon: <Wand2 size={16} />, label: 'Poster', id: 'poster', disabled: true },
   ];
 
   const isActive = (href) => {
@@ -41,18 +41,33 @@ export default function Navbar() {
           <img src="/spu-bus-logo.png" alt="SPU Business School" className="navbar__logo" />
         </Link>
 
+        {/* Divider */}
+        {user && <div className="navbar__divider" />}
+
         {/* Center: Nav links (desktop) */}
         {user && (
-          <div className="navbar__links">
+          <div className="navbar__links" style={{ marginLeft:'auto' }}>
             {navLinks.map(link => (
-              <Link
-                key={link.id}
-                href={link.href}
-                className={`navbar__link ${isActive(link.href) ? 'navbar__link--active' : ''}`}
-              >
-                {link.icon}
-                <span>{link.label}</span>
-              </Link>
+              link.disabled ? (
+                <span
+                  key={link.id}
+                  className="navbar__link navbar__link--disabled"
+                  title="กำลังปรับปรุง"
+                  style={{ opacity: 0.4, cursor: 'not-allowed', pointerEvents: 'none' }}
+                >
+                  {link.icon}
+                  <span>{link.label}</span>
+                </span>
+              ) : (
+                <Link
+                  key={link.id}
+                  href={link.href}
+                  className={`navbar__link ${isActive(link.href) ? 'navbar__link--active' : ''}`}
+                >
+                  {link.icon}
+                  <span>{link.label}</span>
+                </Link>
+              )
             ))}
             {isAdmin && (
               <Link
@@ -73,11 +88,13 @@ export default function Navbar() {
           ) : user ? (
             <>
               <div className="navbar__user">
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} alt="" className="navbar__avatar" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="navbar__avatar-fallback"><User size={16} /></div>
-                )}
+                <div className="navbar__avatar-wrap">
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="" className="navbar__avatar" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="navbar__avatar-fallback"><User size={14} /></div>
+                  )}
+                </div>
                 <span className="navbar__username">{profile?.full_name || user.email}</span>
               </div>
               <button onClick={signOut} className="navbar__logout" title="ออกจากระบบ">

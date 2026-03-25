@@ -159,7 +159,7 @@ export async function PUT(request) {
 // PATCH — student submit answers
 export async function PATCH(request) {
   try {
-    const { code, fingerprint, answers } = await request.json();
+    const { code, fingerprint, answers, studentId, studentName } = await request.json();
     if (!code || !fingerprint) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
 
     const upperCode = code.toUpperCase();
@@ -184,7 +184,7 @@ export async function PATCH(request) {
       return { questionId: q.id, answer: ans, correct, points: correct ? (q.points || 1) : 0 };
     });
 
-    const response = { fingerprint, submittedAt: Date.now(), score, details };
+    const response = { fingerprint, submittedAt: Date.now(), score, details, studentId: studentId || '', studentName: studentName || '' };
     const updatedResponses = [...responses, response];
     const updated = await updateSession(upperCode, { responses: updatedResponses });
 

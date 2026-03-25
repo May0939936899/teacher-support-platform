@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import DownloadDropdown from './DownloadDropdown';
+import { downloadExcel, buildTableHTML, downloadHTMLAsPDF } from '@/lib/teacher/exportUtils';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -69,17 +71,44 @@ export default function BudgetTracker() {
     toast.success('ลบรายการแล้ว');
   };
 
+  const getBudgetData = () => {
+    if (!activeProject) return { headers: [], rows: [] };
+    const headers = ['รายการ', 'จำนวนเงิน (บาท)', 'หมวดหมู่', 'วันที่', 'หมายเหตุ'];
+    const rows = expenses.map(e => [e.item, e.amount, e.category, e.date, e.receipt || '']);
+    return { headers, rows };
+  };
+
   const exportCSV = () => {
     if (!activeProject) return;
-    const header = 'รายการ,จำนวนเงิน,หมวดหมู่,วันที่,หมายเหตุใบเสร็จ';
-    const rows = expenses.map(e => `"${e.item}",${e.amount},"${e.category}","${e.date}","${e.receipt || ''}"`);
-    const csv = [header, ...rows, '', `รวมทั้งหมด,${totalSpent}`, `งบประมาณ,${activeProject.budget}`, `คงเหลือ,${remaining}`].join('\n');
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const { headers, rows } = getBudgetData();
+    const lines = [headers.join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))];
+    lines.push('', `"รวมทั้งหมด",${totalSpent}`, `"งบประมาณ",${activeProject.budget}`, `"คงเหลือ",${remaining}`);
+    const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = `budget-${activeProject.name}-${Date.now()}.csv`;
     a.click(); URL.revokeObjectURL(url);
     toast.success('ส่งออก CSV แล้ว');
+  };
+
+  const exportExcelData = () => {
+    if (!activeProject) return;
+    const { headers, rows } = getBudgetData();
+    const summaryRows = [...rows, ['รวมทั้งหมด', totalSpent, '', '', ''], ['งบประมาณ', activeProject.budget, '', '', ''], ['คงเหลือ', remaining, '', '', '']];
+    downloadExcel(headers, summaryRows, `budget-${activeProject.name}-${Date.now()}`, 'Budget');
+    toast.success('ส่งออก Excel แล้ว');
+  };
+
+  const exportPDFData = async () => {
+    if (!activeProject) return;
+    const { headers, rows } = getBudgetData();
+    const html = buildTableHTML(
+      `งบประมาณ: ${activeProject.name}`,
+      headers, rows,
+      [['รวมทั้งหมด', `${totalSpent.toLocaleString('th-TH')} บาท`], ['งบประมาณ', `${activeProject.budget.toLocaleString('th-TH')} บาท`], ['คงเหลือ', `${remaining.toLocaleString('th-TH')} บาท`]]
+    );
+    await downloadHTMLAsPDF(html, `budget-${activeProject.name}-${Date.now()}`);
+    toast.success('ส่งออก PDF แล้ว');
   };
 
   const catBreakdown = CATEGORIES.map((cat, i) => ({
@@ -209,7 +238,15 @@ export default function BudgetTracker() {
           <div style={cardStyle}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <h4 style={{ fontSize: 16, color: CI.dark, margin: 0 }}>📝 รายการค่าใช้จ่าย ({expenses.length})</h4>
-              <button style={{ ...btnStyle(CI.purple), padding: '8px 16px', fontSize: 13 }} onClick={exportCSV}>📥 Export CSV</button>
+              <DownloadDropdown
+                label="Export"
+                btnStyle={{ padding: '8px 16px', fontSize: '13px' }}
+                options={[
+                  { label: 'CSV', icon: '📊', ext: 'CSV', color: '#0369a1', onClick: exportCSV },
+                  { label: 'Excel', icon: '📗', ext: 'XLS', color: '#16a34a', onClick: exportExcelData },
+                  { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: exportPDFData },
+                ]}
+              />
             </div>
             {expenses.length === 0 && <p style={{ color: '#aaa', fontSize: 14, textAlign: 'center', padding: 20 }}>ยังไม่มีรายการ</p>}
             {expenses.map(e => (

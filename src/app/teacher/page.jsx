@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Toaster } from 'react-hot-toast';
@@ -70,19 +70,19 @@ function buildMenu(lang) {
       groups: [
         { labelKey: 'group_assess', items: [
           { id: 'smart-quiz', labelKey: 'tool_smart_quiz', icon: '📝', phase: 1 },
-          { id: 'live-quiz', labelKey: 'tool_live_quiz', icon: '🎮', phase: 2 },
-          { id: 'exit-ticket', labelKey: 'tool_exit_ticket', icon: '🎫', phase: 3 },
-          { id: 'video-quiz', labelKey: 'tool_video_quiz', icon: '🎬', phase: 3 },
+          { id: 'live-quiz', labelKey: 'tool_live_quiz', icon: '🎮', phase: 1 },
+          { id: 'exit-ticket', labelKey: 'tool_exit_ticket', icon: '📝', phase: 1 },
+          { id: 'video-quiz', labelKey: 'tool_video_quiz', icon: '🎬', phase: 1 },
         ]},
         { labelKey: 'group_plan', items: [
-          { id: 'lesson-planner', labelKey: 'tool_lesson_planner', icon: '📋', phase: 2 },
-          { id: 'interactive-activity', labelKey: 'tool_interactive', icon: '🤝', phase: 3 },
-          { id: 'content-differentiator', labelKey: 'tool_differentiator', icon: '📊', phase: 3 },
+          { id: 'lesson-planner', labelKey: 'tool_lesson_planner', icon: '📋', phase: 1 },
+          { id: 'interactive-activity', labelKey: 'tool_interactive', icon: '🎯', phase: 1 },
+          { id: 'content-differentiator', labelKey: 'tool_differentiator', icon: '📶', phase: 1 },
         ]},
         { labelKey: 'group_grade', items: [
-          { id: 'auto-grader', labelKey: 'tool_auto_grader', icon: '✅', phase: 3 },
-          { id: 'rubric-generator', labelKey: 'tool_rubric', icon: '📏', phase: 3 },
-          { id: 'flashcard-builder', labelKey: 'tool_flashcard', icon: '🃏', phase: 3 },
+          { id: 'auto-grader', labelKey: 'tool_auto_grader', icon: '✅', phase: 1 },
+          { id: 'rubric-generator', labelKey: 'tool_rubric', icon: '📏', phase: 1 },
+          { id: 'flashcard-builder', labelKey: 'tool_flashcard', icon: '🗂️', phase: 1 },
         ]},
       ],
     },
@@ -91,25 +91,25 @@ function buildMenu(lang) {
       groups: [
         { labelKey: 'group_create', items: [
           { id: 'letter-writer', labelKey: 'tool_letter', icon: '✉️', phase: 1 },
-          { id: 'slide-maker', labelKey: 'tool_slide', icon: '🖥️', phase: 3 },
-          { id: 'certificate-generator', labelKey: 'tool_certificate', icon: '🏆', phase: 2 },
-          { id: 'form-builder', labelKey: 'tool_form', icon: '📋', phase: 3 },
-          { id: 'ai-translator', labelKey: 'tool_translator', icon: '🌐', phase: 3 },
-          { id: 'ebook-builder', labelKey: 'tool_ebook', icon: '📖', phase: 3 },
+          { id: 'slide-maker', labelKey: 'tool_slide', icon: '🖥️', phase: 1 },
+          { id: 'certificate-generator', labelKey: 'tool_certificate', icon: '🏆', phase: 1 },
+          { id: 'form-builder', labelKey: 'tool_form', icon: '📄', phase: 1 },
+          { id: 'ai-translator', labelKey: 'tool_translator', icon: '🌐', phase: 1 },
+          { id: 'ebook-builder', labelKey: 'tool_ebook', icon: '📖', phase: 1 },
         ]},
         { labelKey: 'group_check', items: [
           { id: 'plagiarism-checker', labelKey: 'tool_plagiarism', icon: '🔍', phase: 1 },
           { id: 'ai-detector', labelKey: 'tool_ai_detector', icon: '🤖', phase: 1 },
-          { id: 'writing-quality', labelKey: 'tool_writing', icon: '✍️', phase: 3 },
-          { id: 'completeness-checker', labelKey: 'tool_completeness', icon: '☑️', phase: 3 },
-          { id: 'grammar-checker', labelKey: 'tool_grammar', icon: '📝', phase: 3 },
+          { id: 'writing-quality', labelKey: 'tool_writing', icon: '✍️', phase: 1 },
+          { id: 'completeness-checker', labelKey: 'tool_completeness', icon: '☑️', phase: 1 },
+          { id: 'grammar-checker', labelKey: 'tool_grammar', icon: '🔤', phase: 1 },
         ]},
         { labelKey: 'group_manage', items: [
           { id: 'qr-generator', labelKey: 'tool_qr', icon: '🔲', phase: 1 },
           { id: 'url-shortener', labelKey: 'tool_url', icon: '🔗', phase: 1 },
-          { id: 'image-to-content', labelKey: 'tool_image_content', icon: '🖼️', phase: 3 },
-          { id: 'pdf-toolkit', labelKey: 'tool_pdf', icon: '📦', phase: 3 },
-          { id: 'template-library', labelKey: 'tool_template', icon: '📚', phase: 3 },
+          { id: 'image-to-content', labelKey: 'tool_image_content', icon: '🖼️', phase: 1 },
+          { id: 'pdf-toolkit', labelKey: 'tool_pdf', icon: '📑', phase: 1 },
+          { id: 'template-library', labelKey: 'tool_template', icon: '📚', phase: 1 },
         ]},
       ],
     },
@@ -117,7 +117,7 @@ function buildMenu(lang) {
       side: 'marketing', labelKey: 'side_marketing', color: 'gold', icon: '📣',
       groups: [
         { labelKey: 'group_content', items: [
-          { id: 'marketing-content', labelKey: 'tool_marketing_content', icon: '✍️', phase: 1 },
+          { id: 'marketing-content', labelKey: 'tool_marketing_content', icon: '✨', phase: 1 },
           { id: 'auto-poster', labelKey: 'tool_auto_poster', icon: '🎨', phase: 1 },
         ]},
       ],
@@ -127,17 +127,17 @@ function buildMenu(lang) {
       groups: [
         { labelKey: 'group_track', items: [
           { id: 'attendance-tracker', labelKey: 'tool_attendance', icon: '📅', phase: 1 },
-          { id: 'student-progress', labelKey: 'tool_progress', icon: '📈', phase: 3 },
-          { id: 'ta-coordinator', labelKey: 'tool_ta', icon: '👥', phase: 3 },
-          { id: 'stakeholder-portal', labelKey: 'tool_stakeholder', icon: '🏛️', phase: 3 },
+          { id: 'student-progress', labelKey: 'tool_progress', icon: '📈', phase: 1 },
+          { id: 'ta-coordinator', labelKey: 'tool_ta', icon: '👥', phase: 1 },
+          { id: 'stakeholder-portal', labelKey: 'tool_stakeholder', icon: '🏛️', phase: 1 },
         ]},
         { labelKey: 'group_project', items: [
-          { id: 'schedule-manager', labelKey: 'tool_schedule', icon: '🗓️', phase: 3 },
-          { id: 'event-coordinator', labelKey: 'tool_event', icon: '🎪', phase: 3 },
-          { id: 'budget-tracker', labelKey: 'tool_budget', icon: '💰', phase: 3 },
-          { id: 'meeting-notes', labelKey: 'tool_meeting', icon: '🗒️', phase: 2 },
-          { id: 'kpi-dashboard', labelKey: 'tool_kpi', icon: '📊', phase: 3 },
-          { id: 'line-broadcast', labelKey: 'tool_broadcast', icon: '📢', phase: 3 },
+          { id: 'schedule-manager', labelKey: 'tool_schedule', icon: '🗓️', phase: 1 },
+          { id: 'event-coordinator', labelKey: 'tool_event', icon: '🎪', phase: 1 },
+          { id: 'budget-tracker', labelKey: 'tool_budget', icon: '💰', phase: 1 },
+          { id: 'meeting-notes', labelKey: 'tool_meeting', icon: '🗒️', phase: 1 },
+          { id: 'kpi-dashboard', labelKey: 'tool_kpi', icon: '📉', phase: 1 },
+          { id: 'line-broadcast', labelKey: 'tool_broadcast', icon: '📢', phase: 1 },
         ]},
       ],
     },
@@ -221,43 +221,92 @@ function ErrorFallback({ error, onReset }) {
 // ===== BUS SPLASH SCREEN =====
 function BusSplashScreen({ onFinish }) {
   const [progress, setProgress] = useState(0);
+  const onFinishRef = useRef(onFinish);
+  useEffect(() => { onFinishRef.current = onFinish; });
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress(p => { if (p >= 100) { clearInterval(interval); return 100; } return p + 1; });
     }, 48);
-    const timer = setTimeout(() => onFinish(), 5000);
+    const timer = setTimeout(() => onFinishRef.current(), 5000);
     return () => { clearInterval(interval); clearTimeout(timer); };
-  }, [onFinish]);
+  }, []);
 
-  // Pixel font data
+  // Pixel font — clean 6 cols x 8 rows, balanced proportions
   const FONTS = {
-    S: [[0,1,1,1,1,1,0],[1,1,0,0,0,1,1],[1,1,0,0,0,0,0],[0,1,1,1,1,1,0],[0,0,0,0,0,1,1],[1,1,0,0,0,1,1],[0,1,1,1,1,1,0]],
-    P: [[1,1,1,1,1,1,0],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,1,1,1,1,0],[1,1,0,0,0,0,0],[1,1,0,0,0,0,0],[1,1,0,0,0,0,0]],
-    U: [[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[0,1,1,1,1,1,0]],
-    B: [[1,1,1,1,1,1,0],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,1,1,1,1,0],[1,1,0,0,0,1,1],[1,1,0,0,0,1,1],[1,1,1,1,1,1,0]],
+    S: [
+      [0,1,1,1,1,0],
+      [1,1,0,0,1,1],
+      [1,1,0,0,0,0],
+      [0,1,1,1,0,0],
+      [0,0,1,1,1,0],
+      [0,0,0,0,1,1],
+      [1,1,0,0,1,1],
+      [0,1,1,1,1,0],
+    ],
+    P: [
+      [1,1,1,1,1,0],
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [1,1,1,1,1,0],
+      [1,1,0,0,0,0],
+      [1,1,0,0,0,0],
+      [1,1,0,0,0,0],
+      [1,1,0,0,0,0],
+    ],
+    U: [
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [0,1,1,1,1,0],
+    ],
+    B: [
+      [1,1,1,1,1,0],
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [1,1,1,1,1,0],
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [1,1,0,0,1,1],
+      [1,1,1,1,1,0],
+    ],
   };
-  const LETTERS = [
-    { ch: 'S', color: CI.cyan },
-    { ch: 'P', color: CI.cyan },
-    { ch: 'U', color: CI.cyan },
-    { ch: 'B', color: CI.magenta },
-    { ch: 'U', color: CI.magenta },
-    { ch: 'S', color: CI.magenta },
-  ];
-  const PX = 7, GAP = 2, CHAR_GAP = 10;
-  const charW = 7 * (PX + GAP);
-  const totalW = LETTERS.length * charW + (LETTERS.length - 1) * CHAR_GAP;
+  const LETTERS_CH = ['S','P','U','B','U','S'];
+  const PX = 5, GAP = 2, CHAR_GAP = 10;
+  const charW = 6 * (PX + GAP);
+  const totalW = LETTERS_CH.length * charW + (LETTERS_CH.length - 1) * CHAR_GAP;
 
-  // Build all pixel positions
+  // Gradient: cyan #00b4e6 → purple #7c4dff → pink #e6007e based on X position
+  const lerpColor = (t) => {
+    const colors = [
+      { r: 0, g: 180, b: 230 },   // #00b4e6 cyan
+      { r: 124, g: 77, b: 255 },   // #7c4dff purple
+      { r: 230, g: 0, b: 126 },    // #e6007e pink
+    ];
+    const seg = t * (colors.length - 1);
+    const i = Math.min(Math.floor(seg), colors.length - 2);
+    const f = seg - i;
+    const r = Math.round(colors[i].r + (colors[i+1].r - colors[i].r) * f);
+    const g = Math.round(colors[i].g + (colors[i+1].g - colors[i].g) * f);
+    const b = Math.round(colors[i].b + (colors[i+1].b - colors[i].b) * f);
+    return `rgb(${r},${g},${b})`;
+  };
+
+  // Build all pixel positions with gradient color
   const allPixels = [];
   let globalIdx = 0;
-  LETTERS.forEach((letter, li) => {
-    const grid = FONTS[letter.ch];
+  LETTERS_CH.forEach((ch, li) => {
+    const grid = FONTS[ch];
     const baseX = li * (charW + CHAR_GAP);
     grid.forEach((row, ry) => {
       row.forEach((on, rx) => {
         if (on) {
-          allPixels.push({ x: baseX + rx * (PX + GAP), y: ry * (PX + GAP), li, color: letter.color, idx: globalIdx });
+          const absX = baseX + rx * (PX + GAP);
+          const t = Math.min(1, Math.max(0, absX / totalW));
+          allPixels.push({ x: absX, y: ry * (PX + GAP), li, color: lerpColor(t), idx: globalIdx });
           globalIdx++;
         }
       });
@@ -267,48 +316,23 @@ function BusSplashScreen({ onFinish }) {
   return (
     <div style={{
       height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(180deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%)',
+      background: 'linear-gradient(180deg, #0b0b24 0%, #121236 40%, #0b0b24 100%)',
       fontFamily: FONT, overflow: 'hidden', position: 'fixed', inset: 0, zIndex: 9999,
     }}>
       <style>{`
-        @keyframes pxPop {
-          0% { transform: scale(0) rotate(180deg); opacity: 0; }
-          60% { transform: scale(1.3) rotate(-10deg); opacity: 1; }
-          80% { transform: scale(0.9) rotate(5deg); }
-          100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        @keyframes pxFadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
         }
-        @keyframes pxWave {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-6px); }
+        @keyframes pxBright {
+          0%, 100% { filter: brightness(1); }
+          50% { filter: brightness(1.3); }
         }
-        @keyframes pxPulse {
-          0%, 100% { opacity: 0.85; filter: brightness(1); }
-          50% { opacity: 1; filter: brightness(1.4); }
+        @keyframes pxGlowPulse {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.4; }
         }
-        @keyframes pxColorCycle {
-          0% { fill: #00b4e6; }
-          25% { fill: #7c4dff; }
-          50% { fill: #e6007e; }
-          75% { fill: #ffc107; }
-          100% { fill: #00b4e6; }
-        }
-        @keyframes pxColorCycleM {
-          0% { fill: #e6007e; }
-          25% { fill: #ffc107; }
-          50% { fill: #00b4e6; }
-          75% { fill: #7c4dff; }
-          100% { fill: #e6007e; }
-        }
-        @keyframes sparkle {
-          0% { transform: scale(0) rotate(0deg); opacity: 0; }
-          50% { transform: scale(1) rotate(180deg); opacity: 1; }
-          100% { transform: scale(0) rotate(360deg); opacity: 0; }
-        }
-        @keyframes floatUp {
-          0% { transform: translateY(0) scale(1); opacity: 0.8; }
-          100% { transform: translateY(-40px) scale(0.3); opacity: 0; }
-        }
-        @keyframes twinkle { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.8; } }
+        @keyframes twinkle { 0%, 100% { opacity: 0.05; } 50% { opacity: 0.7; } }
         @keyframes busRunCurve {
           0% { transform: translateX(-30%); }
           100% { transform: translateX(calc(100vw + 30%)); }
@@ -317,34 +341,28 @@ function BusSplashScreen({ onFinish }) {
         @keyframes wheelSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         @keyframes subtitleReveal {
           0% { opacity: 0; transform: translateY(12px); letter-spacing: 14px; }
-          100% { opacity: 0.6; transform: translateY(0); letter-spacing: 7px; }
-        }
-        @keyframes heartBeat {
-          0%, 100% { transform: scale(1); }
-          25% { transform: scale(1.1); }
-          50% { transform: scale(1); }
-          75% { transform: scale(1.05); }
+          100% { opacity: 0.7; transform: translateY(0); letter-spacing: 7px; }
         }
       `}</style>
 
-      {/* Floating pixel stars */}
-      {[...Array(35)].map((_, i) => (
+      {/* Floating stars */}
+      {[...Array(40)].map((_, i) => (
         <div key={i} style={{
           position: 'absolute',
-          width: i % 5 === 0 ? '4px' : i % 3 === 0 ? '3px' : '2px',
-          height: i % 5 === 0 ? '4px' : i % 3 === 0 ? '3px' : '2px',
-          borderRadius: i % 4 === 0 ? '50%' : '0',
-          background: [CI.cyan, CI.gold, CI.magenta, '#cbd5e1', CI.purple][i % 5],
-          top: `${(i * 13 + 3) % 85}%`, left: `${(i * 19 + 7) % 94}%`,
-          animation: `twinkle ${1.2 + (i % 4) * 0.7}s ease-in-out infinite`,
-          animationDelay: `${i * 0.12}s`,
+          width: i % 5 === 0 ? '3px' : i % 3 === 0 ? '2px' : '1.5px',
+          height: i % 5 === 0 ? '3px' : i % 3 === 0 ? '2px' : '1.5px',
+          borderRadius: '50%',
+          background: [CI.cyan, CI.gold, CI.magenta, '#fff', CI.purple][i % 5],
+          top: `${(i * 13 + 3) % 90}%`, left: `${(i * 19 + 7) % 95}%`,
+          animation: `twinkle ${2 + (i % 5) * 0.8}s ease-in-out infinite`,
+          animationDelay: `${i * 0.15}s`,
         }} />
       ))}
 
       {/* ===== PIXEL TITLE: SPUBUS ===== */}
-      <div style={{ zIndex: 2, marginBottom: '16px' }}>
-        <svg viewBox={`-20 -20 ${totalW + 40} ${7 * (PX + GAP) + 40}`}
-          style={{ width: '88vw', maxWidth: '680px', height: 'auto' }}>
+      <div style={{ zIndex: 2, marginBottom: '24px' }}>
+        <svg viewBox={`-10 -10 ${totalW + 20} ${8 * (PX + GAP) + 20}`}
+          style={{ width: '64vw', maxWidth: '460px', height: 'auto' }}>
           <defs>
             <filter id="pxGlow">
               <feGaussianBlur stdDeviation="3" result="blur" />
@@ -352,108 +370,64 @@ function BusSplashScreen({ onFinish }) {
               <feComposite in2="blur" operator="in" />
               <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
             </filter>
+            <linearGradient id="pxShine" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#fff" stopOpacity="0.35" />
+              <stop offset="50%" stopColor="#fff" stopOpacity="0" />
+            </linearGradient>
           </defs>
 
-          {/* Each pixel as animated rect */}
           {allPixels.map((px, i) => {
-            const popDelay = px.li * 0.12 + px.idx * 0.008;
-            const waveDelay = (px.x + px.y) * 0.005;
-            const isCyan = px.li < 3;
+            const fadeDelay = px.li * 0.08 + px.idx * 0.005;
+            const glowDelay = (px.x / totalW) * 2.5;
             return (
               <g key={i}>
-                {/* Glow shadow behind pixel */}
+                {/* Soft glow behind */}
                 <rect
                   x={px.x - 1} y={px.y - 1}
                   width={PX + 2} height={PX + 2}
                   rx="2" fill={px.color} opacity="0"
                   filter="url(#pxGlow)"
-                >
-                  <animate attributeName="opacity" from="0" to="0.3" dur="0.3s" begin={`${popDelay}s`} fill="freeze" />
-                </rect>
-                {/* Main pixel */}
+                  style={{ animation: `pxGlowPulse 5s ease-in-out ${glowDelay}s infinite, pxFadeIn 0.5s ease-out ${fadeDelay}s both` }}
+                />
+                {/* Main pixel block */}
                 <rect
                   x={px.x} y={px.y}
                   width={PX} height={PX}
-                  rx="1.5"
+                  rx="1.8"
                   fill={px.color}
-                  opacity="0"
                   style={{
-                    animation: `pxPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${popDelay}s both, pxWave 2.5s ease-in-out ${1.5 + waveDelay}s infinite, ${isCyan ? 'pxColorCycle' : 'pxColorCycleM'} 5s linear ${2 + waveDelay}s infinite, pxPulse 3s ease-in-out ${1.8 + waveDelay}s infinite`,
+                    animation: `pxFadeIn 0.5s ease-out ${fadeDelay}s both, pxBright 5s ease-in-out ${glowDelay}s infinite`,
                   }}
                 />
-                {/* Highlight corner (cute shine) */}
+                {/* Glass-like highlight on top half */}
                 <rect
-                  x={px.x + 1} y={px.y + 1}
-                  width={3} height={3}
-                  rx="0.5" fill="#fff" opacity="0"
+                  x={px.x + 0.8} y={px.y + 0.5}
+                  width={PX - 1.6} height={PX * 0.45}
+                  rx="1" fill="url(#pxShine)" opacity="0"
+                  style={{ animation: `pxFadeIn 0.4s ease-out ${fadeDelay + 0.15}s both` }}
                 >
-                  <animate attributeName="opacity" from="0" to="0.35" dur="0.2s" begin={`${popDelay + 0.3}s`} fill="freeze" />
+                  <animate attributeName="opacity" from="0" to="1" dur="0.4s" begin={`${fadeDelay + 0.15}s`} fill="freeze" />
                 </rect>
               </g>
             );
           })}
 
-          {/* Sparkle effects around text */}
-          {[
-            { x: -12, y: 10, delay: 1.5, size: 8 },
-            { x: totalW + 4, y: 5, delay: 2.2, size: 10 },
-            { x: totalW / 2 - 5, y: -14, delay: 1.8, size: 7 },
-            { x: charW * 2 + 20, y: 7 * (PX + GAP) + 5, delay: 2.5, size: 9 },
-            { x: charW * 4, y: -10, delay: 3.0, size: 6 },
-            { x: -8, y: 7 * (PX + GAP) - 5, delay: 3.5, size: 8 },
-            { x: totalW + 8, y: 7 * (PX + GAP) - 10, delay: 2.8, size: 7 },
-          ].map((sp, i) => (
-            <g key={`sp${i}`} style={{ transformOrigin: `${sp.x + sp.size/2}px ${sp.y + sp.size/2}px`, animation: `sparkle 1.8s ease-in-out ${sp.delay}s infinite` }}>
-              <line x1={sp.x + sp.size/2} y1={sp.y} x2={sp.x + sp.size/2} y2={sp.y + sp.size} stroke={CI.gold} strokeWidth="1.5" strokeLinecap="round" />
-              <line x1={sp.x} y1={sp.y + sp.size/2} x2={sp.x + sp.size} y2={sp.y + sp.size/2} stroke={CI.gold} strokeWidth="1.5" strokeLinecap="round" />
-              <line x1={sp.x + 1} y1={sp.y + 1} x2={sp.x + sp.size - 1} y2={sp.y + sp.size - 1} stroke={CI.gold} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
-              <line x1={sp.x + sp.size - 1} y1={sp.y + 1} x2={sp.x + 1} y2={sp.y + sp.size - 1} stroke={CI.gold} strokeWidth="1" strokeLinecap="round" opacity="0.6" />
-            </g>
-          ))}
-
-          {/* Floating hearts / particles from text */}
-          {[
-            { x: charW * 1, y: -5, emoji: '✦', color: CI.cyan, delay: 2 },
-            { x: charW * 3.5, y: -5, emoji: '♥', color: CI.magenta, delay: 2.8 },
-            { x: charW * 5, y: -3, emoji: '✦', color: CI.gold, delay: 3.5 },
-          ].map((p, i) => (
-            <text key={`fl${i}`} x={p.x} y={p.y} fontSize="8" fill={p.color} opacity="0"
-              style={{ animation: `floatUp 2.5s ease-out ${p.delay}s infinite` }}>
-              {p.emoji}
-            </text>
-          ))}
         </svg>
       </div>
 
-      {/* TEACHER SUPPORT subtitle */}
+      {/* University name */}
       <div style={{
-        fontSize: '16px', fontWeight: 600, letterSpacing: '7px', color: '#64748b',
-        textTransform: 'uppercase', zIndex: 2, marginBottom: '6px',
-        animation: 'subtitleReveal 0.8s ease-out 0.8s both',
+        fontSize: '14px', color: 'rgba(255,255,255,0.55)', zIndex: 2,
+        fontWeight: 500, letterSpacing: '4px',
+        opacity: 0, animation: 'subtitleReveal 0.6s ease-out 1s both',
       }}>
-        TEACHER SUPPORT
-      </div>
-
-      {/* Sub-subtitle */}
-      <div style={{
-        fontSize: '13px', color: '#94a3b8', zIndex: 2, marginBottom: '4px',
-        opacity: 0, animation: 'subtitleReveal 0.6s ease-out 1.2s both',
-        letterSpacing: '3px',
-      }}>
-        AI-Powered Teaching Platform
-      </div>
-      <div style={{
-        fontSize: '11px', color: '#b0b8c4', zIndex: 2,
-        opacity: 0, animation: 'subtitleReveal 0.6s ease-out 1.5s both',
-        letterSpacing: '2px',
-      }}>
-        คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
+        คณะบริหารธุรกิจ&nbsp;&nbsp;มหาวิทยาลัยศรีปทุม
       </div>
 
       {/* ===== Curved Road + Big Bus ===== */}
       <div style={{ position: 'relative', width: '100%', height: '120px', zIndex: 2, marginTop: '16px' }}>
         <svg style={{ position: 'absolute', bottom: '8px', width: '104%', left: '-2%', height: '100px' }} viewBox="-100 0 1400 120" preserveAspectRatio="none">
-          <path d="M-100,70 C100,48 350,85 600,65 C850,45 1050,82 1300,60" fill="none" stroke="#e2e8f0" strokeWidth="30" />
+          <path d="M-100,70 C100,48 350,85 600,65 C850,45 1050,82 1300,60" fill="none" stroke="#2a2a5e" strokeWidth="30" />
           <path d="M-100,70 C100,48 350,85 600,65 C850,45 1050,82 1300,60" fill="none" stroke={CI.gold} strokeWidth="2" strokeDasharray="16 12" opacity="0.5">
             <animate attributeName="stroke-dashoffset" from="0" to="-56" dur="0.8s" repeatCount="indefinite" />
           </path>
@@ -463,7 +437,7 @@ function BusSplashScreen({ onFinish }) {
         <div style={{ position: 'absolute', bottom: '24px', animation: 'busRunCurve 5.5s ease-in-out infinite' }}>
           <div style={{ animation: 'bounce 0.3s ease-in-out infinite' }}>
             <svg width="160" height="75" viewBox="0 0 180 85">
-              <ellipse cx="90" cy="78" rx="70" ry="4" fill="rgba(0,0,0,0.08)" />
+              <ellipse cx="90" cy="78" rx="70" ry="4" fill="rgba(0,180,230,0.15)" />
               <rect x="5" y="14" width="170" height="50" rx="10" fill={CI.cyan} />
               <rect x="10" y="7" width="160" height="12" rx="6" fill="#0099cc" />
               <rect x="10" y="17" width="160" height="2.5" fill="#33ccff" opacity="0.35" />
@@ -492,8 +466,8 @@ function BusSplashScreen({ onFinish }) {
                 <line x1="140" y1="63" x2="140" y2="77" stroke="#888" strokeWidth="1" />
                 <line x1="133" y1="70" x2="147" y2="70" stroke="#888" strokeWidth="1" />
               </g>
-              <circle cx="-6" cy="58" r="4" fill="rgba(0,0,0,0.04)" />
-              <circle cx="-16" cy="54" r="6" fill="rgba(0,0,0,0.02)" />
+              <circle cx="-6" cy="58" r="4" fill="rgba(0,180,230,0.15)" />
+              <circle cx="-16" cy="54" r="6" fill="rgba(0,180,230,0.08)" />
             </svg>
           </div>
         </div>
@@ -501,15 +475,15 @@ function BusSplashScreen({ onFinish }) {
 
       {/* Progress bar */}
       <div style={{ position: 'absolute', bottom: '16px', width: '50%', maxWidth: '280px', zIndex: 3 }}>
-        <div style={{ height: '6px', borderRadius: '3px', background: '#e2e8f0', overflow: 'hidden' }}>
+        <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
           <div style={{
             width: `${progress}%`, height: '100%', borderRadius: '3px',
             background: `linear-gradient(90deg, ${CI.cyan}, ${CI.purple}, ${CI.magenta})`,
             transition: 'width 0.1s linear',
-            boxShadow: `0 0 6px ${CI.cyan}40`,
+            boxShadow: `0 0 10px ${CI.cyan}60`,
           }} />
         </div>
-        <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '9px', color: '#b0b8c4', letterSpacing: '3px', fontWeight: 600 }}>
+        <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '9px', color: 'rgba(255,255,255,0.35)', letterSpacing: '3px', fontWeight: 600 }}>
           LOADING...
         </div>
       </div>
@@ -530,6 +504,7 @@ export default function TeacherPage() {
   const [toolError, setToolError] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [isStudentMode, setIsStudentMode] = useState(false);
 
   const MENU_ITEMS = buildMenu(lang);
 
@@ -547,23 +522,32 @@ export default function TeacherPage() {
 
   // No auth guard — allow anyone to access tools
 
-  // QR/attendance param handling
+  // QR/attendance param handling — detect student mode
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      const hasStudentParam = params.get('quiz') || params.get('att') || params.get('livequiz') || params.get('video-quiz') || params.get('exit-ticket');
       if (params.get('quiz')) setActiveTool('smart-quiz');
       else if (params.get('att')) setActiveTool('attendance-tracker');
       else if (params.get('livequiz')) setActiveTool('live-quiz');
+      else if (params.get('video-quiz')) setActiveTool('video-quiz');
+      else if (params.get('exit-ticket')) setActiveTool('exit-ticket');
+
+      if (hasStudentParam) {
+        setIsStudentMode(true);
+        setShowSplash(false); // skip splash for students
+        setSidebarOpen(false);
+      }
     }
   }, []);
 
-  // Show splash screen on every page load/refresh
-  if (showSplash) return <BusSplashScreen onFinish={() => setShowSplash(false)} />;
+  // Show splash screen on every page load/refresh (except student mode)
+  if (showSplash && !isStudentMode) return <BusSplashScreen onFinish={() => setShowSplash(false)} />;
 
   if (loading) return (
     <div style={{
       height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      background: '#fff', fontFamily: FONT,
+      background: '#0b0b24', fontFamily: FONT,
     }}>
       <style>{`
         @keyframes loadSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -572,14 +556,14 @@ export default function TeacherPage() {
       `}</style>
       <div style={{
         width: '48px', height: '48px', borderRadius: '50%',
-        border: '3px solid #f1f5f9', borderTopColor: CI.cyan,
+        border: '3px solid rgba(255,255,255,0.1)', borderTopColor: CI.cyan,
         animation: 'loadSpin 0.8s linear infinite', marginBottom: '16px',
       }} />
-      <div style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
-        <span style={{ color: CI.cyan }}>SPU</span><span style={{ color: CI.magenta }}>BUS</span> Teacher Support
+      <div style={{ fontSize: '16px', fontWeight: 700, color: '#fff', marginBottom: '6px' }}>
+        <span style={{ color: '#fff' }}>SPUBUS</span> <span style={{ color: CI.magenta }}>SUPPORT</span>
       </div>
       <div style={{
-        width: '180px', height: '4px', borderRadius: '2px', background: '#f1f5f9',
+        width: '180px', height: '4px', borderRadius: '2px', background: 'rgba(255,255,255,0.1)',
         overflow: 'hidden', marginBottom: '8px',
       }}>
         <div style={{
@@ -588,7 +572,7 @@ export default function TeacherPage() {
           animation: 'loadBar 1.2s ease-in-out infinite',
         }} />
       </div>
-      <p style={{ color: '#94a3b8', fontSize: '13px', animation: 'loadPulse 1.5s ease-in-out infinite' }}>
+      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '13px', animation: 'loadPulse 1.5s ease-in-out infinite' }}>
         กำลังเตรียมเครื่องมือ...
       </p>
     </div>
@@ -680,28 +664,32 @@ export default function TeacherPage() {
                   <div style={{ padding: '6px 16px 4px', color: '#94a3b8', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     {t(lang, group.labelKey)}
                   </div>
-                  {group.items.map(item => (
+                  {group.items.map(item => {
+                    const isActive = activeTool === item.id;
+                    return (
                     <div key={item.id} style={{ padding: '1px 8px' }}>
                       <button
                         onClick={() => handleSelectTool(item.id)}
                         title={t(lang, item.labelKey)}
                         style={{
                           width: '100%', padding: '9px 12px', borderRadius: '10px',
-                          background: activeTool === item.id ? c.bg : 'transparent',
-                          border: 'none',
-                          color: activeTool === item.id ? '#fff' : '#374151',
+                          background: isActive ? c.light : 'transparent',
+                          border: isActive ? `2px solid ${c.bg}` : '2px solid transparent',
+                          color: isActive ? c.text : '#374151',
                           cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px',
                           fontSize: '14px', textAlign: 'left', transition: 'all 0.15s', fontFamily: 'inherit',
-                          fontWeight: activeTool === item.id ? 700 : 500,
+                          fontWeight: isActive ? 700 : 500,
+                          boxShadow: isActive ? `0 0 12px ${c.bg}35, inset 0 0 0 1px ${c.bg}20` : 'none',
                         }}
                       >
                         <span style={{ fontSize: '17px', flexShrink: 0 }}>{item.icon}</span>
                         <span style={{ flex: 1, lineHeight: 1.3 }}>{t(lang, item.labelKey)}</span>
-                        {item.phase === 1 && <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '6px', background: activeTool === item.id ? 'rgba(255,255,255,0.25)' : '#dcfce7', color: activeTool === item.id ? '#fff' : '#16a34a', fontWeight: 700 }}>✓</span>}
-                        {item.phase > 1 && <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '6px', background: activeTool === item.id ? 'rgba(255,255,255,0.2)' : '#f1f5f9', color: activeTool === item.id ? '#fff' : '#94a3b8', fontWeight: 600 }}>P{item.phase}</span>}
+                        {item.phase === 1 && <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '6px', background: isActive ? `${c.bg}20` : '#dcfce7', color: isActive ? c.bg : '#16a34a', fontWeight: 700 }}>✓</span>}
+                        {item.phase > 1 && <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '6px', background: isActive ? `${c.bg}15` : '#f1f5f9', color: isActive ? c.bg : '#94a3b8', fontWeight: 600 }}>P{item.phase}</span>}
                       </button>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ))}
             </div>
@@ -715,10 +703,31 @@ export default function TeacherPage() {
         position: 'sticky', bottom: 0, background: '#fff',
         textAlign: 'center',
       }}>
-        <div style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 500 }}>SPUBUS Teacher Platform v1.0</div>
+        <div style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 500 }}>SPUBUS SUPPORT v1.0</div>
       </div>
     </div>
   );
+
+  // ===== STUDENT MODE: Full-screen, no sidebar, no header =====
+  if (isStudentMode && ActiveComponent) {
+    return (
+      <div style={{ minHeight: '100vh', fontFamily: FONT, background: '#f8fafc' }}>
+        <Toaster position="top-right" toastOptions={{ duration: 4000, style: { background: CI.dark, color: '#fff', fontSize: '16px', borderRadius: '10px', fontFamily: FONT } }} />
+        {/* Minimal student header */}
+        <div style={{
+          padding: '8px 16px', background: `linear-gradient(135deg, ${CI.dark}, #1a1a4e)`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+        }}>
+          <span style={{ fontSize: '14px', color: '#fff', fontWeight: 700 }}>
+            <span style={{ color: '#fff' }}>SPUBUS</span>
+          </span>
+          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)' }}>SUPPORT</span>
+        </div>
+        {/* Tool content only — no sidebar */}
+        <ActiveComponent />
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: FONT, background: '#f8fafc', overflow: 'hidden' }}>

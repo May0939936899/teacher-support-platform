@@ -64,6 +64,17 @@ export default function ExitTicket() {
     setQuestions(prev => prev.filter((_, i) => i !== idx));
   };
 
+  // Generate QR after shareLink state + DOM update
+  useEffect(() => {
+    if (!shareLink || !qrRef.current) return;
+    import('qrcode').then(QRCode => {
+      QRCode.toCanvas(qrRef.current, shareLink, {
+        width: 200, margin: 2,
+        color: { dark: '#0b0b24', light: '#ffffff' },
+      }, () => {});
+    }).catch(() => {});
+  }, [shareLink]);
+
   const generateLink = () => {
     if (!title || questions.length === 0) {
       toast.error('กรุณากรอกชื่อและเพิ่มคำถามอย่างน้อย 1 ข้อ');
@@ -73,12 +84,6 @@ export default function ExitTicket() {
     const link = `${typeof window !== 'undefined' ? window.location.origin : ''}/teacher?exit-ticket=${code}`;
     setShareLink(link);
     toast.success('สร้างลิงก์แล้ว!');
-    // Generate QR
-    if (qrRef.current) {
-      import('qrcode').then(QRCode => {
-        QRCode.toCanvas(qrRef.current, link, { width: 180, margin: 2, color: { dark: '#1e293b', light: '#ffffff' } }, () => {});
-      }).catch(() => {});
-    }
   };
 
   const showResults = () => {
@@ -139,10 +144,10 @@ export default function ExitTicket() {
         <div style={{ display: 'grid', gridTemplateColumns: shareLink ? '1fr 320px' : '1fr', gap: '24px' }}>
           <div>
             <div style={{ background: '#fff', borderRadius: '16px', padding: '28px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-              <h3 style={{ margin: '0 0 20px', fontSize: '22px', color: CI.dark, fontWeight: 700 }}>🎫 สร้าง Exit Ticket</h3>
+              <h3 style={{ margin: '0 0 20px', fontSize: '22px', color: CI.dark, fontWeight: 700 }}>📝 สร้างแบบวัดผลหลังเรียน</h3>
               <div style={{ marginBottom: '16px' }}>
-                <label style={lbl}>ชื่อ Exit Ticket *</label>
-                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="เช่น Exit Ticket บทที่ 5" style={inp} />
+                <label style={lbl}>หัวข้อ *</label>
+                <input value={title} onChange={e => setTitle(e.target.value)} placeholder="เช่น วัดผลหลังเรียน บทที่ 5" style={inp} />
               </div>
 
               <label style={lbl}>เพิ่มคำถาม</label>
@@ -237,7 +242,7 @@ export default function ExitTicket() {
           {/* Share panel */}
           {shareLink && (
             <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #e2e8f0', height: 'fit-content' }}>
-              <h4 style={{ margin: '0 0 16px', fontSize: '18px', color: CI.dark }}>🔗 แชร์ Exit Ticket</h4>
+              <h4 style={{ margin: '0 0 16px', fontSize: '18px', color: CI.dark }}>🔗 แชร์แบบวัดผลหลังเรียน</h4>
               <canvas ref={qrRef} style={{ borderRadius: '12px', display: 'block', margin: '0 auto 16px' }} />
               <div style={{ background: '#f8fafc', borderRadius: '8px', padding: '10px', fontSize: '14px', color: '#475569', wordBreak: 'break-all', marginBottom: '12px' }}>
                 {shareLink}
@@ -260,7 +265,7 @@ export default function ExitTicket() {
             background: `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`,
             borderRadius: '16px', padding: '28px', color: '#fff', marginBottom: '20px',
           }}>
-            <h2 style={{ margin: '0 0 8px', fontSize: '22px' }}>{title || 'Exit Ticket'}</h2>
+            <h2 style={{ margin: '0 0 8px', fontSize: '22px' }}>{title || 'วัดผลหลังเรียน'}</h2>
             <p style={{ margin: 0, opacity: 0.85, fontSize: '15px' }}>กรุณาตอบคำถามด้านล่างก่อนออกจากห้องเรียน</p>
           </div>
           {questions.length === 0 && (
@@ -330,7 +335,7 @@ export default function ExitTicket() {
           ) : (
             <div>
               <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', border: '1px solid #e2e8f0', marginBottom: '20px' }}>
-                <h3 style={{ margin: '0 0 4px', fontSize: '20px', color: CI.dark }}>📊 ผลลัพธ์ Exit Ticket</h3>
+                <h3 style={{ margin: '0 0 4px', fontSize: '20px', color: CI.dark }}>📊 ผลลัพธ์วัดผลหลังเรียน</h3>
                 <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: '15px' }}>จำนวนผู้ตอบ: {mockResults.length} คน</p>
 
                 {questions.map((q, idx) => (

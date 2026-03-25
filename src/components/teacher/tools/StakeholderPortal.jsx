@@ -50,6 +50,8 @@ export default function StakeholderPortal() {
 
   const typeLabel = REPORT_TYPES.find(t => t.key === form.reportType)?.label || '';
 
+  const [aiLoading, setAiLoading] = useState(false);
+
   const generateReport = () => {
     if (!form.studentName.trim()) { toast.error('กรุณาระบุชื่อนักศึกษา'); return; }
     const text = [
@@ -79,6 +81,36 @@ export default function StakeholderPortal() {
     const newReport = { ...form, id: Date.now(), generatedText: text, createdAt: new Date().toISOString() };
     saveReports([newReport, ...reports]);
     toast.success('สร้างรายงานสำเร็จ');
+  };
+
+  const generateWithAI = async () => {
+    if (!form.studentName.trim()) { toast.error('กรุณาระบุชื่อนักศึกษา'); return; }
+    setAiLoading(true);
+    const tid = toast.loading('AI กำลังเขียนรายงาน...');
+    try {
+      const res = await fetch('/api/teacher/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'stakeholder_report',
+          payload: {
+            audience: typeLabel,
+            topic: `รายงานสรุปผลนักศึกษา ${form.studentName} ภาคเรียน ${form.period}`,
+            data: `การเข้าเรียน: ${form.attendance || 'ไม่ระบุ'}\nผลการเรียน: ${form.grades || 'ไม่ระบุ'}\nพฤติกรรม: ${form.behavior || 'ไม่ระบุ'}\nข้อเสนอแนะ: ${form.recommendations || 'ไม่ระบุ'}`,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI error');
+      setGenerated(data.result || '');
+      const newReport = { ...form, id: Date.now(), generatedText: data.result || '', createdAt: new Date().toISOString() };
+      saveReports([newReport, ...reports]);
+      toast.success('AI สร้างรายงานสำเร็จ!', { id: tid });
+    } catch (e) {
+      toast.error('เกิดข้อผิดพลาด: ' + e.message, { id: tid });
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -204,9 +236,18 @@ export default function StakeholderPortal() {
           <textarea style={textareaStyle} placeholder="คำแนะนำสำหรับการพัฒนา..." value={form.recommendations} onChange={e => updateField('recommendations', e.target.value)} />
         </div>
 
-        <button style={{ ...btnStyle(), width: '100%', padding: 14, fontSize: 17 }} onClick={generateReport}>
-          ✨ สร้างรายงาน
-        </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <button style={{ ...btnStyle(), padding: 14, fontSize: 16 }} onClick={generateReport}>
+            📄 สร้างรายงาน (แบบฟอร์ม)
+          </button>
+          <button
+            style={{ ...btnStyle(`linear-gradient(135deg, ${CI.purple}, ${CI.magenta})`), padding: 14, fontSize: 16, opacity: aiLoading ? 0.6 : 1 }}
+            onClick={generateWithAI}
+            disabled={aiLoading}
+          >
+            {aiLoading ? '⏳ AI กำลังเขียน...' : '✨ AI เขียนรายงานให้'}
+          </button>
+        </div>
       </div>
 
       {/* Generated Report */}

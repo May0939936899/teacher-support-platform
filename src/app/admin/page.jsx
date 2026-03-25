@@ -2,7 +2,7 @@ import AdminDashboard from '@/components/AdminDashboard';
 import Navbar from '@/components/Navbar';
 
 export const metadata = {
-  title: 'Admin Dashboard — SPUBUS BIZ CONTENT',
+  title: 'Admin Dashboard — SPUBUS BiZ CONTENT',
 };
 
 export default function AdminPage() {

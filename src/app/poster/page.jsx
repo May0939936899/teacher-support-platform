@@ -7,6 +7,7 @@ import {
   Type, Wand2, FileImage, FileText, Presentation, ToggleLeft, ToggleRight,
   PanelLeftClose, PanelLeft, ALargeSmall,
   UserCircle2, Scissors, Check, ImagePlus, Calendar, Clock, Plus, Trash2, RotateCcw, Move,
+  Sparkles, ChevronRight,
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import PosterCanvas from '@/components/poster/PosterCanvas';
@@ -106,6 +107,10 @@ export default function PosterPage() {
   const [exportQuality, setExportQuality] = useState(2);
   const [speakerPos, setSpeakerPos] = useState({ x: 0, y: 0 });
   const [layoutOverrides, setLayoutOverrides] = useState({});
+  const [genBgLoading, setGenBgLoading] = useState(false);
+  const [genBgOptions, setGenBgOptions] = useState([]);
+  const [genBgKeywords, setGenBgKeywords] = useState([]);
+  const [wizardStep, setWizardStep] = useState(1);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');
@@ -208,6 +213,49 @@ export default function PosterPage() {
     } finally {
       setGenerating(false);
     }
+  }
+
+  async function handleGenBg() {
+    if (!formData.title.trim()) {
+      import('react-hot-toast').then(({ default: toast }) => {
+        toast.error('กรุณาใส่หัวข้อโปสเตอร์ก่อนสร้างพื้นหลัง');
+      });
+      return;
+    }
+    setGenBgLoading(true);
+    setGenBgOptions([]);
+    try {
+      const res = await fetch('/api/gen-background', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          designType: formData.designType,
+          visualStyle: formData.visualStyle,
+          context: formData.context,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setGenBgOptions(data.images || []);
+      setGenBgKeywords(data.keywords || []);
+    } catch (err) {
+      console.error('Gen BG error:', err);
+      import('react-hot-toast').then(({ default: toast }) => {
+        toast.error('เกิดข้อผิดพลาดในการสร้างพื้นหลัง');
+      });
+    } finally {
+      setGenBgLoading(false);
+    }
+  }
+
+  function selectGenBgImage(url) {
+    setBgImage(url);
+    setUploadedPhoto(url);
+    setGenBgOptions([]);
+    import('react-hot-toast').then(({ default: toast }) => {
+      toast.success('เลือกรูปพื้นหลังเรียบร้อยแล้ว ✨');
+    });
   }
 
   function readImageFile(file, callback) {
@@ -350,47 +398,92 @@ export default function PosterPage() {
               </button>
             </div>
 
-            {/* Tab switcher */}
-            <div className="poster-tab-bar">
+            {/* Step Progress Indicator */}
+            <div className="wizard-steps">
               {[
-                { id: 'settings', icon: <ImageIcon size={14} />, label: 'สไตล์' },
-                { id: 'text', icon: <Type size={14} />, label: 'ข้อความ' },
-                { id: 'font', icon: <ALargeSmall size={14} />, label: 'ฟอนต์' },
-                { id: 'layout', icon: <LayoutGrid size={14} />, label: 'เลย์เอาต์' },
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  className={`poster-tab ${activeTab === tab.id ? 'active' : ''}`}
-                  onClick={() => setActiveTab(tab.id)}
-                  type="button"
-                >
-                  {tab.icon} {tab.label}
-                </button>
+                { step: 1, icon: '🎯', label: 'ขนาด & สไตล์' },
+                { step: 2, icon: '✏️', label: 'ข้อมูล' },
+                { step: 3, icon: '🖼️', label: 'รูปภาพ' },
+                { step: 4, icon: '🎨', label: 'ปรับแต่ง' },
+              ].map(({ step, icon, label }, idx) => (
+                <div key={step} className="wizard-step-wrap">
+                  <button
+                    type="button"
+                    className={`wizard-step-item ${wizardStep === step ? 'active' : wizardStep > step ? 'done' : ''}`}
+                    onClick={() => setWizardStep(step)}
+                  >
+                    <div className="wizard-step-num">
+                      {wizardStep > step ? <Check size={12} /> : <span>{step}</span>}
+                    </div>
+                    <span className="wizard-step-label">{label}</span>
+                  </button>
+                  {idx < 3 && <div className={`wizard-step-line ${wizardStep > step ? 'done' : ''}`} />}
+                </div>
               ))}
             </div>
 
-            {/* Tab content */}
+            {/* Step Context Banner */}
+            <div className="wizard-context-bar">
+              {wizardStep === 1 && <span>เลือกขนาดและธีมของโปสเตอร์</span>}
+              {wizardStep === 2 && <span>กรอกข้อมูลหัวข้อ วันที่ วิทยากร</span>}
+              {wizardStep === 3 && <span>เพิ่มรูปพื้นหลังและภาพประกอบ</span>}
+              {wizardStep === 4 && <span>ปรับฟอนต์ เลย์เอาต์ และดาวน์โหลด</span>}
+            </div>
+
+            {/* Step Content */}
             <div className="poster-sidebar-content">
-              {/* ===== TAB: Settings ===== */}
-              {activeTab === 'settings' && (
+              {/* ===== STEP 1: ขนาด & สไตล์ ===== */}
+              {wizardStep === 1 && (
                 <>
-                  {/* Platform */}
+                  {/* Title — ใส่ก่อนเพื่อให้ AI Gen Background ใช้ได้เลย */}
+                  <div className="poster-section">
+                    <label className="poster-label" style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <Type size={15} />
+                      หัวข้อโปสเตอร์
+                      <span style={{ fontSize:10, background:'rgba(0,173,239,0.1)', color:'#0080c0', padding:'2px 8px', borderRadius:20, fontWeight:700 }}>
+                        ใช้กับ AI พื้นหลัง
+                      </span>
+                    </label>
+                    <input
+                      className="poster-input"
+                      placeholder="เช่น Digital Tools สำหรับองค์กร, Open House 2025..."
+                      value={formData.title}
+                      onChange={e => updateField('title', e.target.value)}
+                      style={{ fontSize:13 }}
+                    />
+                    {formData.title && (
+                      <p style={{ fontSize:11, color:'#059669', marginTop:4, display:'flex', alignItems:'center', gap:4 }}>
+                        ✓ พร้อมใช้ AI Gen พื้นหลังใน ขั้นตอน 3
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Platform / Size — grouped by category */}
                   <div className="poster-section">
                     <label className="poster-label">แพลตฟอร์ม / ขนาด</label>
-                    <div className="poster-preset-grid">
-                      {PLATFORM_PRESETS.map(p => (
-                        <button
-                          key={p.id}
-                          className={`poster-preset-btn ${formData.platform === p.id ? 'active' : ''}`}
-                          onClick={() => updateField('platform', p.id)}
-                          type="button"
-                        >
-                          <span className="preset-icon">{p.icon}</span>
-                          <span className="preset-name">{p.name}</span>
-                          <span className="preset-size">{p.w}x{p.h}</span>
-                        </button>
-                      ))}
-                    </div>
+                    {[
+                      { key: 'social', label: '📲 โซเชียลมีเดีย' },
+                      { key: 'device', label: '🖥️ อุปกรณ์ (คอม · มือถือ · แท็บเล็ต)' },
+                      { key: 'print',  label: '🖨️ สำหรับพิมพ์' },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="preset-category-group">
+                        <p className="preset-category-label">{label}</p>
+                        <div className="poster-preset-grid">
+                          {PLATFORM_PRESETS.filter(p => p.category === key).map(p => (
+                            <button
+                              key={p.id}
+                              className={`poster-preset-btn ${formData.platform === p.id ? 'active' : ''}`}
+                              onClick={() => updateField('platform', p.id)}
+                              type="button"
+                            >
+                              <span className="preset-icon">{p.icon}</span>
+                              <span className="preset-name">{p.name}</span>
+                              <span className="preset-size">{p.w}×{p.h}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Design Type */}
@@ -431,9 +524,73 @@ export default function PosterPage() {
                     </div>
                   </div>
 
-                  {/* Photo Upload */}
+                  {/* Photo Upload + AI Gen */}
                   <div className="poster-section">
-                    <label className="poster-label"><Upload size={15} /> อัปโหลดรูปพื้นหลัง</label>
+                    <div className="poster-bg-header">
+                      <label className="poster-label" style={{ margin: 0 }}><ImageIcon size={15} /> รูปพื้นหลัง</label>
+                    </div>
+
+                    {/* AI Generate Button */}
+                    <button
+                      type="button"
+                      className={`poster-gen-bg-btn ${genBgLoading ? 'loading' : ''}`}
+                      onClick={handleGenBg}
+                      disabled={genBgLoading}
+                    >
+                      {genBgLoading
+                        ? <><Loader2 size={15} className="spinner" /> AI กำลังค้นหารูป...</>
+                        : <><Sparkles size={15} /> AI สร้างพื้นหลังจากหัวข้อ</>
+                      }
+                    </button>
+
+                    {/* Keyword hint */}
+                    {genBgKeywords.length > 0 && !genBgLoading && (
+                      <div className="poster-bg-keywords">
+                        <span className="poster-bg-kw-label">🔍 คีย์เวิร์ด:</span>
+                        {genBgKeywords.map((kw, i) => (
+                          <span key={i} className="poster-bg-kw-tag">{kw}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Image options grid */}
+                    {genBgOptions.length > 0 && (
+                      <div className="poster-bg-grid">
+                        <p className="poster-bg-grid-title">เลือกรูปที่ชอบ:</p>
+                        <div className="poster-bg-options">
+                          {genBgOptions.map((url, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              className="poster-bg-option"
+                              onClick={() => selectGenBgImage(url)}
+                              title={`เลือกรูปนี้เป็นพื้นหลัง`}
+                            >
+                              <img src={url} alt={`Option ${i + 1}`} />
+                              <div className="poster-bg-option-overlay">
+                                <Check size={18} />
+                                <span>เลือก</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          className="poster-bg-retry"
+                          onClick={handleGenBg}
+                          disabled={genBgLoading}
+                        >
+                          <RefreshCw size={13} /> โหลดรูปใหม่
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Divider */}
+                    <div className="poster-bg-divider">
+                      <span>หรืออัปโหลดเอง</span>
+                    </div>
+
+                    {/* Manual upload */}
                     {uploadedPhoto ? (
                       <div className="poster-photo-preview">
                         <img src={uploadedPhoto} alt="Background" className="poster-photo-thumb" />
@@ -448,7 +605,7 @@ export default function PosterPage() {
                         onDragLeave={() => setDragOverBg(false)}
                         onDrop={handleBgDrop}
                       >
-                        <Upload size={24} />
+                        <Upload size={20} />
                         <span>{dragOverBg ? 'วางรูปที่นี่!' : 'คลิกหรือลากรูปมาวาง'}</span>
                         <span className="poster-upload-hint">JPG, PNG (แนะนำ 1200px+)</span>
                         <input type="file" accept="image/*" onChange={handlePhotoUpload} hidden />
@@ -467,8 +624,8 @@ export default function PosterPage() {
                     )}
                   </div>
 
-                  {/* Extra Logos */}
-                  <div className="poster-section">
+                  {/* Extra Logos — moved to step 3 */}
+                  <div className="poster-section" style={{display:'none'}}>
                     <label className="poster-label"><ImagePlus size={15} /> โลโก้เพิ่มเติม (สูงสุด 3)</label>
                     <div className="poster-logo-grid">
                       {extraLogos.map((logo, i) => (
@@ -504,8 +661,8 @@ export default function PosterPage() {
                 </>
               )}
 
-              {/* ===== TAB: Text ===== */}
-              {activeTab === 'text' && (
+              {/* ===== STEP 2: ข้อมูล ===== */}
+              {wizardStep === 2 && (
                 <>
                   <div className="poster-section">
                     <label className="poster-label"><Type size={15} /> ข้อความบนโปสเตอร์</label>
@@ -647,8 +804,183 @@ export default function PosterPage() {
                 </>
               )}
 
-              {/* ===== TAB: Font ===== */}
-              {activeTab === 'font' && (
+              {/* ===== STEP 3: รูปภาพ ===== */}
+              {wizardStep === 3 && (
+                <>
+                  {/* BG Image */}
+                  <div className="poster-section">
+                    <div className="poster-bg-header">
+                      <label className="poster-label" style={{ margin: 0 }}><ImageIcon size={15} /> รูปพื้นหลัง</label>
+                    </div>
+                    <button
+                      type="button"
+                      className={`poster-gen-bg-btn ${genBgLoading ? 'loading' : ''}`}
+                      onClick={handleGenBg}
+                      disabled={genBgLoading}
+                    >
+                      {genBgLoading
+                        ? <><Loader2 size={15} className="spinner" /> AI กำลังค้นหารูป...</>
+                        : <><Sparkles size={15} /> AI สร้างพื้นหลังจากหัวข้อ</>
+                      }
+                    </button>
+                    {!formData.title.trim() && (
+                      <p className="wizard-hint">💡 กรอกหัวข้อใน ขั้นตอน 2 ก่อน แล้วกด AI สร้างพื้นหลัง</p>
+                    )}
+                    {genBgKeywords.length > 0 && !genBgLoading && (
+                      <div className="poster-bg-keywords">
+                        <span className="poster-bg-kw-label">🔍 คีย์เวิร์ด:</span>
+                        {genBgKeywords.map((kw, i) => (
+                          <span key={i} className="poster-bg-kw-tag">{kw}</span>
+                        ))}
+                      </div>
+                    )}
+                    {genBgOptions.length > 0 && (
+                      <div className="poster-bg-grid">
+                        <p className="poster-bg-grid-title">เลือกรูปที่ชอบ:</p>
+                        <div className="poster-bg-options">
+                          {genBgOptions.map((url, i) => (
+                            <button key={i} type="button" className={`poster-bg-option ${uploadedPhoto === url ? 'selected' : ''}`} onClick={() => selectGenBgImage(url)}>
+                              <img src={url} alt={`Option ${i + 1}`} />
+                              <div className="poster-bg-option-overlay">
+                                <Check size={18} /><span>เลือก</span>
+                              </div>
+                              {uploadedPhoto === url && <div className="poster-bg-option-chosen"><Check size={14} /></div>}
+                            </button>
+                          ))}
+                        </div>
+                        <button type="button" className="poster-bg-retry" onClick={handleGenBg} disabled={genBgLoading}>
+                          <RefreshCw size={13} /> โหลดรูปใหม่
+                        </button>
+                      </div>
+                    )}
+                    <div className="poster-bg-divider"><span>หรืออัปโหลดเอง</span></div>
+                    {uploadedPhoto ? (
+                      <div className="poster-photo-preview">
+                        <img src={uploadedPhoto} alt="Background" className="poster-photo-thumb" />
+                        <button className="poster-photo-remove" onClick={handleRemovePhoto} type="button"><X size={14} /> ลบรูป</button>
+                      </div>
+                    ) : (
+                      <label className={`poster-upload-area ${dragOverBg ? 'drag-over' : ''}`}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverBg(true); }}
+                        onDragLeave={() => setDragOverBg(false)}
+                        onDrop={handleBgDrop}>
+                        <Upload size={20} />
+                        <span>{dragOverBg ? 'วางรูปที่นี่!' : 'คลิกหรือลากรูปมาวาง'}</span>
+                        <span className="poster-upload-hint">JPG, PNG (แนะนำ 1200px+)</span>
+                        <input type="file" accept="image/*" onChange={handlePhotoUpload} hidden />
+                      </label>
+                    )}
+                    {uploadedPhoto && (
+                      <div className="poster-overlay-control">
+                        <label className="poster-overlay-label">ตัวกรองข้อความ: {overlayStrength}%</label>
+                        <input type="range" min="0" max="80" step="5" value={overlayStrength}
+                          onChange={e => setOverlayStrength(Number(e.target.value))} className="poster-range" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Speaker Photo */}
+                  <div className="poster-section">
+                    <label className="poster-label"><UserCircle2 size={15} /> รูปวิทยากร / บุคคล</label>
+                    {speakerPhoto ? (
+                      <div className="speaker-photo-area">
+                        <div className="speaker-photo-preview-row">
+                          <div className="speaker-photo-card">
+                            <img src={speakerPhoto} alt="Speaker" className="speaker-photo-img" />
+                            <span className="speaker-photo-badge">ต้นฉบับ</span>
+                          </div>
+                          {speakerPhotoCutout && (
+                            <div className="speaker-photo-card cutout">
+                              <img src={speakerPhotoCutout} alt="Cutout" className="speaker-photo-img" />
+                              <span className="speaker-photo-badge success"><Check size={10} /> ตัดแล้ว</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="speaker-photo-actions">
+                          <button className="poster-btn poster-btn-accent" onClick={handleRemoveBg} disabled={removingBg || !!speakerPhotoCutout} type="button">
+                            {removingBg ? <><Loader2 size={14} className="spinner" /> กำลังตัดพื้นหลัง...</>
+                              : speakerPhotoCutout ? <><Check size={14} /> ตัดพื้นหลังแล้ว</>
+                              : <><Scissors size={14} /> ตัดพื้นหลัง</>}
+                          </button>
+                          <button className="poster-btn poster-btn-ghost" onClick={handleRemoveSpeakerPhoto} type="button">
+                            <X size={14} /> ลบรูป
+                          </button>
+                        </div>
+                        <div className="speaker-controls-group">
+                          <div className="speaker-scale-control">
+                            <label className="poster-label-sm">ขนาด</label>
+                            <div className="poster-logo-scale visible">
+                              <button type="button" onClick={() => setSpeakerScale(s => Math.max(0.3, s - 0.1))}>−</button>
+                              <span>{Math.round(speakerScale * 100)}%</span>
+                              <button type="button" onClick={() => setSpeakerScale(s => Math.min(2, s + 0.1))}>+</button>
+                            </div>
+                          </div>
+                          <div className="speaker-scale-control">
+                            <label className="poster-label-sm">ตำแหน่ง</label>
+                            <div className="speaker-pos-pad">
+                              <button type="button" onClick={() => setSpeakerPos(p => ({...p, x: p.x - 3}))}>←</button>
+                              <button type="button" onClick={() => setSpeakerPos(p => ({...p, y: p.y - 3}))}>↑</button>
+                              <button type="button" onClick={() => setSpeakerPos(p => ({...p, y: p.y + 3}))}>↓</button>
+                              <button type="button" onClick={() => setSpeakerPos(p => ({...p, x: p.x + 3}))}>→</button>
+                              <button type="button" onClick={() => setSpeakerPos({x:0,y:0})} className="reset-btn">⟳</button>
+                            </div>
+                          </div>
+                        </div>
+                        {removingBg && (
+                          <div className="speaker-bg-progress">
+                            <div className="speaker-bg-progress-bar" />
+                            <span>AI กำลังตัดพื้นหลัง อาจใช้เวลา 10-30 วินาที...</span>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <label className={`poster-upload-area speaker-upload ${dragOverSpeaker ? 'drag-over' : ''}`}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverSpeaker(true); }}
+                        onDragLeave={() => setDragOverSpeaker(false)}
+                        onDrop={handleSpeakerDrop}>
+                        <UserCircle2 size={28} />
+                        <span>{dragOverSpeaker ? 'วางรูปที่นี่!' : 'คลิกหรือลากรูปมาวาง'}</span>
+                        <span className="poster-upload-hint">จะตัดพื้นหลังออกให้อัตโนมัติ</span>
+                        <input type="file" accept="image/*" onChange={handleSpeakerPhotoUpload} hidden />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Extra Logos */}
+                  <div className="poster-section">
+                    <label className="poster-label"><ImagePlus size={15} /> โลโก้เพิ่มเติม (สูงสุด 3)</label>
+                    <div className="poster-logo-grid">
+                      {extraLogos.map((logo, i) => (
+                        <div key={i} className="poster-logo-slot">
+                          {logo ? (
+                            <div className="poster-logo-filled">
+                              <img src={logo} alt={`Logo ${i + 1}`} className="poster-logo-img" style={{ transform: `scale(${logoScales[i]})` }} />
+                              <button className="poster-logo-remove" onClick={() => handleRemoveLogo(i)} type="button" title="ลบโลโก้"><X size={12} /></button>
+                              <div className="poster-logo-scale">
+                                <button type="button" onClick={() => handleLogoScale(i, -0.1)} title="ลดขนาด">−</button>
+                                <span>{Math.round(logoScales[i] * 100)}%</span>
+                                <button type="button" onClick={() => handleLogoScale(i, 0.1)} title="เพิ่มขนาด">+</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className={`poster-logo-drop ${dragOverLogo === i ? 'drag-over' : ''}`}
+                              onDragOver={(e) => { e.preventDefault(); setDragOverLogo(i); }}
+                              onDragLeave={() => setDragOverLogo(-1)}
+                              onDrop={(e) => handleLogoDrop(i, e)}>
+                              <ImagePlus size={18} />
+                              <span>{dragOverLogo === i ? 'วาง!' : `โลโก้ ${i + 1}`}</span>
+                              <input type="file" accept="image/*" onChange={(e) => handleLogoUpload(i, e)} hidden />
+                            </label>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ===== STEP 4: ปรับแต่ง & ดาวน์โหลด ===== */}
+              {wizardStep === 4 && (
                 <div className="poster-section">
                   <label className="poster-label"><ALargeSmall size={15} /> เลือกฟอนต์</label>
                   <div className="poster-font-categories">
@@ -677,7 +1009,7 @@ export default function PosterPage() {
                           <span className="poster-font-cat-label">{font.category === 'thai' ? 'ไทย' : font.category}</span>
                         </div>
                         <span className="poster-font-preview-text" style={{ fontFamily: font.family }}>
-                          SPUBUS BIZ CONTENT สวัสดี
+                          SPUBUS BiZ CONTENT สวัสดี
                         </span>
                       </button>
                     ))}
@@ -689,8 +1021,8 @@ export default function PosterPage() {
                 </div>
               )}
 
-              {/* ===== TAB: Layout ===== */}
-              {activeTab === 'layout' && (
+              {/* Layout section inside step 4 */}
+              {wizardStep === 4 && (
                 <>
                 <div className="poster-section">
                   <label className="poster-label"><LayoutGrid size={15} /> เลือกเลย์เอาต์ ({compatibleTemplates.length} แบบ)</label>
@@ -783,17 +1115,33 @@ export default function PosterPage() {
               )}
             </div>
 
-            {/* Sidebar footer */}
+            {/* Wizard Footer Navigation */}
             <div className="poster-sidebar-footer">
-              <button className="poster-btn poster-btn-primary" onClick={handleGenerate} disabled={generating}>
-                {generating
-                  ? <><Loader2 size={16} className="spinner" /> กำลังสร้าง...</>
-                  : <><Wand2 size={16} /> สร้างโปสเตอร์</>}
-              </button>
-              <div className="poster-action-row">
-                <button className="poster-btn poster-btn-ghost" onClick={handleChangeLayout} type="button">
-                  <LayoutGrid size={14} /> เปลี่ยนเลย์เอาต์
+              {wizardStep < 4 ? (
+                <button
+                  className="poster-btn poster-btn-primary wizard-next-btn"
+                  onClick={() => setWizardStep(s => s + 1)}
+                  type="button"
+                >
+                  ถัดไป → ขั้นตอน {wizardStep + 1}
                 </button>
+              ) : (
+                <button
+                  className="poster-btn poster-btn-primary"
+                  onClick={handleGenerate}
+                  disabled={generating}
+                >
+                  {generating
+                    ? <><Loader2 size={16} className="spinner" /> กำลังสร้าง...</>
+                    : <><Wand2 size={16} /> ✨ สร้างโปสเตอร์</>}
+                </button>
+              )}
+              <div className="poster-action-row">
+                {wizardStep > 1 && (
+                  <button className="poster-btn poster-btn-ghost" onClick={() => setWizardStep(s => s - 1)} type="button">
+                    ← ก่อนหน้า
+                  </button>
+                )}
                 <button className="poster-btn poster-btn-danger" onClick={handleReset} type="button">
                   <RefreshCw size={14} /> ล้าง
                 </button>

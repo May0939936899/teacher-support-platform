@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import DownloadDropdown from './DownloadDropdown';
+import { downloadCSV, downloadExcel, buildTableHTML, downloadHTMLAsPDF } from '@/lib/teacher/exportUtils';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -135,21 +137,35 @@ export default function RubricGenerator() {
     toast.success('คัดลอกตาราง Rubric แล้ว (วางใน Excel ได้)');
   };
 
-  const downloadCSV = () => {
+  const getRubricData = () => {
+    if (!rubric) return { headers: [], rows: [] };
+    const headers = ['เกณฑ์', ...rubric.criteria[0].levels.map(l => l.label)];
+    const rows = rubric.criteria.map(c => [c.name, ...c.levels.map(l => `${l.description} (${l.score} คะแนน)`)]);
+    return { headers, rows };
+  };
+
+  const handleDownloadCSV = () => {
     if (!rubric) return;
+    const { headers, rows } = getRubricData();
     const escCsv = (s) => `"${String(s).replace(/"/g, '""')}"`;
-    const header = ['เกณฑ์', ...rubric.criteria[0].levels.map(l => `${l.label}`)];
-    const lines = [header.map(escCsv).join(',')];
-    rubric.criteria.forEach(c => {
-      const row = [c.name, ...c.levels.map(l => `${l.description} (${l.score} คะแนน)`)];
-      lines.push(row.map(escCsv).join(','));
-    });
-    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `rubric_${Date.now()}.csv`;
-    a.click();
+    const lines = [[...headers].map(escCsv).join(','), ...rows.map(r => r.map(escCsv).join(','))];
+    downloadCSV(lines.join('\n'), `rubric_${Date.now()}`);
     toast.success('ดาวน์โหลด CSV แล้ว');
+  };
+
+  const handleDownloadExcel = () => {
+    if (!rubric) return;
+    const { headers, rows } = getRubricData();
+    downloadExcel(headers, rows, `rubric_${Date.now()}`, 'Rubric');
+    toast.success('ดาวน์โหลด Excel แล้ว');
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!rubric) return;
+    const { headers, rows } = getRubricData();
+    const html = buildTableHTML(`Rubric: ${rubric.subject || ''}`, headers, rows);
+    await downloadHTMLAsPDF(html, `rubric_${Date.now()}`);
+    toast.success('ดาวน์โหลด PDF แล้ว');
   };
 
   return (
@@ -208,13 +224,13 @@ export default function RubricGenerator() {
             <div style={{ display: 'flex', gap: '8px' }}>
               <button onClick={() => setRubric(null)} style={actBtn}>← สร้างใหม่</button>
               <button onClick={copyAsTable} style={actBtn}>📋 คัดลอก</button>
-              <button onClick={downloadCSV} style={{
-                padding: '8px 16px', borderRadius: '8px', border: 'none',
-                background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`,
-                color: '#fff', cursor: 'pointer', fontSize: '15px', fontFamily: FONT, fontWeight: 600,
-              }}>
-                ⬇️ ดาวน์โหลด CSV
-              </button>
+              <DownloadDropdown
+                options={[
+                  { label: 'CSV', icon: '📊', ext: 'CSV', color: '#0369a1', onClick: handleDownloadCSV },
+                  { label: 'Excel', icon: '📗', ext: 'XLS', color: '#16a34a', onClick: handleDownloadExcel },
+                  { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: handleDownloadPDF },
+                ]}
+              />
             </div>
           </div>
 

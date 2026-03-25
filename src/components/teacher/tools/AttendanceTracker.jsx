@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import DownloadDropdown from './DownloadDropdown';
+import { buildTableHTML, downloadHTMLAsPDF } from '@/lib/teacher/exportUtils';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -69,7 +71,7 @@ export default function AttendanceTracker() {
     locationName: '', // Custom name for the location
     locationLat: null,
     locationLng: null,
-    locationRadius: 200, // Allowed radius in meters
+    locationRadius: 20, // Allowed radius in meters
   });
   const [studentView, setStudentView] = useState({ code: '', name: '', studentId: '', step: 'join' });
   const [studentLocation, setStudentLocation] = useState(null); // { lat, lng, address, accuracy }
@@ -251,23 +253,40 @@ export default function AttendanceTracker() {
     const deviceId = getDeviceId();
     const gpsData = gpsOverride || studentLocation;
 
-    const doCheckin = async (gps) => {
+    // GPS is mandatory — block check-in if no location
+    if (!gpsData) {
+      toast.error('🚫 ต้องเปิด GPS ก่อนเช็กชื่อ — กรุณาอนุญาตการเข้าถึงตำแหน่ง แล้วกด "ลองอีกครั้ง"', { duration: 5000 });
+      return;
+    }
+
+    const doCheckin = async (gps, retryCount = 0) => {
       try {
+        const payload = { code: code.trim().toUpperCase(), name: name.trim(), studentId: studentId?.trim() || '', deviceId, gps };
         const res = await fetch(API, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code, name, studentId, deviceId, gps }),
+          body: JSON.stringify(payload),
         });
-        const data = await res.json();
-        if (!res.ok) { toast.error(data.error); return; }
+        const text = await res.text();
+        let data;
+        try { data = JSON.parse(text); } catch {
+          if (retryCount < 2) { await new Promise(r => setTimeout(r, 1500)); return doCheckin(gps, retryCount + 1); }
+          toast.error('เซิร์ฟเวอร์ตอบกลับผิดปกติ กรุณาลองใหม่'); return;
+        }
+        if (!res.ok) { toast.error(data.error || `Error ${res.status}`); return; }
         setStudentView(v => ({ ...v, step: 'success', session: data.session, record: data.record }));
         if (data.withinRange === false) {
           toast.success('เช็กชื่อแล้ว (ตำแหน่งอยู่นอกระยะ)');
         } else {
           toast.success('เช็กชื่อแล้ว! ✅');
         }
-      } catch {
-        toast.error('เกิดข้อผิดพลาด กรุณาลองอีกครั้ง');
+      } catch (err) {
+        if (retryCount < 2) {
+          await new Promise(r => setTimeout(r, 1500));
+          return doCheckin(gps, retryCount + 1);
+        }
+        console.error('[Attendance] Check-in error:', err);
+        toast.error('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
       }
     };
 
@@ -309,7 +328,7 @@ export default function AttendanceTracker() {
     return addr;
   }, [locationAddresses]);
 
-  const exportCSV = (session) => {
+  const getExportData = (session) => {
     const headers = ['ลำดับ', 'ชื่อ', 'รหัสนักศึกษา', 'เวลาเช็กชื่อ', 'Latitude', 'Longitude', 'สถานที่', 'ระยะห่าง(ม.)', 'อยู่ในระยะ'];
     const rows = session.records.map((r, i) => [
       i + 1,
@@ -322,14 +341,58 @@ export default function AttendanceTracker() {
       r.distance !== null ? r.distance : '-',
       r.withinRange !== undefined ? (r.withinRange ? 'ใช่' : 'ไม่') : '-',
     ]);
+    return { headers, rows, filename: `attendance_${session.course_name || session.courseName || ''}_${session.id}` };
+  };
+
+  const exportCSV = (session) => {
+    const { headers, rows, filename } = getExportData(session);
     const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `attendance_${session.courseName}_${session.id}.csv`;
-    a.click();
-    toast.success('Export แล้ว');
+    a.href = url; a.download = `${filename}.csv`; a.click();
+    toast.success('Export CSV แล้ว');
+  };
+
+  const exportPDF = async (session) => {
+    const { headers, rows, filename } = getExportData(session);
+    const html = buildTableHTML(
+      `รายงานการเช็คชื่อ — ${session.course_name || session.courseName || ''}`,
+      headers, rows
+    );
+    await downloadHTMLAsPDF(html, filename);
+    toast.success('Export PDF แล้ว');
+  };
+
+  const exportExcel = (session) => {
+    const { headers, rows, filename } = getExportData(session);
+    // Build Excel XML (works without library)
+    const escXml = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    let xml = '<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n';
+    xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n';
+    xml += '<Styles><Style ss:ID="hdr"><Font ss:Bold="1" ss:Size="12"/><Interior ss:Color="#DCE6F1" ss:Pattern="Solid"/></Style>';
+    xml += '<Style ss:ID="def"><Font ss:Size="11"/></Style></Styles>\n';
+    xml += `<Worksheet ss:Name="Attendance"><Table>\n`;
+    // Header row
+    xml += '<Row ss:StyleID="hdr">';
+    headers.forEach(h => { xml += `<Cell><Data ss:Type="String">${escXml(h)}</Data></Cell>`; });
+    xml += '</Row>\n';
+    // Data rows
+    rows.forEach(row => {
+      xml += '<Row ss:StyleID="def">';
+      row.forEach((cell, ci) => {
+        const isNum = ci === 0 || ci === 4 || ci === 5 || ci === 7;
+        const type = (isNum && cell !== '-') ? 'Number' : 'String';
+        xml += `<Cell><Data ss:Type="${type}">${escXml(cell)}</Data></Cell>`;
+      });
+      xml += '</Row>\n';
+    });
+    xml += '</Table></Worksheet></Workbook>';
+    const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${filename}.xls`; a.click();
+    toast.success('Export Excel แล้ว');
   };
 
   // Get live session data
@@ -455,7 +518,7 @@ export default function AttendanceTracker() {
                       <div style={{ marginTop: '10px' }}>
                         <label style={{ ...lbl, fontSize: '13px' }}>รัศมีที่อนุญาต (เมตร)</label>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          {[100, 200, 500, 1000].map(r => (
+                          {[20, 50, 100, 200].map(r => (
                             <button key={r} onClick={() => setNewSession(s => ({ ...s, locationRadius: r }))}
                               style={{
                                 padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
@@ -524,10 +587,15 @@ export default function AttendanceTracker() {
                         style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', border: `1px solid ${CI.cyan}30`, background: `${CI.cyan}08`, color: CI.cyan, cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
                         📱 QR
                       </button>
-                      <button onClick={() => exportCSV(s)}
-                        style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
-                        📥 Export
-                      </button>
+                      <DownloadDropdown
+                        label="ดาวน์โหลด"
+                        btnStyle={{ fontSize: '13px', padding: '6px 14px' }}
+                        options={[
+                          { label: 'Excel', icon: '📗', ext: 'XLS', color: '#16a34a', onClick: () => exportExcel(s) },
+                          { label: 'CSV', icon: '📊', ext: 'CSV', color: '#0369a1', onClick: () => exportCSV(s) },
+                          { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: () => exportPDF(s) },
+                        ]}
+                      />
                       {s.active && Date.now() < s.expiresAt && (
                         <button onClick={() => closeSession(s.id)}
                           style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
@@ -595,12 +663,17 @@ export default function AttendanceTracker() {
                       👥 เข้าชั้นเรียน ({liveSession?.records?.length || 0} คน)
                     </h4>
                     {liveSession?.records?.length > 0 && (
-                      <button onClick={() => exportCSV(liveSession)} style={{
-                        fontSize: '13px', padding: '6px 14px', borderRadius: '8px', border: 'none',
-                        background: '#dcfce7', color: '#16a34a', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
-                      }}>
-                        📥 Export CSV
-                      </button>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <DownloadDropdown
+                          label="ดาวน์โหลด"
+                          btnStyle={{ fontSize: '13px', padding: '6px 14px' }}
+                          options={[
+                            { label: 'Excel', icon: '📗', ext: 'XLS', color: '#16a34a', onClick: () => exportExcel(liveSession) },
+                            { label: 'CSV', icon: '📊', ext: 'CSV', color: '#0369a1', onClick: () => exportCSV(liveSession) },
+                            { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: () => exportPDF(liveSession) },
+                          ]}
+                        />
+                      </div>
                     )}
                   </div>
 
@@ -776,14 +849,22 @@ export default function AttendanceTracker() {
                   <input placeholder="xxxxxxxx" value={studentView.studentId}
                     onChange={e => setStudentView(v => ({ ...v, studentId: e.target.value }))} style={inp} />
                 </div>
-                <button onClick={checkIn} style={{
+                {!studentLocation && !locationLoading && (
+                  <div style={{ padding: '12px 16px', borderRadius: '12px', background: '#fef2f2', border: '1px solid #fecaca', fontSize: '14px', color: '#dc2626', fontWeight: 600, textAlign: 'center' }}>
+                    🚫 GPS จำเป็นสำหรับการเช็กชื่อ — กรุณาเปิด GPS แล้วกด "ลองอีกครั้ง"
+                  </div>
+                )}
+                <button onClick={() => checkIn()} disabled={!studentLocation || locationLoading} style={{
                   padding: '16px', borderRadius: '14px', border: 'none',
-                  background: `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`,
-                  color: '#fff', cursor: 'pointer',
+                  background: (!studentLocation || locationLoading)
+                    ? '#94a3b8'
+                    : `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`,
+                  color: '#fff', cursor: (!studentLocation || locationLoading) ? 'not-allowed' : 'pointer',
                   fontWeight: 800, fontSize: '18px', fontFamily: 'inherit',
-                  boxShadow: `0 4px 16px ${CI.cyan}30`,
+                  boxShadow: (!studentLocation || locationLoading) ? 'none' : `0 4px 16px ${CI.cyan}30`,
+                  opacity: (!studentLocation || locationLoading) ? 0.7 : 1,
                 }}>
-                  ✅ เช็กชื่อ
+                  {locationLoading ? '🔄 กำลังหา GPS...' : '✅ เช็กชื่อ'}
                 </button>
               </div>
             </div>

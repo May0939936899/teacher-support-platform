@@ -30,20 +30,40 @@ function generateQR(text, canvas) {
   });
 }
 
-// LocalStorage-based quiz storage
-function saveQuizSession(code, data) {
-  const sessions = JSON.parse(localStorage.getItem('video_quiz_sessions') || '{}');
-  sessions[code] = { ...data, updatedAt: Date.now() };
-  localStorage.setItem('video_quiz_sessions', JSON.stringify(sessions));
+// Server-based quiz storage
+async function publishQuizToServer(code, data) {
+  const res = await fetch('/api/teacher/videoquiz', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'publish', code, ...data }),
+  });
+  return res.ok;
 }
 
-function getQuizSession(code) {
-  const sessions = JSON.parse(localStorage.getItem('video_quiz_sessions') || '{}');
-  return sessions[code.toUpperCase()] || null;
+async function fetchQuizFromServer(code) {
+  const res = await fetch(`/api/teacher/videoquiz?code=${code.toUpperCase()}`);
+  if (!res.ok) return null;
+  return await res.json();
 }
 
-function getAllSessions() {
-  return JSON.parse(localStorage.getItem('video_quiz_sessions') || '{}');
+async function submitToServer(code, submission) {
+  const res = await fetch('/api/teacher/videoquiz', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'submit', code, ...submission }),
+  });
+  return res.ok;
+}
+
+async function fetchSubmissions(code) {
+  const res = await fetch('/api/teacher/videoquiz', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'get_submissions', code }),
+  });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return data.submissions || [];
 }
 
 export default function VideoQuiz() {
@@ -53,7 +73,9 @@ export default function VideoQuiz() {
   const [quizTitle, setQuizTitle] = useState('');
   const [questions, setQuestions] = useState([]);
   const [publishedCode, setPublishedCode] = useState('');
+  const [liveSubmissions, setLiveSubmissions] = useState([]);
   const qrRef = useRef(null);
+  const pollRef = useRef(null);
 
   // Student states
   const [studentCode, setStudentCode] = useState('');
@@ -84,6 +106,16 @@ export default function VideoQuiz() {
       const url = `${window.location.origin}/teacher?video-quiz=${publishedCode}`;
       generateQR(url, qrRef.current);
     }
+  }, [publishedCode]);
+
+  // Live polling for submissions (teacher side)
+  useEffect(() => {
+    if (!publishedCode) { clearInterval(pollRef.current); return; }
+    pollRef.current = setInterval(async () => {
+      const subs = await fetchSubmissions(publishedCode);
+      setLiveSubmissions(subs);
+    }, 4000);
+    return () => clearInterval(pollRef.current);
   }, [publishedCode]);
 
   // ===== TEACHER: QUIZ BUILDER =====
@@ -120,34 +152,40 @@ export default function VideoQuiz() {
 
   const sortedQuestions = [...questions].sort((a, b) => parseTime(a.timestamp) - parseTime(b.timestamp));
 
-  const publishQuiz = () => {
+  const publishQuiz = async () => {
     if (!videoUrl) { toast.error('กรุณาใส่ URL วิดีโอ'); return; }
     if (questions.length === 0) { toast.error('กรุณาเพิ่มคำถามอย่างน้อย 1 ข้อ'); return; }
     const hasEmpty = questions.some(q => !q.text);
     if (hasEmpty) { toast.error('กรุณากรอกคำถามให้ครบ'); return; }
 
-    const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+
     const quizData = {
-      code,
       title: quizTitle || 'Video Quiz',
       videoUrl,
       ytId: getYouTubeId(videoUrl),
       questions: sortedQuestions,
-      createdAt: Date.now(),
-      submissions: [],
     };
-    saveQuizSession(code, quizData);
+
+    const ok = await publishQuizToServer(code, quizData);
+    if (!ok) { toast.error('เกิดข้อผิดพลาด กรุณาลองใหม่'); return; }
+
     setPublishedCode(code);
+    setLiveSubmissions([]);
     toast.success(`🎬 สร้าง Video Quiz รหัส ${code} แล้ว!`);
   };
 
   // ===== STUDENT: JOIN & ANSWER =====
-  const joinQuiz = () => {
+  const joinQuiz = async () => {
     if (!studentCode) { toast.error('กรุณากรอกรหัส Quiz'); return; }
     if (!studentName) { toast.error('กรุณากรอกชื่อ-นามสกุล'); return; }
     if (!studentId) { toast.error('กรุณากรอกรหัสนักศึกษา'); return; }
-    const quiz = getQuizSession(studentCode);
-    if (!quiz) { toast.error('ไม่พบ Quiz — กรุณาตรวจสอบรหัส'); return; }
+    toast.loading('กำลังโหลด Quiz...', { id: 'join' });
+    const quiz = await fetchQuizFromServer(studentCode);
+    toast.dismiss('join');
+    if (!quiz) { toast.error('ไม่พบ Quiz หรือหมดอายุแล้ว — กรุณาตรวจสอบรหัส'); return; }
     setStudentQuiz(quiz);
     setCurrentQIdx(0);
     setStudentAnswers({});
@@ -161,7 +199,7 @@ export default function VideoQuiz() {
     setStudentAnswers(prev => ({ ...prev, [qId]: value }));
   };
 
-  const submitQuiz = () => {
+  const submitQuiz = async () => {
     if (!studentQuiz) return;
     const results = studentQuiz.questions.map(q => {
       const userAnswer = studentAnswers[q.id];
@@ -180,19 +218,14 @@ export default function VideoQuiz() {
     setStudentResults({ results, score, total });
     setStudentSubmitted(true);
 
-    // Save submission with student ID
-    const quiz = getQuizSession(studentCode);
-    if (quiz) {
-      quiz.submissions = [...(quiz.submissions || []), {
-        name: studentName,
-        studentId: studentId,
-        answers: studentAnswers,
-        score,
-        total,
-        submittedAt: Date.now(),
-      }];
-      saveQuizSession(studentCode, quiz);
-    }
+    // ส่งไป server
+    await submitToServer(studentCode, {
+      name: studentName,
+      studentId,
+      answers: studentAnswers,
+      score,
+      total,
+    });
 
     toast.success(`ส่งคำตอบแล้ว! ได้ ${score}/${total} คะแนน`);
   };
@@ -415,14 +448,14 @@ export default function VideoQuiz() {
             </div>
           </div>
 
-          {/* Submissions */}
+          {/* Submissions — live update */}
           {(() => {
-            const quiz = getQuizSession(publishedCode);
-            const subs = quiz?.submissions || [];
+            const subs = liveSubmissions;
             return (
               <div style={{ background: '#fff', borderRadius: '20px', padding: '28px', border: '1px solid #e2e8f0' }}>
                 <h4 style={{ margin: '0 0 16px', fontSize: '18px', color: '#1e293b', fontWeight: 700 }}>
                   📊 ผู้ส่งคำตอบ ({subs.length} คน)
+                  <span style={{ fontSize: '12px', fontWeight: 400, color: '#94a3b8', marginLeft: '8px' }}>🔄 อัปเดตอัตโนมัติ</span>
                 </h4>
                 {subs.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '32px', color: '#94a3b8', fontSize: '15px' }}>
