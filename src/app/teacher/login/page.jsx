@@ -179,8 +179,8 @@ function TeacherLanding() {
   const { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [showSplash, setShowSplash] = useState(true);
-  const [showLogin, setShowLogin] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
+  const [showLogin, setShowLogin] = useState(true);
   const [tab, setTab] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -272,12 +272,127 @@ function TeacherLanding() {
     if (err) { setShowLogin(true); setMessage({ type: 'error', text: 'การเข้าสู่ระบบผิดพลาด กรุณาลองใหม่' }); }
   }, [searchParams]);
 
-  // Show splash screen FIRST on every page load/refresh (even during auth loading)
-  if (showSplash) {
-    return <BusSplashScreen onFinish={() => setShowSplash(false)} />;
-  }
-
   if (loading) return <LoadingScreen />;
+
+  // Show full-page login directly (skip splash + marketing page)
+  if (showLogin) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0b0b24 0%, #1a1a4e 40%, #2d1b69 100%)',
+        fontFamily: "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif",
+        padding: '20px',
+      }}>
+        <div style={{
+          width: '480px', maxWidth: '92vw', padding: '44px', borderRadius: '24px',
+          background: 'rgba(16,16,46,0.95)', border: `1px solid ${CI.cyan}15`,
+          backdropFilter: 'blur(20px)',
+          boxShadow: `0 0 80px ${CI.cyan}10, 0 0 120px ${CI.magenta}08`,
+        }}>
+          {/* Logo + Brand */}
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <img src="/spu-bus-logo.png" alt="SPUBUS" style={{ height: '38px', marginBottom: '14px' }} />
+            <h2 style={{ fontSize: '26px', fontWeight: 800, margin: 0 }}>
+              <span style={{ color: '#fff' }}>SPUBUS </span>
+              <span style={{ color: CI.magenta }}>SUPPORT</span>
+            </h2>
+            <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม</p>
+          </div>
+
+          {/* Tab */}
+          <div style={{ display: 'flex', background: `${CI.cyan}08`, borderRadius: '12px', padding: '3px', marginBottom: '20px', border: `1px solid ${CI.cyan}10` }}>
+            {[{ id: 'login', label: txt.login }, { id: 'register', label: txt.register }].map(t => (
+              <button key={t.id} onClick={() => { setTab(t.id); setMessage({ type: '', text: '' }); }} style={{
+                flex: 1, padding: '10px', borderRadius: '10px', border: 'none', cursor: 'pointer',
+                background: tab === t.id ? `linear-gradient(135deg, ${CI.cyan}18, ${CI.magenta}0a)` : 'none',
+                color: tab === t.id ? CI.cyan : 'rgba(255,255,255,0.35)',
+                fontWeight: tab === t.id ? 700 : 400, fontSize: '18px', fontFamily: 'inherit',
+              }}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Google */}
+          <button onClick={signInWithGoogle} style={{
+            width: '100%', padding: '14px', borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.03)',
+            cursor: 'pointer', fontWeight: 600, fontSize: '18px', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+            color: 'rgba(255,255,255,0.7)',
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            {tab === 'login' ? txt.googleBtn : txt.googleReg}
+          </button>
+
+          {/* Divider */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '18px 0' }}>
+            <div style={{ flex: 1, height: '1px', background: `linear-gradient(90deg, transparent, ${CI.cyan}15, transparent)` }} />
+            <span style={{ fontSize: '15px', color: 'rgba(255,255,255,0.2)' }}>{txt.or}</span>
+            <div style={{ flex: 1, height: '1px', background: `linear-gradient(90deg, transparent, ${CI.magenta}15, transparent)` }} />
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: '6px' }}>{txt.email_label}</label>
+              <input type="email" placeholder="example@gmail.com" value={email}
+                onChange={e => setEmail(e.target.value)} disabled={submitting}
+                style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${CI.cyan}15`, background: `${CI.cyan}06`, fontSize: '17px', outline: 'none', color: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                onFocus={e => { e.target.style.borderColor = `${CI.cyan}50`; }}
+                onBlur={e => { e.target.style.borderColor = `${CI.cyan}15`; }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: '6px' }}>{txt.password_label}</label>
+              <input type="password" placeholder="••••••••" value={password}
+                onChange={e => setPassword(e.target.value)} disabled={submitting}
+                style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${CI.cyan}15`, background: `${CI.cyan}06`, fontSize: '17px', outline: 'none', color: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                onFocus={e => { e.target.style.borderColor = `${CI.cyan}50`; }}
+                onBlur={e => { e.target.style.borderColor = `${CI.cyan}15`; }}
+              />
+            </div>
+            {tab === 'register' && (
+              <div>
+                <label style={{ fontSize: '16px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', display: 'block', marginBottom: '6px' }}>{txt.confirmPwd}</label>
+                <input type="password" placeholder="••••••••" value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)} disabled={submitting}
+                  style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: `1px solid ${CI.cyan}15`, background: `${CI.cyan}06`, fontSize: '17px', outline: 'none', color: '#fff', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                  onFocus={e => { e.target.style.borderColor = `${CI.cyan}50`; }}
+                  onBlur={e => { e.target.style.borderColor = `${CI.cyan}15`; }}
+                />
+              </div>
+            )}
+            {message.text && (
+              <div style={{
+                padding: '12px 16px', borderRadius: '10px', fontSize: '16px',
+                background: message.type === 'error' ? 'rgba(239,68,68,0.08)' : `${CI.cyan}10`,
+                color: message.type === 'error' ? '#f87171' : CI.cyan,
+                border: `1px solid ${message.type === 'error' ? 'rgba(239,68,68,0.2)' : `${CI.cyan}25`}`,
+              }}>
+                {message.text}
+              </div>
+            )}
+            <button type="submit" disabled={submitting} style={{
+              padding: '15px', borderRadius: '12px', border: 'none', marginTop: '6px',
+              background: submitting ? 'rgba(255,255,255,0.08)' : `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`,
+              color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer',
+              fontWeight: 700, fontSize: '19px', fontFamily: 'inherit',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              boxShadow: submitting ? 'none' : `0 4px 20px ${CI.cyan}25`,
+            }}>
+              {submitting ? '...' : (tab === 'login' ? txt.submitLogin : txt.submitReg)}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
