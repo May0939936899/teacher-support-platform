@@ -274,6 +274,27 @@ function TeacherLanding() {
 
   if (loading) return <LoadingScreen />;
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email || !password) { setMessage({ type: 'error', text: 'กรุณากรอกข้อมูลให้ครบ' }); return; }
+    if (tab === 'register' && password !== confirmPassword) { setMessage({ type: 'error', text: 'รหัสผ่านไม่ตรงกัน' }); return; }
+    if (password.length < 6) { setMessage({ type: 'error', text: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' }); return; }
+    setSubmitting(true); setMessage({ type: '', text: '' });
+    try {
+      if (tab === 'register') {
+        await signUpWithEmail(email, password);
+        setMessage({ type: 'success', text: 'สมัครสำเร็จ! กำลังเข้าสู่ระบบ...' });
+      } else {
+        await signInWithEmail(email, password);
+      }
+    } catch (err) {
+      const msg = err.message || '';
+      if (msg.includes('Invalid login credentials')) setMessage({ type: 'error', text: 'Email หรือรหัสผ่านไม่ถูกต้อง' });
+      else if (msg.includes('Email not confirmed')) setMessage({ type: 'error', text: 'กรุณายืนยัน Email ก่อนเข้าสู่ระบบ' });
+      else setMessage({ type: 'error', text: msg || 'เกิดข้อผิดพลาด' });
+    } finally { setSubmitting(false); }
+  };
+
   // Show full-page login directly (skip splash + marketing page)
   if (showLogin) {
     return (
@@ -393,27 +414,6 @@ function TeacherLanding() {
       </div>
     );
   }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!email || !password) { setMessage({ type: 'error', text: 'กรุณากรอกข้อมูลให้ครบ' }); return; }
-    if (tab === 'register' && password !== confirmPassword) { setMessage({ type: 'error', text: 'รหัสผ่านไม่ตรงกัน' }); return; }
-    if (password.length < 6) { setMessage({ type: 'error', text: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร' }); return; }
-    setSubmitting(true); setMessage({ type: '', text: '' });
-    try {
-      if (tab === 'register') {
-        await signUpWithEmail(email, password);
-        setMessage({ type: 'success', text: 'สมัครสำเร็จ! กำลังเข้าสู่ระบบ...' });
-      } else {
-        await signInWithEmail(email, password);
-      }
-    } catch (err) {
-      const msg = err.message || '';
-      if (msg.includes('Invalid login credentials')) setMessage({ type: 'error', text: 'Email หรือรหัสผ่านไม่ถูกต้อง' });
-      else if (msg.includes('Email not confirmed')) setMessage({ type: 'error', text: 'กรุณายืนยัน Email ก่อนเข้าสู่ระบบ' });
-      else setMessage({ type: 'error', text: msg || 'เกิดข้อผิดพลาด' });
-    } finally { setSubmitting(false); }
-  };
 
   const SECTIONS = [
     { icon: '🎓', title: txt.sec_teaching, desc: txt.sec_teaching_desc, color: CI.cyan, tools: 10 },
