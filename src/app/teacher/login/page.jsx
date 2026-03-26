@@ -288,7 +288,7 @@ function TeacherLanding() {
     try {
       if (tab === 'register') {
         await signUpWithEmail(email, password);
-        setMessage({ type: 'success', text: 'สมัครสำเร็จ! กรุณาตรวจ Email ยืนยันตัวตน' });
+        setMessage({ type: 'success', text: 'สมัครสำเร็จ! กำลังเข้าสู่ระบบ...' });
       } else {
         await signInWithEmail(email, password);
       }

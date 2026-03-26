@@ -121,11 +121,16 @@ export function AuthProvider({ children }) {
   }
 
   async function signUpWithEmail(email, password) {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    // Use server API to create user with email auto-confirmed (no verification email)
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
     });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registration failed');
+    // Auto sign in after successful registration
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   }
 
