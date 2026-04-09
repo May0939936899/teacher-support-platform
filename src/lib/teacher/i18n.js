@@ -7,7 +7,8 @@ export const translations = {
     home: 'หน้าหลัก',
 
     // Sides
-    side_classroom_fun: 'กิจกรรมสนุกในห้องเรียน',
+    side_classroom_fun: 'กิจกรรมในชั้นเรียน',
+    tool_word_guessing: 'ทายคำเป็นหมวดหมู่',
     side_assessment: 'การสอบและประเมินผล',
     side_documents: 'เครื่องมือเอกสาร',
     side_manage_share: 'การจัดการและแบ่งปัน',
@@ -117,6 +118,7 @@ export const translations = {
     home: 'Home',
 
     side_classroom_fun: 'Classroom Activities',
+    tool_word_guessing: 'Word Category Guessing',
     side_assessment: 'Tests & Assessment',
     side_documents: 'Document Tools',
     side_manage_share: 'Manage & Share',

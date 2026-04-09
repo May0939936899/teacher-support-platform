@@ -26,6 +26,7 @@ const ContentDifferentiator = dynamic(() => import('@/components/teacher/tools/C
 const AutoGrader = dynamic(() => import('@/components/teacher/tools/AutoGrader'), { ssr: false });
 const RubricGenerator = dynamic(() => import('@/components/teacher/tools/RubricGenerator'), { ssr: false });
 const FlashcardBuilder = dynamic(() => import('@/components/teacher/tools/FlashcardBuilder'), { ssr: false });
+const WordGuessingGame = dynamic(() => import('@/components/teacher/tools/WordGuessingGame'), { ssr: false });
 // Phase 3 — Documents
 const SlideMaker = dynamic(() => import('@/components/teacher/tools/SlideMaker'), { ssr: false });
 const FormBuilder = dynamic(() => import('@/components/teacher/tools/FormBuilder'), { ssr: false });
@@ -69,9 +70,10 @@ function buildMenu(lang) {
       side: 'classroom_fun', labelKey: 'side_classroom_fun', color: 'cyan', icon: '🎉',
       groups: [
         { labelKey: 'group_fun_activities', items: [
-          { id: 'interactive-activity', labelKey: 'tool_interactive', icon: '🎯', phase: 1 },
-          { id: 'live-quiz',            labelKey: 'tool_live_quiz',   icon: '🎮', phase: 1 },
-          { id: 'flashcard-builder',    labelKey: 'tool_flashcard',   icon: '🗂️', phase: 1 },
+          { id: 'interactive-activity', labelKey: 'tool_interactive',  icon: '🎯', phase: 1 },
+          { id: 'live-quiz',            labelKey: 'tool_live_quiz',    icon: '🎮', phase: 1 },
+          { id: 'word-guessing',        labelKey: 'tool_word_guessing',icon: '🔤', phase: 1 },
+          { id: 'exit-ticket',          labelKey: 'tool_exit_ticket',  icon: '📋', phase: 1 },
         ]},
       ],
     },
@@ -192,6 +194,7 @@ const TOOL_MAP = {
   'auto-grader': AutoGrader,
   'rubric-generator': RubricGenerator,
   'flashcard-builder': FlashcardBuilder,
+  'word-guessing': WordGuessingGame,
   // Phase 3 — Documents
   'slide-maker': SlideMaker,
   'form-builder': FormBuilder,

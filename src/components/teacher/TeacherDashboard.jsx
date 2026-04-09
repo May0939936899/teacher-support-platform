@@ -24,7 +24,7 @@ const COLOR_STYLES = {
 };
 
 const CATEGORY_DESC = {
-  classroom_fun: 'Poll · Word Cloud · เกมตอบคำถาม · บัตรคำ',
+  classroom_fun: 'Interactive · Live Quiz · ทายคำเป็นหมวด · สอบและประเมินผล',
   assessment:    'ออกข้อสอบ · วัดผล · ตรวจงาน · ให้คะแนน',
   documents:     'แผนสอน · Slide · จดหมาย · E-book · ใบประกาศ · แบบฟอร์ม · แปลภาษา',
   manage_share:  'QR Code · ย่อลิงก์ · PDF · อ่านรูป · คลังเอกสาร',
