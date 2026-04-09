@@ -66,45 +66,50 @@ const CI = {
 function buildMenu(lang) {
   return [
     {
-      side: 'teaching', labelKey: 'side_teaching', color: 'cyan', icon: '🎓',
+      side: 'classroom_fun', labelKey: 'side_classroom_fun', color: 'cyan', icon: '🎉',
       groups: [
-        { labelKey: 'group_assess', items: [
-          { id: 'smart-quiz', labelKey: 'tool_smart_quiz', icon: '📝', phase: 1 },
-          { id: 'live-quiz', labelKey: 'tool_live_quiz', icon: '🎮', phase: 1 },
-          { id: 'exit-ticket', labelKey: 'tool_exit_ticket', icon: '📝', phase: 1 },
-          { id: 'video-quiz', labelKey: 'tool_video_quiz', icon: '🎬', phase: 1 },
-        ]},
-        { labelKey: 'group_plan', items: [
-          { id: 'lesson-planner', labelKey: 'tool_lesson_planner', icon: '📋', phase: 1 },
+        { labelKey: 'group_fun_activities', items: [
           { id: 'interactive-activity', labelKey: 'tool_interactive', icon: '🎯', phase: 1 },
           { id: 'content-differentiator', labelKey: 'tool_differentiator', icon: '📶', phase: 1 },
+          { id: 'flashcard-builder', labelKey: 'tool_flashcard', icon: '🗂️', phase: 1 },
         ]},
-        { labelKey: 'group_grade', items: [
+        { labelKey: 'group_quiz_game', items: [
+          { id: 'live-quiz', labelKey: 'tool_live_quiz', icon: '🎮', phase: 1 },
+        ]},
+      ],
+    },
+    {
+      side: 'assessment', labelKey: 'side_assessment', color: 'orange', icon: '📝',
+      groups: [
+        { labelKey: 'group_exam', items: [
+          { id: 'smart-quiz', labelKey: 'tool_smart_quiz', icon: '🧠', phase: 1 },
+          { id: 'exit-ticket', labelKey: 'tool_exit_ticket', icon: '📋', phase: 1 },
+          { id: 'video-quiz', labelKey: 'tool_video_quiz', icon: '🎬', phase: 1 },
+        ]},
+        { labelKey: 'group_grading', items: [
           { id: 'auto-grader', labelKey: 'tool_auto_grader', icon: '✅', phase: 1 },
           { id: 'rubric-generator', labelKey: 'tool_rubric', icon: '📏', phase: 1 },
-          { id: 'flashcard-builder', labelKey: 'tool_flashcard', icon: '🗂️', phase: 1 },
         ]},
       ],
     },
     {
       side: 'documents', labelKey: 'side_documents', color: 'purple', icon: '📄',
       groups: [
-        { labelKey: 'group_create', items: [
+        { labelKey: 'group_doc_create', items: [
+          { id: 'lesson-planner', labelKey: 'tool_lesson_planner', icon: '📋', phase: 1 },
           { id: 'letter-writer', labelKey: 'tool_letter', icon: '✉️', phase: 1 },
           { id: 'slide-maker', labelKey: 'tool_slide', icon: '🖥️', phase: 1 },
+          { id: 'ebook-builder', labelKey: 'tool_ebook', icon: '📖', phase: 1 },
           { id: 'certificate-generator', labelKey: 'tool_certificate', icon: '🏆', phase: 1 },
           { id: 'form-builder', labelKey: 'tool_form', icon: '📄', phase: 1 },
           { id: 'ai-translator', labelKey: 'tool_translator', icon: '🌐', phase: 1 },
-          { id: 'ebook-builder', labelKey: 'tool_ebook', icon: '📖', phase: 1 },
         ]},
-        { labelKey: 'group_check', items: [
-          { id: 'plagiarism-checker', labelKey: 'tool_plagiarism', icon: '🔍', phase: 1 },
-          { id: 'ai-detector', labelKey: 'tool_ai_detector', icon: '🤖', phase: 1 },
-          { id: 'writing-quality', labelKey: 'tool_writing', icon: '✍️', phase: 1 },
-          { id: 'completeness-checker', labelKey: 'tool_completeness', icon: '☑️', phase: 1 },
-          { id: 'grammar-checker', labelKey: 'tool_grammar', icon: '🔤', phase: 1 },
-        ]},
-        { labelKey: 'group_manage', items: [
+      ],
+    },
+    {
+      side: 'manage_share', labelKey: 'side_manage_share', color: 'teal', icon: '🔗',
+      groups: [
+        { labelKey: 'group_share_tools', items: [
           { id: 'qr-generator', labelKey: 'tool_qr', icon: '🔲', phase: 1 },
           { id: 'url-shortener', labelKey: 'tool_url', icon: '🔗', phase: 1 },
           { id: 'image-to-content', labelKey: 'tool_image_content', icon: '🖼️', phase: 1 },
@@ -123,18 +128,32 @@ function buildMenu(lang) {
       ],
     },
     {
-      side: 'admin', labelKey: 'side_admin', color: 'magenta', icon: '⚙️',
+      side: 'check_verify', labelKey: 'side_check_verify', color: 'green', icon: '✅',
       groups: [
-        { labelKey: 'group_track', items: [
+        { labelKey: 'group_attendance', items: [
           { id: 'attendance-tracker', labelKey: 'tool_attendance', icon: '📅', phase: 1 },
           { id: 'student-progress', labelKey: 'tool_progress', icon: '📈', phase: 1 },
+          { id: 'schedule-manager', labelKey: 'tool_schedule', icon: '🗓️', phase: 1 },
+        ]},
+        { labelKey: 'group_doc_check', items: [
+          { id: 'plagiarism-checker', labelKey: 'tool_plagiarism', icon: '🔍', phase: 1 },
+          { id: 'ai-detector', labelKey: 'tool_ai_detector', icon: '🤖', phase: 1 },
+          { id: 'writing-quality', labelKey: 'tool_writing', icon: '✍️', phase: 1 },
+          { id: 'completeness-checker', labelKey: 'tool_completeness', icon: '☑️', phase: 1 },
+          { id: 'grammar-checker', labelKey: 'tool_grammar', icon: '🔤', phase: 1 },
+        ]},
+      ],
+    },
+    {
+      side: 'project', labelKey: 'side_project', color: 'magenta', icon: '🗂️',
+      groups: [
+        { labelKey: 'group_projects', items: [
+          { id: 'event-coordinator', labelKey: 'tool_event', icon: '🎪', phase: 1 },
+          { id: 'budget-tracker', labelKey: 'tool_budget', icon: '💰', phase: 1 },
           { id: 'ta-coordinator', labelKey: 'tool_ta', icon: '👥', phase: 1 },
           { id: 'stakeholder-portal', labelKey: 'tool_stakeholder', icon: '🏛️', phase: 1 },
         ]},
-        { labelKey: 'group_project', items: [
-          { id: 'schedule-manager', labelKey: 'tool_schedule', icon: '🗓️', phase: 1 },
-          { id: 'event-coordinator', labelKey: 'tool_event', icon: '🎪', phase: 1 },
-          { id: 'budget-tracker', labelKey: 'tool_budget', icon: '💰', phase: 1 },
+        { labelKey: 'group_report', items: [
           { id: 'meeting-notes', labelKey: 'tool_meeting', icon: '🗒️', phase: 1 },
           { id: 'kpi-dashboard', labelKey: 'tool_kpi', icon: '📉', phase: 1 },
           { id: 'line-broadcast', labelKey: 'tool_broadcast', icon: '📢', phase: 1 },
@@ -192,10 +211,13 @@ const TOOL_MAP = {
 };
 
 const COLOR_MAP = {
-  cyan: { bg: CI.cyan, light: '#e6f9ff', border: '#80daff', text: '#0090b8' },
-  purple: { bg: CI.purple, light: '#f3edff', border: '#c4a8ff', text: '#5c35cc' },
+  cyan:    { bg: CI.cyan,    light: '#e6f9ff', border: '#80daff', text: '#0090b8' },
+  purple:  { bg: CI.purple,  light: '#f3edff', border: '#c4a8ff', text: '#5c35cc' },
   magenta: { bg: CI.magenta, light: '#fff0f6', border: '#ff80b8', text: '#b8005e' },
-  gold: { bg: '#e6a800', light: '#fff8e1', border: '#ffd54f', text: '#9e7700' },
+  gold:    { bg: '#e6a800',  light: '#fff8e1', border: '#ffd54f', text: '#9e7700' },
+  orange:  { bg: '#f97316',  light: '#fff4ed', border: '#fdc79a', text: '#c2440a' },
+  teal:    { bg: '#0d9488',  light: '#e6faf8', border: '#6eddd7', text: '#0a7a72' },
+  green:   { bg: '#16a34a',  light: '#dcfce7', border: '#86efac', text: '#15803d' },
 };
 
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";

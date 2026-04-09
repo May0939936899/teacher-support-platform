@@ -15,15 +15,21 @@ const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif
 const COLOR_STYLES = {
   cyan:    { bg: CI.cyan,    light: '#e6f9ff', border: '#80daff', text: '#0090b8', grad: 'linear-gradient(135deg,#00b4e6,#0077aa)' },
   purple:  { bg: CI.purple,  light: '#f3edff', border: '#c4a8ff', text: '#5c35cc', grad: 'linear-gradient(135deg,#7c4dff,#5c35cc)' },
-  gold:    { bg: CI.gold,    light: '#fff9e6', border: '#ffe080', text: '#b38600', grad: 'linear-gradient(135deg,#ffc107,#e6a800)' },
+  gold:    { bg: '#e6a800',  light: '#fff8e1', border: '#ffd54f', text: '#9e7700', grad: 'linear-gradient(135deg,#ffc107,#e6a800)' },
   magenta: { bg: CI.magenta, light: '#fff0f6', border: '#ff80b8', text: '#b8005e', grad: 'linear-gradient(135deg,#e6007e,#aa005e)' },
+  orange:  { bg: '#f97316',  light: '#fff4ed', border: '#fdc79a', text: '#c2440a', grad: 'linear-gradient(135deg,#f97316,#ea6000)' },
+  teal:    { bg: '#0d9488',  light: '#e6faf8', border: '#6eddd7', text: '#0a7a72', grad: 'linear-gradient(135deg,#0d9488,#0a7a72)' },
+  green:   { bg: '#16a34a',  light: '#dcfce7', border: '#86efac', text: '#15803d', grad: 'linear-gradient(135deg,#16a34a,#15803d)' },
 };
 
 const CATEGORY_DESC = {
-  teaching: 'ออกข้อสอบ วางแผนสอน ตรวจงาน กิจกรรมห้องเรียน',
-  documents: 'เขียนเอกสาร สร้าง Slide ตรวจ Plagiarism แปลภาษา',
-  marketing: 'สร้างคอนเทนต์ ออกแบบโปสเตอร์ สื่อการตลาด',
-  admin: 'เช็กชื่อ ติดตามนักศึกษา จัดการงบ บันทึกการประชุม',
+  classroom_fun: 'เกมทายคำ Poll Word Cloud กิจกรรมสนุกในห้องเรียน',
+  assessment: 'ออกข้อสอบ วัดผล ตรวจงาน ให้คะแนนอัตโนมัติ',
+  documents: 'สร้างแผนสอน Slide จดหมาย E-book ใบประกาศ แบบฟอร์ม แปลภาษา',
+  manage_share: 'QR Code ย่อลิงก์ จัดการ PDF อ่านรูปภาพ คลังเอกสาร',
+  marketing: 'สร้างคอนเทนต์การตลาด ออกแบบโปสเตอร์ สื่อ SPUBUS',
+  check_verify: 'เช็กชื่อนักศึกษา ตรวจตารางสอน ตรวจ Plagiarism ตรวจไวยากรณ์',
+  project: 'จัดกิจกรรม ติดตามงบ ประชุม KPI รายงาน ส่งประกาศ',
 };
 
 export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, lang = 'th' }) {
