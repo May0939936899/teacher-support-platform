@@ -8,9 +8,9 @@ import { NextResponse } from 'next/server';
 // v1beta สำหรับ model ใหม่, v1 สำหรับ stable models
 const GEMINI_MODELS = [
   { name: 'gemini-2.0-flash',        api: 'v1beta' },
-  { name: 'gemini-2.0-flash-exp',    api: 'v1beta' },
-  { name: 'gemini-1.5-flash-latest', api: 'v1beta' },
-  { name: 'gemini-1.5-flash',        api: 'v1beta' },
+  { name: 'gemini-2.0-flash-lite',   api: 'v1beta' },
+  { name: 'gemini-1.5-flash',        api: 'v1'     },
+  { name: 'gemini-1.5-flash-8b',     api: 'v1'     },
 ];
 
 async function callGemini(prompt, imageData = null) {
