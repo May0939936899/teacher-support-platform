@@ -53,13 +53,21 @@ export default function QRGenerator() {
         errorCorrectionLevel: 'H',
       });
       if (logo) {
-        const ctx = canvasRef.current.getContext('2d');
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        // ใช้ canvas.width/height จริง (อาจต่างจาก size เพราะ devicePixelRatio)
+        const cw = canvas.width;
+        const ch = canvas.height;
         const img = new Image();
         img.onload = () => {
-          const s = size * 0.22;
-          const x = (size - s) / 2, y = (size - s) / 2;
+          const s = cw * 0.22;
+          const x = (cw - s) / 2;
+          const y = (ch - s) / 2;
+          const pad = 6;
+          // วาดพื้นหลังสีขาว ไม่ใช้ roundRect (ไม่รองรับทุก browser)
           ctx.fillStyle = lightColor;
-          ctx.beginPath(); ctx.roundRect(x - 6, y - 6, s + 12, s + 12, 8); ctx.fill();
+          ctx.fillRect(x - pad, y - pad, s + pad * 2, s + pad * 2);
+          // วาดรูปโลโก้ให้พอดีกึ่งกลาง
           ctx.drawImage(img, x, y, s, s);
         };
         img.src = logo;
