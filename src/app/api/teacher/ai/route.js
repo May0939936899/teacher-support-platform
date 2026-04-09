@@ -638,6 +638,11 @@ ${payload.content}
 เขียนสรุปเป็นภาษาไทย ให้ละเอียดและครอบคลุมมากที่สุด`;
         break;
 
+      case 'custom':
+        prompt = payload.prompt || '';
+        if (!prompt) return NextResponse.json({ error: 'Missing prompt' }, { status: 400 });
+        break;
+
       default:
         return NextResponse.json({ error: 'Unknown tool' }, { status: 400 });
     }
