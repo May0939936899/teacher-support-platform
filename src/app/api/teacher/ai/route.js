@@ -13,38 +13,40 @@ const GEMINI_MODELS = [
   { name: 'gemini-1.5-flash-8b',     api: 'v1'     },
 ];
 
+const SYSTEM_INSTRUCTION = 'คุณเป็น AI ผู้ช่วยอาจารย์มหาวิทยาลัยที่เก่งมาก ตอบเป็นภาษาไทยเสมอ (ยกเว้นถูกขอให้ใช้ภาษาอื่น) ตอบอย่างละเอียด มีคุณภาพ เป็นมืออาชีพ ถูกต้องตามหลักวิชาการ';
+
 async function callGemini(prompt, imageData = null) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('ไม่มี AI API key — กรุณาตั้งค่า GEMINI_API_KEY ใน .env.local');
 
   const parts = [];
   if (imageData) {
-    parts.push({
-      inlineData: {
-        mimeType: imageData.mediaType || 'image/png',
-        data: imageData.base64,
-      },
-    });
+    parts.push({ inlineData: { mimeType: imageData.mediaType || 'image/png', data: imageData.base64 } });
   }
   parts.push({ text: prompt });
-
-  const body = JSON.stringify({
-    contents: [{ parts }],
-    systemInstruction: {
-      parts: [{ text: 'คุณเป็น AI ผู้ช่วยอาจารย์มหาวิทยาลัยที่เก่งมาก ตอบเป็นภาษาไทยเสมอ (ยกเว้นถูกขอให้ใช้ภาษาอื่น) ตอบอย่างละเอียด มีคุณภาพ เป็นมืออาชีพ ถูกต้องตามหลักวิชาการ' }],
-    },
-    generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
-  });
 
   let lastError = null;
   for (const { name: model, api } of GEMINI_MODELS) {
     try {
       const url = `https://generativelanguage.googleapis.com/${api}/models/${model}:generateContent?key=${apiKey}`;
-      console.log(`[AI] Trying ${model}...`);
+
+      // systemInstruction is only supported in v1beta
+      const bodyObj = {
+        contents: [{ parts }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+      };
+      if (api === 'v1beta') {
+        bodyObj.systemInstruction = { parts: [{ text: SYSTEM_INSTRUCTION }] };
+      } else {
+        // v1: prepend system instruction into the prompt
+        bodyObj.contents = [{ parts: [{ text: `${SYSTEM_INSTRUCTION}\n\n${prompt}` }, ...(imageData ? [{ inlineData: { mimeType: imageData.mediaType || 'image/png', data: imageData.base64 } }] : [])] }];
+      }
+
+      console.log(`[AI] Trying ${model} (${api})...`);
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body,
+        body: JSON.stringify(bodyObj),
       });
 
       if (res.status === 429 || res.status === 503) {
