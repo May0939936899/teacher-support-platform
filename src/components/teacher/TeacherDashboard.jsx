@@ -24,9 +24,8 @@ const COLOR_STYLES = {
 };
 
 const CATEGORY_DESC = {
-  classroom_fun: 'Interactive · Live Quiz · ทายคำเป็นหมวด · สอบและประเมินผล',
-  assessment:    'ออกข้อสอบ · วัดผล · ตรวจงาน · ให้คะแนน',
-  documents:     'แผนสอน · Slide · จดหมาย · E-book · ใบประกาศ · แบบฟอร์ม · แปลภาษา',
+  classroom_fun: 'Interactive · Live Quiz · ทายคำเป็นหมวด · Smart Quiz · Video Quiz · ตรวจงาน AI',
+  documents:     'แผนสอน · Slide · จดหมาย · E-book · ใบประกาศ · แบบฟอร์ม · แปลภาษา · Rubric',
   manage_share:  'QR Code · ย่อลิงก์ · PDF · อ่านรูป · คลังเอกสาร',
   marketing:     'สร้างคอนเทนต์ · ออกแบบโปสเตอร์ · สื่อการตลาด',
   attendance:    'เช็กชื่อนักศึกษา · ติดตามผล',

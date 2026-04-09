@@ -70,25 +70,16 @@ function buildMenu(lang) {
       side: 'classroom_fun', labelKey: 'side_classroom_fun', color: 'cyan', icon: '🎉',
       groups: [
         { labelKey: 'group_fun_activities', items: [
-          { id: 'interactive-activity', labelKey: 'tool_interactive',  icon: '🎯', phase: 1 },
-          { id: 'live-quiz',            labelKey: 'tool_live_quiz',    icon: '🎮', phase: 1 },
-          { id: 'word-guessing',        labelKey: 'tool_word_guessing',icon: '🔤', phase: 1 },
-          { id: 'exit-ticket',          labelKey: 'tool_exit_ticket',  icon: '📋', phase: 1 },
+          { id: 'interactive-activity',   labelKey: 'tool_interactive',    icon: '🎯', phase: 1 },
+          { id: 'live-quiz',              labelKey: 'tool_live_quiz',      icon: '🎮', phase: 1 },
+          { id: 'word-guessing',          labelKey: 'tool_word_guessing',  icon: '🔤', phase: 1 },
+          { id: 'exit-ticket',            labelKey: 'tool_exit_ticket',    icon: '📋', phase: 1 },
         ]},
-      ],
-    },
-    {
-      side: 'assessment', labelKey: 'side_assessment', color: 'orange', icon: '📝',
-      groups: [
         { labelKey: 'group_exam', items: [
-          { id: 'smart-quiz',           labelKey: 'tool_smart_quiz',    icon: '🧠', phase: 1 },
-          { id: 'exit-ticket',          labelKey: 'tool_exit_ticket',   icon: '📋', phase: 1 },
-          { id: 'video-quiz',           labelKey: 'tool_video_quiz',    icon: '🎬', phase: 1 },
+          { id: 'smart-quiz',             labelKey: 'tool_smart_quiz',     icon: '🧠', phase: 1 },
+          { id: 'video-quiz',             labelKey: 'tool_video_quiz',     icon: '🎬', phase: 1 },
           { id: 'content-differentiator', labelKey: 'tool_differentiator', icon: '📶', phase: 1 },
-        ]},
-        { labelKey: 'group_grading', items: [
-          { id: 'auto-grader',          labelKey: 'tool_auto_grader',  icon: '✅', phase: 1 },
-          { id: 'rubric-generator',     labelKey: 'tool_rubric',       icon: '📏', phase: 1 },
+          { id: 'auto-grader',            labelKey: 'tool_auto_grader',    icon: '✅', phase: 1 },
         ]},
       ],
     },
@@ -96,13 +87,14 @@ function buildMenu(lang) {
       side: 'documents', labelKey: 'side_documents', color: 'purple', icon: '📄',
       groups: [
         { labelKey: 'group_doc_create', items: [
-          { id: 'lesson-planner',       labelKey: 'tool_lesson_planner',  icon: '📋', phase: 1 },
-          { id: 'letter-writer',        labelKey: 'tool_letter',          icon: '✉️', phase: 1 },
-          { id: 'slide-maker',          labelKey: 'tool_slide',           icon: '🖥️', phase: 1 },
-          { id: 'ebook-builder',        labelKey: 'tool_ebook',           icon: '📖', phase: 1 },
-          { id: 'certificate-generator',labelKey: 'tool_certificate',     icon: '🏆', phase: 1 },
-          { id: 'form-builder',         labelKey: 'tool_form',            icon: '📄', phase: 1 },
-          { id: 'ai-translator',        labelKey: 'tool_translator',      icon: '🌐', phase: 1 },
+          { id: 'lesson-planner',        labelKey: 'tool_lesson_planner',  icon: '📋', phase: 1 },
+          { id: 'letter-writer',         labelKey: 'tool_letter',          icon: '✉️', phase: 1 },
+          { id: 'slide-maker',           labelKey: 'tool_slide',           icon: '🖥️', phase: 1 },
+          { id: 'ebook-builder',         labelKey: 'tool_ebook',           icon: '📖', phase: 1 },
+          { id: 'certificate-generator', labelKey: 'tool_certificate',     icon: '🏆', phase: 1 },
+          { id: 'form-builder',          labelKey: 'tool_form',            icon: '📄', phase: 1 },
+          { id: 'ai-translator',         labelKey: 'tool_translator',      icon: '🌐', phase: 1 },
+          { id: 'rubric-generator',      labelKey: 'tool_rubric',          icon: '📏', phase: 1 },
         ]},
       ],
     },
@@ -530,7 +522,7 @@ export default function TeacherPage() {
   const [activeTool, setActiveTool] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [expandedSides, setExpandedSides] = useState({ classroom_fun: true, assessment: false, documents: false, manage_share: false, marketing: false, attendance: false, check_verify: false, project: false });
+  const [expandedSides, setExpandedSides] = useState({ classroom_fun: true, documents: false, manage_share: false, marketing: false, attendance: false, check_verify: false, project: false });
   const [lang, setLang] = useState('th');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
