@@ -77,12 +77,23 @@ export default function ContentDifferentiator() {
 
   const parseVersions = (text) => {
     const sections = { easy: '', medium: '', hard: '' };
-    const easyMatch = text.match(/(?:easy|ง่าย|พื้นฐาน|ระดับง่าย)[:\s]*\n?([\s\S]*?)(?=(?:medium|ปานกลาง|กลาง|🟡|ระดับกลาง)|$)/i);
-    const medMatch = text.match(/(?:medium|ปานกลาง|กลาง|ระดับกลาง)[:\s]*\n?([\s\S]*?)(?=(?:hard|ยาก|ท้าทาย|🔴|ระดับยาก)|$)/i);
-    const hardMatch = text.match(/(?:hard|ยาก|ท้าทาย|ระดับยาก)[:\s]*\n?([\s\S]*?)$/i);
+    // Match ## EASY / ## MEDIUM / ## HARD sections (new format)
+    const easyMatch = text.match(/##\s*EASY[\s\S]*?\n([\s\S]*?)(?=##\s*MEDIUM|##\s*HARD|$)/i);
+    const medMatch  = text.match(/##\s*MEDIUM[\s\S]*?\n([\s\S]*?)(?=##\s*EASY|##\s*HARD|$)/i);
+    const hardMatch = text.match(/##\s*HARD[\s\S]*?\n([\s\S]*?)(?=##\s*EASY|##\s*MEDIUM|$)/i);
     if (easyMatch) sections.easy = easyMatch[1].trim();
-    if (medMatch) sections.medium = medMatch[1].trim();
+    if (medMatch)  sections.medium = medMatch[1].trim();
     if (hardMatch) sections.hard = hardMatch[1].trim();
+    // Fallback: old format with Thai keywords
+    if (!sections.easy && !sections.medium && !sections.hard) {
+      const eM = text.match(/(?:easy|ง่าย|พื้นฐาน)[:\s]*\n?([\s\S]*?)(?=(?:medium|ปานกลาง|กลาง)|$)/i);
+      const mM = text.match(/(?:medium|ปานกลาง|กลาง)[:\s]*\n?([\s\S]*?)(?=(?:hard|ยาก|ท้าทาย)|$)/i);
+      const hM = text.match(/(?:hard|ยาก|ท้าทาย)[:\s]*\n?([\s\S]*?)$/i);
+      if (eM) sections.easy = eM[1].trim();
+      if (mM) sections.medium = mM[1].trim();
+      if (hM) sections.hard = hM[1].trim();
+    }
+    // Last resort: split into thirds
     if (!sections.easy && !sections.medium && !sections.hard) {
       const lines = text.split('\n').filter(l => l.trim());
       const third = Math.ceil(lines.length / 3);

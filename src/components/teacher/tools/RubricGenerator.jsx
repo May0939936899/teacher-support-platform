@@ -62,44 +62,49 @@ export default function RubricGenerator() {
   };
 
   const parseRubric = (text, numCriteria, numLevels) => {
+    const defaultNames = ['เนื้อหา/ความถูกต้อง', 'โครงสร้าง/การจัดลำดับ', 'การใช้ภาษา', 'หลักฐาน/อ้างอิง', 'ความคิดสร้างสรรค์', 'การนำเสนอ', 'ความสมบูรณ์', 'การทำงานร่วมกัน'];
+
+    // Try JSON parsing first
+    try {
+      const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const parsed = JSON.parse(jsonStr);
+      if (parsed.criteria && Array.isArray(parsed.criteria)) {
+        const finalCriteria = parsed.criteria.slice(0, numCriteria).map((c, i) => ({
+          name: c.name || defaultNames[i] || `เกณฑ์ ${i + 1}`,
+          levels: (c.levels || []).slice(0, numLevels).map((l, j) => ({
+            label: l.level || LEVEL_LABELS[j] || `ระดับ ${j + 1}`,
+            description: l.descriptor || l.description || '',
+            score: parseInt(l.score) || (numLevels - j),
+          })),
+        }));
+        return { criteria: finalCriteria, rawText: text };
+      }
+    } catch {}
+
+    // Fallback: text-based parsing
+    const scorePerLevel = Array.from({ length: numLevels }, (_, i) => numLevels - i);
     const lines = text.split('\n').filter(l => l.trim());
     const criteria = [];
     let currentCriterion = null;
-
     for (const line of lines) {
       const criterionMatch = line.match(/^(?:\d+[\.\)]\s*|[-*]\s*)(.+?)(?:\s*:|\s*$)/);
       if (criterionMatch && !currentCriterion) {
         currentCriterion = { name: criterionMatch[1].trim(), rawLevels: [] };
       } else if (currentCriterion) {
         currentCriterion.rawLevels.push(line.trim());
-        if (currentCriterion.rawLevels.length >= numLevels) {
-          criteria.push(currentCriterion);
-          currentCriterion = null;
-        }
+        if (currentCriterion.rawLevels.length >= numLevels) { criteria.push(currentCriterion); currentCriterion = null; }
       }
     }
     if (currentCriterion) criteria.push(currentCriterion);
-
     const finalCriteria = [];
-    const scorePerLevel = Array.from({ length: numLevels }, (_, i) => numLevels - i);
-    const defaultNames = ['เนื้อหา/ความถูกต้อง', 'โครงสร้าง/การจัดลำดับ', 'การใช้ภาษา', 'หลักฐาน/อ้างอิง', 'ความคิดสร้างสรรค์', 'การนำเสนอ', 'ความสมบูรณ์', 'การทำงานร่วมกัน'];
-
     for (let i = 0; i < numCriteria; i++) {
       const c = criteria[i];
       const levels = [];
       for (let j = 0; j < numLevels; j++) {
-        levels.push({
-          label: LEVEL_LABELS[j] || `ระดับ ${j + 1}`,
-          description: c?.rawLevels[j] || `คำอธิบายระดับ ${LEVEL_LABELS[j] || j + 1} สำหรับเกณฑ์นี้`,
-          score: scorePerLevel[j],
-        });
+        levels.push({ label: LEVEL_LABELS[j] || `ระดับ ${j + 1}`, description: c?.rawLevels[j] || '', score: scorePerLevel[j] });
       }
-      finalCriteria.push({
-        name: c?.name || defaultNames[i] || `เกณฑ์ ${i + 1}`,
-        levels,
-      });
+      finalCriteria.push({ name: c?.name || defaultNames[i] || `เกณฑ์ ${i + 1}`, levels });
     }
-
     return { criteria: finalCriteria, rawText: text };
   };
 

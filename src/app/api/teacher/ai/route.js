@@ -180,33 +180,36 @@ ${payload.text}
 ใช้ภาษาไทยและให้กิจกรรมที่หลากหลาย Active Learning`;
         break;
 
-      case 'rubric_generator':
+      case 'rubric_generator': {
+        const numCriteria = payload.criteriaCount || 4;
+        const numLevels = payload.levelCount || 4;
+        const levelLabels = ['ดีเยี่ยม', 'ดี', 'พอใช้', 'ต้องปรับปรุง', 'ไม่ผ่าน'].slice(0, numLevels);
         prompt = `คุณเป็นผู้เชี่ยวชาญด้านการออกแบบ Rubric สำหรับการประเมินผลการศึกษา
 
-สร้าง Rubric สำหรับ:
-- ชื่องาน/การประเมิน: ${payload.task}
-- จุดประสงค์: ${payload.purpose}
-- ระดับการศึกษา: ${payload.level || 'ปริญญาตรี'}
-- คะแนนเต็ม: ${payload.maxScore || 100} คะแนน
+สร้าง Rubric สำหรับงาน/การประเมิน: "${payload.assignment || payload.task || ''}"
+- จำนวนเกณฑ์การประเมิน: ${numCriteria} เกณฑ์
+- จำนวนระดับคะแนน: ${numLevels} ระดับ (${levelLabels.join(', ')})
+- ระดับการศึกษา: ปริญญาตรี
 
-ตอบใน JSON format:
+ตอบใน JSON format เท่านั้น (ไม่มี markdown):
 {
   "title": "ชื่อ Rubric",
   "total_score": 100,
   "criteria": [
     {
       "name": "ชื่อเกณฑ์",
-      "weight": 25,
+      "weight": ${Math.floor(100 / numCriteria)},
       "levels": [
-        {"level": "ดีเยี่ยม (4)", "score_range": "23-25", "descriptor": "คำอธิบาย"},
-        {"level": "ดี (3)", "score_range": "18-22", "descriptor": "คำอธิบาย"},
-        {"level": "พอใช้ (2)", "score_range": "13-17", "descriptor": "คำอธิบาย"},
-        {"level": "ปรับปรุง (1)", "score_range": "0-12", "descriptor": "คำอธิบาย"}
+        {"level": "${levelLabels[0]}", "score_range": "ช่วงคะแนน", "descriptor": "คำอธิบายพฤติกรรม/ผลงาน"},
+        {"level": "${levelLabels[1] || 'ดี'}", "score_range": "ช่วงคะแนน", "descriptor": "คำอธิบาย"}
       ]
     }
   ]
-}`;
+}
+
+สร้าง ${numCriteria} เกณฑ์ แต่ละเกณฑ์ต้องมี ${numLevels} ระดับคะแนน`;
         break;
+      }
 
       case 'meeting_notes':
         prompt = `คุณเป็น AI Assistant ที่เชี่ยวชาญด้านการสรุปการประชุม
@@ -273,18 +276,25 @@ ${payload.content}
 - ทุกข้อต้องมี explanation`;
         break;
 
-      case 'content_differentiator':
-        prompt = `คุณเป็นผู้เชี่ยวชาญด้านการปรับเนื้อหาการเรียนการสอน
+      case 'content_differentiator': {
+        const selectedLevels = payload.levels || (payload.level ? [payload.level] : ['easy', 'medium', 'hard']);
+        const levelMap = { easy: 'ง่าย (Easy) — สำหรับผู้เริ่มต้น ภาษาง่าย ตัวอย่างชัดเจน', medium: 'ปานกลาง (Medium) — สมดุล มีความลึกพอสมควร', hard: 'ยาก (Hard) — เชิงลึก วิเคราะห์ ท้าทาย' };
+        const levelInstructions = selectedLevels.map(l => `\n\n## ${l.toUpperCase()}\n[ปรับเนื้อหาสำหรับระดับ: ${levelMap[l] || l}]\n[เขียนเนื้อหาที่ปรับแล้วที่นี่]`).join('');
+        prompt = `คุณเป็นผู้เชี่ยวชาญด้านการปรับเนื้อหาการเรียนการสอนสำหรับระดับอุดมศึกษา
 
-ปรับเนื้อหาต่อไปนี้ให้เหมาะสมกับระดับ "${payload.level}":
+วิชา/หัวข้อ: ${payload.subject || ''}
 
 เนื้อหาต้นฉบับ:
 ${payload.content}
 
-ระดับที่ต้องการ: ${payload.level} (${payload.level === 'ง่าย' ? 'สำหรับผู้เริ่มต้น ใช้ภาษาง่าย' : payload.level === 'กลาง' ? 'สำหรับระดับกลาง มีความลึกพอสมควร' : 'สำหรับผู้เชี่ยวชาญ เนื้อหาเชิงลึก'})
+ปรับเนื้อหาข้างต้นให้เหมาะสมกับ ${selectedLevels.length} ระดับต่อไปนี้:
+${selectedLevels.map(l => `- ${l}: ${levelMap[l] || l}`).join('\n')}
 
-ให้เขียนเนื้อหาที่ปรับแล้ว และอธิบายสั้นๆ ว่าปรับอะไรบ้าง`;
+ตอบในรูปแบบนี้ (แต่ละระดับขึ้นต้นด้วย ## และชื่อระดับ):${levelInstructions}
+
+สำคัญ: แต่ละระดับต้องมีเนื้อหาที่สมบูรณ์ ต่างกันชัดเจน ครบถ้วน ไม่สั้นเกินไป`;
         break;
+      }
 
       case 'auto_grader':
         prompt = `คุณเป็นผู้ตรวจงานนักศึกษาระดับอุดมศึกษาที่มีความเชี่ยวชาญและเข้มงวด
