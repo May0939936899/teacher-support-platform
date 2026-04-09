@@ -19,17 +19,19 @@ const COLOR_STYLES = {
   magenta: { bg: CI.magenta, light: '#fff0f6', border: '#ff80b8', text: '#b8005e', grad: 'linear-gradient(135deg,#e6007e,#aa005e)' },
   orange:  { bg: '#f97316',  light: '#fff4ed', border: '#fdc79a', text: '#c2440a', grad: 'linear-gradient(135deg,#f97316,#ea6000)' },
   teal:    { bg: '#0d9488',  light: '#e6faf8', border: '#6eddd7', text: '#0a7a72', grad: 'linear-gradient(135deg,#0d9488,#0a7a72)' },
+  teal2:   { bg: '#0369a1',  light: '#e0f2fe', border: '#7dd3fc', text: '#0369a1', grad: 'linear-gradient(135deg,#0369a1,#0284c7)' },
   green:   { bg: '#16a34a',  light: '#dcfce7', border: '#86efac', text: '#15803d', grad: 'linear-gradient(135deg,#16a34a,#15803d)' },
 };
 
 const CATEGORY_DESC = {
-  classroom_fun: 'เกมทายคำ Poll Word Cloud กิจกรรมสนุกในห้องเรียน',
-  assessment: 'ออกข้อสอบ วัดผล ตรวจงาน ให้คะแนนอัตโนมัติ',
-  documents: 'สร้างแผนสอน Slide จดหมาย E-book ใบประกาศ แบบฟอร์ม แปลภาษา',
-  manage_share: 'QR Code ย่อลิงก์ จัดการ PDF อ่านรูปภาพ คลังเอกสาร',
-  marketing: 'สร้างคอนเทนต์การตลาด ออกแบบโปสเตอร์ สื่อ SPUBUS',
-  check_verify: 'เช็กชื่อนักศึกษา ตรวจตารางสอน ตรวจ Plagiarism ตรวจไวยากรณ์',
-  project: 'จัดกิจกรรม ติดตามงบ ประชุม KPI รายงาน ส่งประกาศ',
+  classroom_fun: 'Poll · Word Cloud · เกมตอบคำถาม · บัตรคำ',
+  assessment:    'ออกข้อสอบ · วัดผล · ตรวจงาน · ให้คะแนน',
+  documents:     'แผนสอน · Slide · จดหมาย · E-book · ใบประกาศ · แบบฟอร์ม · แปลภาษา',
+  manage_share:  'QR Code · ย่อลิงก์ · PDF · อ่านรูป · คลังเอกสาร',
+  marketing:     'สร้างคอนเทนต์ · ออกแบบโปสเตอร์ · สื่อการตลาด',
+  attendance:    'เช็กชื่อนักศึกษา · ติดตามผล',
+  check_verify:  'วางแผนสอน · ตารางสอน · ตรวจ Plagiarism · ตรวจไวยากรณ์',
+  project:       'จัดกิจกรรม · ติดตามงบ · ประชุม · KPI · ส่งประกาศ',
 };
 
 export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, lang = 'th' }) {

@@ -10,7 +10,7 @@ const GEMINI_MODELS = [
   { name: 'gemini-2.0-flash',        api: 'v1beta' },
   { name: 'gemini-2.0-flash-exp',    api: 'v1beta' },
   { name: 'gemini-1.5-flash-latest', api: 'v1beta' },
-  { name: 'gemini-1.5-pro-latest',   api: 'v1beta' },
+  { name: 'gemini-1.5-flash',        api: 'v1beta' },
 ];
 
 async function callGemini(prompt, imageData = null) {

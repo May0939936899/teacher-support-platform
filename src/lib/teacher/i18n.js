@@ -12,7 +12,8 @@ export const translations = {
     side_documents: 'เครื่องมือเอกสาร',
     side_manage_share: 'การจัดการและแบ่งปัน',
     side_marketing: 'สื่อสารการตลาด',
-    side_check_verify: 'เช็กและตรวจสอบตารางสอน',
+    side_attendance: 'เช็กชื่อเข้าเรียน',
+    side_check_verify: 'ตรวจสอบตารางสอน',
     side_project: 'การทำโครงการ',
 
     // Groups
