@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { t } from '@/lib/teacher/i18n';
 
 const CI = {
@@ -11,106 +12,61 @@ const CI = {
 
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
 
-const HIGHLIGHT_TOOLS = [
-  { id: 'smart-quiz', labelKey: 'tool_smart_quiz', icon: '📝', desc: 'AI ออกข้อสอบ + QR ให้นักศึกษาทำ', color: 'cyan' },
-  { id: 'live-quiz', labelKey: 'tool_live_quiz', icon: '🎮', desc: 'เกมตอบคำถาม Real-time + Leaderboard', color: 'cyan' },
-  { id: 'interactive-activity', labelKey: 'tool_interactive', icon: '🎯', desc: 'Word Cloud / Poll / Brainstorm + QR', color: 'cyan' },
-  { id: 'attendance-tracker', labelKey: 'tool_attendance', icon: '📅', desc: 'เช็กชื่อด้วย QR Code + GPS', color: 'magenta' },
-  { id: 'marketing-content', labelKey: 'tool_marketing_content', icon: '✨', desc: 'AI สร้างคอนเทนต์สไตล์ SPUBUS', color: 'magenta' },
-  { id: 'lesson-planner', labelKey: 'tool_lesson_planner', icon: '📋', desc: 'AI สร้างแผนการสอน TQF', color: 'purple' },
-  { id: 'ebook-builder', labelKey: 'tool_ebook', icon: '📖', desc: 'AI สร้าง E-book ทีละบท', color: 'purple' },
-  { id: 'letter-writer', labelKey: 'tool_letter', icon: '✉️', desc: 'AI เขียนจดหมายราชการ', color: 'purple' },
-];
-
 const COLOR_STYLES = {
-  cyan: { bg: CI.cyan, light: '#e6f9ff', border: '#80daff', text: '#0090b8' },
-  purple: { bg: CI.purple, light: '#f3edff', border: '#c4a8ff', text: '#5c35cc' },
-  magenta: { bg: CI.magenta, light: '#fff0f6', border: '#ff80b8', text: '#b8005e' },
+  cyan:    { bg: CI.cyan,    light: '#e6f9ff', border: '#80daff', text: '#0090b8', grad: 'linear-gradient(135deg,#00b4e6,#0077aa)' },
+  purple:  { bg: CI.purple,  light: '#f3edff', border: '#c4a8ff', text: '#5c35cc', grad: 'linear-gradient(135deg,#7c4dff,#5c35cc)' },
+  gold:    { bg: CI.gold,    light: '#fff9e6', border: '#ffe080', text: '#b38600', grad: 'linear-gradient(135deg,#ffc107,#e6a800)' },
+  magenta: { bg: CI.magenta, light: '#fff0f6', border: '#ff80b8', text: '#b8005e', grad: 'linear-gradient(135deg,#e6007e,#aa005e)' },
+};
+
+const CATEGORY_DESC = {
+  teaching: 'ออกข้อสอบ วางแผนสอน ตรวจงาน กิจกรรมห้องเรียน',
+  documents: 'เขียนเอกสาร สร้าง Slide ตรวจ Plagiarism แปลภาษา',
+  marketing: 'สร้างคอนเทนต์ ออกแบบโปสเตอร์ สื่อการตลาด',
+  admin: 'เช็กชื่อ ติดตามนักศึกษา จัดการงบ บันทึกการประชุม',
 };
 
 export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, lang = 'th' }) {
-  const stats = [
-    { label: t(lang, 'stat_total_tools'), value: '38', icon: '🛠️', color: CI.cyan },
-    { label: t(lang, 'stat_phase1_ready'), value: '38', icon: '✅', color: '#10b981' },
-    { label: 'AI Features', value: '20', icon: '🤖', color: CI.purple },
-    { label: t(lang, 'stat_main_areas'), value: '4', icon: '🎓', color: CI.gold },
-  ];
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  const activeCat = selectedCategory ? menuItems.find(m => m.side === selectedCategory) : null;
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', fontFamily: FONT }}>
-      {/* Welcome — Road Animation Banner (flush to top) */}
+
+      {/* ===== BANNER ===== */}
       <div style={{
-        background: `linear-gradient(145deg, ${CI.dark} 0%, #111145 50%, #1a1a5e 100%)`,
-        padding: '28px 32px 20px', marginBottom: '0', color: '#fff',
+        background: `linear-gradient(145deg,${CI.dark} 0%,#111145 50%,#1a1a5e 100%)`,
+        padding: '28px 32px 20px', color: '#fff',
         position: 'relative', overflow: 'hidden', minHeight: '160px',
       }}>
-        {/* Ambient glow */}
-        <div style={{ position: 'absolute', top: '-40%', right: '-15%', width: '50%', height: '180%', background: `radial-gradient(ellipse, ${CI.cyan}12 0%, transparent 70%)`, pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-30%', left: '-10%', width: '40%', height: '120%', background: `radial-gradient(ellipse, ${CI.magenta}08 0%, transparent 70%)`, pointerEvents: 'none' }} />
-
-        {/* Stars */}
-        {[...Array(12)].map((_, i) => (
-          <div key={i} style={{
-            position: 'absolute',
-            width: i % 3 === 0 ? '2px' : '1.5px', height: i % 3 === 0 ? '2px' : '1.5px',
-            borderRadius: '50%',
-            background: i % 3 === 0 ? CI.cyan : i % 3 === 1 ? CI.gold : '#fff',
-            top: `${(i * 13 + 5) % 50}%`, left: `${(i * 19 + 8) % 95}%`,
-            animation: `twinkle ${1.5 + (i % 3) * 0.8}s ease-in-out infinite`,
-            animationDelay: `${i * 0.3}s`, opacity: 0.5,
-          }} />
+        <div style={{ position:'absolute', top:'-40%', right:'-15%', width:'50%', height:'180%', background:`radial-gradient(ellipse,${CI.cyan}12 0%,transparent 70%)`, pointerEvents:'none' }} />
+        <div style={{ position:'absolute', bottom:'-30%', left:'-10%', width:'40%', height:'120%', background:`radial-gradient(ellipse,${CI.magenta}08 0%,transparent 70%)`, pointerEvents:'none' }} />
+        {[...Array(12)].map((_,i) => (
+          <div key={i} style={{ position:'absolute', width: i%3===0?'2px':'1.5px', height: i%3===0?'2px':'1.5px', borderRadius:'50%', background: i%3===0?CI.cyan:i%3===1?CI.gold:'#fff', top:`${(i*13+5)%50}%`, left:`${(i*19+8)%95}%`, animation:`twinkle ${1.5+(i%3)*0.8}s ease-in-out infinite`, animationDelay:`${i*0.3}s`, opacity:0.5 }} />
         ))}
-
         <style>{`
-          @keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.8; } }
-          @keyframes bannerBusRun {
-            0% { transform: translateX(-120%); }
-            100% { transform: translateX(calc(100vw + 20%)); }
-          }
-          @keyframes bannerBusRun2 {
-            0% { transform: translateX(calc(100vw + 20%)) scaleX(-1); }
-            100% { transform: translateX(-120%) scaleX(-1); }
-          }
-          @keyframes bannerBounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-3px); }
-          }
-          @keyframes bannerRoadDash {
-            0% { stroke-dashoffset: 0; }
-            100% { stroke-dashoffset: -40; }
-          }
-          @keyframes bannerWheel {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
+          @keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:0.8} }
+          @keyframes bannerBusRun { 0%{transform:translateX(-120%)} 100%{transform:translateX(calc(100vw + 20%))} }
+          @keyframes bannerBusRun2 { 0%{transform:translateX(calc(100vw + 20%)) scaleX(-1)} 100%{transform:translateX(-120%) scaleX(-1)} }
+          @keyframes bannerBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+          @keyframes bannerRoadDash { 0%{stroke-dashoffset:0} 100%{stroke-dashoffset:-40} }
+          @keyframes bannerWheel { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
         `}</style>
-
-        {/* Title */}
-        <div style={{ position: 'relative', zIndex: 2, marginBottom: '12px' }}>
-          <h1 style={{ margin: '0 0 2px', fontSize: '28px', fontWeight: 800, letterSpacing: '0.02em' }}>
-            <span style={{ color: '#fff' }}>SPUBUS</span>
-            <span style={{ color: '#fff', marginLeft: '10px', fontWeight: 600 }}>SUPPORT</span>
+        <div style={{ position:'relative', zIndex:2, marginBottom:'12px' }}>
+          <h1 style={{ margin:'0 0 2px', fontSize:'28px', fontWeight:800, letterSpacing:'0.02em' }}>
+            <span style={{ color:'#fff' }}>SPUBUS</span>
+            <span style={{ color:CI.cyan, marginLeft:'10px', fontWeight:600 }}>SUPPORT</span>
           </h1>
+          <p style={{ margin:0, fontSize:'14px', color:'rgba(255,255,255,0.6)' }}>แพลตฟอร์มสนับสนุนการสอน · คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม</p>
         </div>
-
-        {/* Road Scene */}
-        <div style={{ position: 'relative', width: '100%', height: '70px', zIndex: 2 }}>
-          {/* SVG Curved Road — extends beyond edges */}
-          <svg width="100%" height="70" viewBox="-100 0 1400 70" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: '-2%', right: '-2%', width: '104%' }}>
-            {/* Road surface */}
+        <div style={{ position:'relative', width:'100%', height:'70px', zIndex:2 }}>
+          <svg width="100%" height="70" viewBox="-100 0 1400 70" preserveAspectRatio="none" style={{ position:'absolute', bottom:0, left:'-2%', width:'104%' }}>
             <path d="M-100,35 C100,28 300,42 500,35 C700,28 900,42 1100,35 L1300,35" stroke="#2a2a4e" strokeWidth="32" fill="none" />
-            {/* Road border top */}
-            <path d="M-100,35 C100,28 300,42 500,35 C700,28 900,42 1100,35 L1300,35" stroke="#3a3a6e" strokeWidth="34" fill="none" opacity="0.3" />
-            {/* Center dashes */}
-            <path d="M-100,35 C100,28 300,42 500,35 C700,28 900,42 1100,35 L1300,35" stroke={CI.gold} strokeWidth="2" fill="none" strokeDasharray="16 12" opacity="0.7" style={{ animation: 'bannerRoadDash 1s linear infinite' }} />
+            <path d="M-100,35 C100,28 300,42 500,35 C700,28 900,42 1100,35 L1300,35" stroke={CI.gold} strokeWidth="2" fill="none" strokeDasharray="16 12" opacity="0.7" style={{ animation:'bannerRoadDash 1s linear infinite' }} />
           </svg>
-
-          {/* Main bus (cyan, going right) */}
-          <div style={{
-            position: 'absolute', bottom: '22px', left: 0,
-            animation: 'bannerBusRun 6s linear infinite',
-          }}>
-            <div style={{ animation: 'bannerBounce 0.25s ease-in-out infinite' }}>
+          <div style={{ position:'absolute', bottom:'22px', left:0, animation:'bannerBusRun 6s linear infinite' }}>
+            <div style={{ animation:'bannerBounce 0.25s ease-in-out infinite' }}>
               <svg width="100" height="50" viewBox="0 0 140 65">
                 <rect x="5" y="10" width="130" height="40" rx="8" fill={CI.cyan} />
                 <rect x="10" y="5" width="120" height="10" rx="5" fill="#0099cc" />
@@ -118,40 +74,21 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
                 <rect x="38" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
                 <rect x="61" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
                 <rect x="84" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
-                <rect x="107" y="18" width="22" height="28" rx="3" fill="#0099cc" />
-                <rect x="130" y="30" width="8" height="8" rx="2" fill={CI.gold} />
-                <rect x="2" y="30" width="6" height="8" rx="2" fill={CI.magenta} />
                 <text x="50" y="44" fill="#fff" fontSize="9" fontWeight="800" fontFamily="sans-serif">SPU BUS</text>
-                <rect x="5" y="48" width="130" height="4" rx="2" fill="#0088b3" />
                 <circle cx="35" cy="55" r="8" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
                 <circle cx="35" cy="55" r="3" fill="#555" />
                 <circle cx="105" cy="55" r="8" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
                 <circle cx="105" cy="55" r="3" fill="#555" />
-                <g style={{ transformOrigin: '35px 55px', animation: 'bannerWheel 0.3s linear infinite' }}>
-                  <line x1="35" y1="49" x2="35" y2="61" stroke="#777" strokeWidth="1" />
-                  <line x1="29" y1="55" x2="41" y2="55" stroke="#777" strokeWidth="1" />
-                </g>
-                <g style={{ transformOrigin: '105px 55px', animation: 'bannerWheel 0.3s linear infinite' }}>
-                  <line x1="105" y1="49" x2="105" y2="61" stroke="#777" strokeWidth="1" />
-                  <line x1="99" y1="55" x2="111" y2="55" stroke="#777" strokeWidth="1" />
-                </g>
               </svg>
             </div>
           </div>
-
-          {/* Small bus (magenta, going left) */}
-          <div style={{
-            position: 'absolute', bottom: '18px', left: 0,
-            animation: 'bannerBusRun2 9s linear infinite',
-            animationDelay: '2s',
-          }}>
+          <div style={{ position:'absolute', bottom:'18px', left:0, animation:'bannerBusRun2 9s linear infinite', animationDelay:'2s' }}>
             <svg width="60" height="32" viewBox="0 0 140 65">
               <rect x="5" y="10" width="130" height="40" rx="8" fill={CI.magenta} />
               <rect x="10" y="5" width="120" height="10" rx="5" fill="#cc006e" />
               <rect x="15" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.8" />
               <rect x="38" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.8" />
               <rect x="61" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.8" />
-              <rect x="130" y="30" width="8" height="8" rx="2" fill={CI.gold} />
               <circle cx="35" cy="55" r="8" fill="#1a1a2e" />
               <circle cx="105" cy="55" r="8" fill="#1a1a2e" />
             </svg>
@@ -159,119 +96,133 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
         </div>
       </div>
 
+      <div style={{ padding: '28px 24px' }}>
 
-      {/* Phase 1 - Ready to use */}
-      <div style={{ marginBottom: '28px', padding: '0 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-          <div style={{ width: '4px', height: '24px', borderRadius: '2px', background: CI.cyan }} />
-          <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: '#1e293b' }}>
-            🚀 เครื่องมือแนะนำ
-          </h2>
-          <span style={{ padding: '2px 10px', borderRadius: '20px', background: '#dcfce7', color: '#16a34a', fontSize: '15px', fontWeight: 600 }}>
-            ✓ พร้อมใช้ทั้ง 38 เครื่องมือ
-          </span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '14px' }}>
-          {HIGHLIGHT_TOOLS.map(tool => {
-            const c = COLOR_STYLES[tool.color];
-            const desc = tool.desc;
-            return (
+        {/* ===== CATEGORY VIEW ===== */}
+        {!activeCat ? (
+          <>
+            <div style={{ marginBottom: '20px' }}>
+              <h2 style={{ margin: '0 0 4px', fontSize: '22px', fontWeight: 700, color: '#1e293b' }}>เลือกด้านที่ต้องการใช้งาน</h2>
+              <p style={{ margin: 0, color: '#64748b', fontSize: '15px' }}>คลิกที่ด้านใดด้านหนึ่งเพื่อดูเครื่องมือทั้งหมดในด้านนั้น</p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+              {menuItems.map(cat => {
+                const c = COLOR_STYLES[cat.color] || COLOR_STYLES.cyan;
+                const toolCount = cat.groups.reduce((acc, g) => acc + g.items.length, 0);
+                return (
+                  <button
+                    key={cat.side}
+                    onClick={() => setSelectedCategory(cat.side)}
+                    style={{
+                      background: '#fff', border: `2px solid ${c.border}`, borderRadius: '20px',
+                      padding: '28px 24px', cursor: 'pointer', textAlign: 'left',
+                      transition: 'all 0.2s', fontFamily: FONT,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = `0 12px 32px ${c.bg}30`;
+                      e.currentTarget.style.borderColor = c.bg;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+                      e.currentTarget.style.borderColor = c.border;
+                    }}
+                  >
+                    {/* Icon circle */}
+                    <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: c.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', marginBottom: '16px' }}>
+                      {cat.icon}
+                    </div>
+                    {/* Title */}
+                    <div style={{ fontSize: '20px', fontWeight: 800, color: '#1e293b', marginBottom: '6px' }}>
+                      {t(lang, cat.labelKey)}
+                    </div>
+                    {/* Desc */}
+                    <div style={{ fontSize: '14px', color: '#64748b', lineHeight: 1.6, marginBottom: '16px' }}>
+                      {CATEGORY_DESC[cat.side]}
+                    </div>
+                    {/* Tool count badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span style={{ background: c.light, color: c.text, padding: '4px 12px', borderRadius: '20px', fontSize: '14px', fontWeight: 700 }}>
+                        {toolCount} เครื่องมือ
+                      </span>
+                      <span style={{ color: c.text, fontSize: '20px', fontWeight: 700 }}>→</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* ===== TOOLS IN CATEGORY ===== */}
+            <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <button
-                key={tool.id}
-                onClick={() => onSelectTool(tool.id)}
+                onClick={() => setSelectedCategory(null)}
                 style={{
-                  background: '#fff', borderRadius: '14px', padding: '18px',
-                  border: `1px solid ${c.border}`, cursor: 'pointer', textAlign: 'left',
-                  transition: 'all 0.2s', display: 'flex', gap: '14px', alignItems: 'flex-start',
-                  fontFamily: 'inherit',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = `0 8px 24px ${c.bg}20`;
-                  e.currentTarget.style.borderColor = c.bg;
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.borderColor = c.border;
+                  background: '#f1f5f9', border: 'none', borderRadius: '10px',
+                  padding: '8px 16px', cursor: 'pointer', fontSize: '15px',
+                  color: '#64748b', fontFamily: FONT, fontWeight: 600,
                 }}
               >
-                <div style={{
-                  width: '48px', height: '48px', borderRadius: '12px',
-                  background: c.light, display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '24px', flexShrink: 0,
-                }}>
-                  {tool.icon}
-                </div>
-                <div>
-                  <div style={{ fontSize: '17px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>{t(lang, tool.labelKey)}</div>
-                  <div style={{ fontSize: '15px', color: '#64748b', lineHeight: 1.5 }}>{desc}</div>
-                </div>
+                ← กลับ
               </button>
-            );
-          })}
-        </div>
-      </div>
+              <div>
+                <h2 style={{ margin: '0 0 2px', fontSize: '22px', fontWeight: 800, color: '#1e293b' }}>
+                  {activeCat.icon} {t(lang, activeCat.labelKey)}
+                </h2>
+                <p style={{ margin: 0, fontSize: '14px', color: '#64748b' }}>{CATEGORY_DESC[activeCat.side]}</p>
+              </div>
+            </div>
 
-      {/* All sections overview */}
-      <div style={{ padding: '0 24px 24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-          <div style={{ width: '4px', height: '24px', borderRadius: '2px', background: CI.magenta }} />
-          <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: '#1e293b' }}>
-            📋 {t(lang, 'dashboard_all')}
-          </h2>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-          {menuItems.map(side => {
-            const c = colorMap[side.color];
-            return (
-              <div key={side.side} style={{
-                background: '#fff', borderRadius: '16px', overflow: 'hidden',
-                border: `1px solid ${c.border}`,
-              }}>
-                <div style={{ padding: '16px 20px', background: c.bg, color: '#fff' }}>
-                  <div style={{ fontSize: '20px', fontWeight: 700 }}>{side.icon} {t(lang, side.labelKey)}</div>
-                  <div style={{ fontSize: '15px', opacity: 0.85, marginTop: '2px' }}>
-                    {side.groups.reduce((acc, g) => acc + g.items.length, 0)} {t(lang, 'tools_count')}
+            {activeCat.groups.map(group => {
+              const c = COLOR_STYLES[activeCat.color] || COLOR_STYLES.cyan;
+              return (
+                <div key={group.labelKey} style={{ marginBottom: '24px' }}>
+                  <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', paddingLeft: '4px' }}>
+                    {t(lang, group.labelKey)}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+                    {group.items.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => onSelectTool(item.id)}
+                        style={{
+                          background: '#fff', border: `1px solid ${c.border}`, borderRadius: '14px',
+                          padding: '16px 18px', cursor: 'pointer', textAlign: 'left',
+                          display: 'flex', alignItems: 'center', gap: '14px',
+                          transition: 'all 0.15s', fontFamily: FONT,
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = c.light;
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = `0 6px 16px ${c.bg}20`;
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = '#fff';
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: c.light, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>
+                          {item.icon}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>{t(lang, item.labelKey)}</div>
+                        </div>
+                        {item.phase === 1 && (
+                          <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '6px', background: '#dcfce7', color: '#16a34a', fontWeight: 700, flexShrink: 0 }}>✓</span>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div style={{ padding: '10px' }}>
-                  {side.groups.map(group => (
-                    <div key={group.labelKey} style={{ marginBottom: '6px' }}>
-                      <div style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', padding: '4px 8px', letterSpacing: '0.05em' }}>
-                        {t(lang, group.labelKey)}
-                      </div>
-                      {group.items.map(item => (
-                        <button
-                          key={item.id}
-                          onClick={() => onSelectTool(item.id)}
-                          style={{
-                            width: '100%', background: 'none', border: 'none',
-                            padding: '6px 10px', borderRadius: '8px', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            fontSize: '15px', color: '#374151', textAlign: 'left',
-                            transition: 'background 0.15s', fontFamily: 'inherit',
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = c.light}
-                          onMouseLeave={e => e.currentTarget.style.background = 'none'}
-                        >
-                          <span>{item.icon}</span>
-                          <span style={{ flex: 1 }}>{t(lang, item.labelKey)}</span>
-                          {item.phase === 1 && (
-                            <span style={{ fontSize: '12px', padding: '2px 6px', borderRadius: '4px', background: '#dcfce7', color: '#16a34a', fontWeight: 700 }}>✓</span>
-                          )}
-                          {item.phase > 1 && (
-                            <span style={{ fontSize: '12px', padding: '2px 6px', borderRadius: '4px', background: '#f1f5f9', color: '#94a3b8' }}>P{item.phase}</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </>
+        )}
       </div>
     </div>
   );
