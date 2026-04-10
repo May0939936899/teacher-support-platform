@@ -76,7 +76,7 @@ function buildMenu(lang) {
           { id: 'exit-ticket',            labelKey: 'tool_exit_ticket',    icon: '📋', phase: 1 },
         ]},
         { labelKey: 'group_exam', items: [
-          { id: 'smart-quiz',             labelKey: 'tool_smart_quiz',     icon: '🧠', phase: 1 },
+          { id: 'smart-quiz',             labelKey: 'tool_smart_quiz',     icon: '📝', phase: 1 },
           { id: 'video-quiz',             labelKey: 'tool_video_quiz',     icon: '🎬', phase: 1 },
           { id: 'content-differentiator', labelKey: 'tool_differentiator', icon: '📶', phase: 1 },
           { id: 'auto-grader',            labelKey: 'tool_auto_grader',    icon: '✅', phase: 1 },

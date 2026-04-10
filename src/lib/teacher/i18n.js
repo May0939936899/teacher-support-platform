@@ -33,7 +33,7 @@ export const translations = {
     group_report: 'รายงานและการสื่อสาร',
 
     // Tools
-    tool_smart_quiz: 'สร้างข้อสอบอัจฉริยะ',
+    tool_smart_quiz: 'สร้างแบบทดสอบ',
     tool_live_quiz: 'เกมตอบคำถามสด',
     tool_exit_ticket: 'วัดผลหลังเรียน',
     tool_video_quiz: 'ข้อสอบจากวิดีโอ',
