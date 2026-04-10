@@ -219,9 +219,22 @@ function WordCloudMode({ roomCode, showQR }) {
       </div>
 
       {words.length > 0 && (
-        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <span style={{ fontSize: '15px', color: '#64748b' }}>คำทั้งหมด: {words.length} | คำที่ถูกเพิ่มมากสุด: {words[0]?.text} ({words[0]?.count})</span>
-          <button onClick={() => { setWords([]); toast('ล้างคำทั้งหมดแล้ว'); }} style={{ ...actBtn, color: '#ef4444' }}>🗑️ ล้าง</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={async () => {
+              const { downloadExcel } = await import('@/lib/teacher/exportUtils');
+              const sorted = [...words].sort((a, b) => b.count - a.count);
+              downloadExcel(
+                ['คำ', 'จำนวนครั้ง'],
+                sorted.map(w => [w.text, w.count]),
+                `wordcloud_${roomCode || 'export'}`,
+                'Word Cloud'
+              );
+              toast.success('ดาวน์โหลด Excel แล้ว');
+            }} style={{ ...gradBtn, padding: '8px 16px', fontSize: '13px' }}>📥 Excel</button>
+            <button onClick={() => { setWords([]); toast('ล้างคำทั้งหมดแล้ว'); }} style={{ ...actBtn, color: '#ef4444' }}>🗑️ ล้าง</button>
+          </div>
         </div>
       )}
     </div>
@@ -348,6 +361,21 @@ function LivePollMode({ roomCode, showQR }) {
                 </div>
               );
             })}
+          </div>
+          <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={async () => {
+              const { downloadExcel } = await import('@/lib/teacher/exportUtils');
+              downloadExcel(
+                ['ตัวเลือก', 'จำนวนโหวต', 'เปอร์เซ็นต์'],
+                results.options.map((opt, idx) => {
+                  const pct = totalVotes > 0 ? ((results.votes[idx] / totalVotes) * 100).toFixed(1) : '0';
+                  return [opt, results.votes[idx], `${pct}%`];
+                }),
+                `poll_${roomCode || 'export'}`,
+                'Live Poll'
+              );
+              toast.success('ดาวน์โหลด Excel แล้ว');
+            }} style={{ ...gradBtn, padding: '10px 20px' }}>📥 ดาวน์โหลด Excel</button>
           </div>
         </div>
       )}
@@ -496,9 +524,21 @@ function BrainstormMode({ roomCode, showQR }) {
       </div>
 
       {notes.length > 0 && (
-        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <span style={{ fontSize: '15px', color: '#64748b' }}>ไอเดียทั้งหมด: {notes.length}</span>
-          <button onClick={() => { setNotes([]); toast('ล้างทั้งหมดแล้ว'); }} style={{ ...actBtn, color: '#ef4444' }}>🗑️ ล้าง</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={async () => {
+              const { downloadExcel } = await import('@/lib/teacher/exportUtils');
+              downloadExcel(
+                ['ลำดับ', 'ไอเดีย', 'ผู้ส่ง'],
+                notes.map((n, i) => [i + 1, n.text, n.from || 'อาจารย์']),
+                `brainstorm_${roomCode || 'export'}`,
+                'Brainstorm'
+              );
+              toast.success('ดาวน์โหลด Excel แล้ว');
+            }} style={{ ...gradBtn, padding: '8px 16px', fontSize: '13px' }}>📥 Excel</button>
+            <button onClick={() => { setNotes([]); toast('ล้างทั้งหมดแล้ว'); }} style={{ ...actBtn, color: '#ef4444' }}>🗑️ ล้าง</button>
+          </div>
         </div>
       )}
     </div>
