@@ -33,8 +33,15 @@ const CATEGORY_DESC = {
   project:       'จัดกิจกรรม · ติดตามงบ · ประชุม · KPI · ส่งประกาศ',
 };
 
-export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, lang = 'th' }) {
-  const [selectedCategory, setSelectedCategory] = useState(null);
+export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, lang = 'th', selectedCategory: controlledCategory, onCategoryChange }) {
+  const [localCategory, setLocalCategory] = useState(null);
+
+  // Support both controlled (from parent) and uncontrolled modes
+  const selectedCategory = controlledCategory !== undefined ? controlledCategory : localCategory;
+  const setSelectedCategory = (val) => {
+    setLocalCategory(val);
+    if (onCategoryChange) onCategoryChange(val);
+  };
 
   const activeCat = selectedCategory ? menuItems.find(m => m.side === selectedCategory) : null;
 
@@ -103,6 +110,12 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
         </div>
       </div>
 
+      <style>{`
+        @keyframes catFadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       <div style={{ padding: '28px 24px' }}>
 
         {/* ===== CATEGORY VIEW ===== */}
@@ -113,7 +126,7 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
               <p style={{ margin: 0, color: '#64748b', fontSize: '15px' }}>คลิกที่ด้านใดด้านหนึ่งเพื่อดูเครื่องมือทั้งหมดในด้านนั้น</p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '18px', animation: 'catFadeIn 0.2s ease' }}>
               {menuItems.map(cat => {
                 const c = COLOR_STYLES[cat.color] || COLOR_STYLES.cyan;
                 const toolCount = cat.groups.reduce((acc, g) => acc + g.items.length, 0);
@@ -163,7 +176,7 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
             </div>
           </>
         ) : (
-          <>
+          <div style={{ animation: 'catFadeIn 0.2s ease' }}>
             {/* ===== TOOLS IN CATEGORY ===== */}
             <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
               <button
@@ -228,7 +241,7 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
                 </div>
               );
             })}
-          </>
+          </div>
         )}
       </div>
     </div>

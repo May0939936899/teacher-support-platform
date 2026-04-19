@@ -520,6 +520,7 @@ export default function TeacherPage() {
   const { user, loading, signOut, profile } = useAuth();
   const router = useRouter();
   const [activeTool, setActiveTool] = useState(null);
+  const [activeSide, setActiveSide] = useState(null); // category overview
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [expandedSides, setExpandedSides] = useState({ classroom_fun: true, documents: false, manage_share: false, marketing: false, attendance: false, check_verify: false, project: false });
@@ -617,9 +618,28 @@ export default function TeacherPage() {
   };
   const active = getActiveItem();
 
+  const handleGoHome = () => {
+    setToolError(null);
+    setActiveTool(null);
+    setActiveSide(null);
+    if (isMobile) setMobileMenuOpen(false);
+  };
+
   const handleSelectTool = (toolId) => {
     setToolError(null);
     setActiveTool(toolId);
+    if (toolId) {
+      // Auto-find which category this tool belongs to
+      for (const s of MENU_ITEMS) {
+        for (const g of s.groups) {
+          if (g.items.find(i => i.id === toolId)) {
+            setActiveSide(s.side);
+            setExpandedSides(prev => ({ ...prev, [s.side]: true }));
+            break;
+          }
+        }
+      }
+    }
     if (isMobile) setMobileMenuOpen(false);
   };
 
@@ -652,7 +672,7 @@ export default function TeacherPage() {
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 0' }}>
         {/* Home button */}
         <div style={{ padding: '0 8px 4px' }}>
-          <button onClick={() => handleSelectTool(null)} style={{
+          <button onClick={handleGoHome} style={{
             width: '100%', padding: '10px 14px', borderRadius: '10px',
             background: !activeTool ? `${CI.cyan}12` : 'transparent', border: 'none',
             color: !activeTool ? CI.cyan : '#475569', cursor: 'pointer',
@@ -670,22 +690,36 @@ export default function TeacherPage() {
           const c = COLOR_MAP[side.color];
           return (
             <div key={side.side} style={{ marginTop: '6px', padding: '0 8px' }}>
-              <button onClick={() => toggleSide(side.side)} style={{
+              <button onClick={() => {
+                // Expand submenu
+                toggleSide(side.side);
+                // Navigate to category overview
+                setActiveSide(side.side);
+                setActiveTool(null);
+                setToolError(null);
+                if (isMobile) setMobileMenuOpen(false);
+              }} style={{
                 width: '100%', padding: '12px 16px', border: 'none',
-                background: `linear-gradient(135deg, ${c.bg}, ${c.bg}dd)`,
+                background: activeSide === side.side && !activeTool
+                  ? `linear-gradient(135deg, ${c.bg}, ${c.bg})`
+                  : `linear-gradient(135deg, ${c.bg}cc, ${c.bg}aa)`,
                 cursor: 'pointer', display: 'flex', alignItems: 'center',
                 gap: '10px', color: '#fff', fontSize: '15px', fontWeight: 800,
                 letterSpacing: '0.04em', textAlign: 'left', fontFamily: 'inherit',
-                borderRadius: '12px', boxShadow: `0 3px 12px ${c.bg}40`,
-                transition: 'all 0.15s',
+                borderRadius: '12px',
+                boxShadow: activeSide === side.side && !activeTool
+                  ? `0 4px 16px ${c.bg}60, 0 0 0 2px #fff`
+                  : `0 3px 12px ${c.bg}40`,
+                transition: 'all 0.2s',
               }}>
                 <span style={{ fontSize: '18px', flexShrink: 0, filter: 'brightness(1.2)' }}>{side.icon}</span>
                 <span style={{ flex: 1, textShadow: '0 1px 2px rgba(0,0,0,0.15)' }}>{t(lang, side.labelKey)}</span>
-                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', transition: 'transform 0.2s', transform: expandedSides[side.side] ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▼</span>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)', transition: 'transform 0.25s', transform: expandedSides[side.side] ? 'rotate(0deg)' : 'rotate(-90deg)' }}>▼</span>
               </button>
 
+              {expandedSides[side.side] && <style>{`@keyframes submenuFadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}`}</style>}
               {expandedSides[side.side] && side.groups.map(group => (
-                <div key={group.labelKey} style={{ marginBottom: '4px' }}>
+                <div key={group.labelKey} style={{ marginBottom: '4px', animation: 'submenuFadeIn 0.2s ease' }}>
                   <div style={{ padding: '6px 16px 4px', color: '#94a3b8', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                     {t(lang, group.labelKey)}
                   </div>
@@ -812,9 +846,9 @@ export default function TeacherPage() {
 
           {activeTool && active ? (
             <>
-              {/* Back button */}
+              {/* Back button → goes to category overview */}
               <button
-                onClick={() => handleSelectTool(null)}
+                onClick={() => { setActiveTool(null); setToolError(null); }}
                 style={{
                   background: COLOR_MAP[active.side.color].light,
                   border: `1px solid ${COLOR_MAP[active.side.color].border}`,
@@ -827,17 +861,10 @@ export default function TeacherPage() {
                 onMouseEnter={e => { e.currentTarget.style.background = COLOR_MAP[active.side.color].border + '40'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = COLOR_MAP[active.side.color].light; }}
               >
-                ← {isMobile ? '' : t(lang, 'home')}
+                ← {isMobile ? '' : t(lang, active.side.labelKey)}
               </button>
-              {/* Breadcrumb: Section > Tool */}
+              {/* Breadcrumb: Section / Tool */}
               <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{
-                  fontSize: '13px', color: COLOR_MAP[active.side.color].text, fontWeight: 600,
-                  background: COLOR_MAP[active.side.color].light, padding: '2px 8px', borderRadius: '6px',
-                  flexShrink: 0, display: isMobile ? 'none' : 'inline',
-                }}>
-                  {active.side.icon} {t(lang, active.side.labelKey)}
-                </span>
                 {!isMobile && <span style={{ color: '#cbd5e1', fontSize: '14px', flexShrink: 0 }}>/</span>}
                 <span style={{ fontSize: '18px', flexShrink: 0 }}>{active.item.icon}</span>
                 <h1 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -849,16 +876,33 @@ export default function TeacherPage() {
                   ✓ {isMobile ? '' : t(lang, 'phase_ready')}
                 </span>
               )}
-              {active.item.phase > 1 && (
-                <span style={{ fontSize: '12px', padding: '3px 8px', borderRadius: '6px', background: '#fef3c7', color: '#92400e', fontWeight: 600, flexShrink: 0 }}>
-                  P{active.item.phase}
-                </span>
-              )}
             </>
-          ) : (
-            <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => { setActiveTool(null); setShowSplash(true); }}>
-              {/* No text — banner below handles title on homepage */}
-            </div>
+          ) : activeSide && !activeTool ? (() => {
+            // Category overview breadcrumb
+            const sideData = MENU_ITEMS.find(s => s.side === activeSide);
+            const c = sideData ? COLOR_MAP[sideData.color] : COLOR_MAP.cyan;
+            return (
+              <>
+                <button onClick={handleGoHome} style={{
+                  background: '#f1f5f9', border: '1px solid #e2e8f0', color: '#64748b',
+                  cursor: 'pointer', borderRadius: '10px', padding: '6px 12px',
+                  fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px',
+                  fontFamily: 'inherit', flexShrink: 0, transition: 'all 0.15s',
+                }}>
+                  ← {isMobile ? '' : t(lang, 'home')}
+                </button>
+                <span style={{ color: '#cbd5e1', fontSize: '14px', flexShrink: 0 }}>/</span>
+                <span style={{ fontSize: '20px', flexShrink: 0 }}>{sideData?.icon}</span>
+                <h1 style={{ margin: 0, fontSize: isMobile ? '16px' : '18px', fontWeight: 700, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {sideData ? t(lang, sideData.labelKey) : ''}
+                </h1>
+                <span style={{ marginLeft: '6px', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: c.light, color: c.text, fontWeight: 700, flexShrink: 0 }}>
+                  {sideData?.groups.reduce((a, g) => a + g.items.length, 0)} เครื่องมือ
+                </span>
+              </>
+            );
+          })() : (
+            <div style={{ flex: 1 }} />
           )}
 
           {/* Right side: Language + User (world-class top-right pattern) */}
@@ -1000,15 +1044,35 @@ export default function TeacherPage() {
         </div>
 
         {/* Tool content */}
+        <style>{`
+          @keyframes pageSlideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
         <div style={{ flex: 1, overflow: 'auto' }}>
           {toolError ? (
             <ErrorFallback error={toolError} onReset={() => { setToolError(null); setActiveTool(null); }} />
           ) : !activeTool ? (
-            <TeacherDashboard onSelectTool={handleSelectTool} menuItems={MENU_ITEMS} colorMap={COLOR_MAP} lang={lang} />
+            <div key={activeSide || 'home'} style={{ animation: 'pageSlideIn 0.22s ease-out', height: '100%' }}>
+              <TeacherDashboard
+                onSelectTool={handleSelectTool}
+                menuItems={MENU_ITEMS}
+                colorMap={COLOR_MAP}
+                lang={lang}
+                selectedCategory={activeSide}
+                onCategoryChange={(side) => {
+                  setActiveSide(side);
+                  if (side) setExpandedSides(prev => ({ ...prev, [side]: true }));
+                }}
+              />
+            </div>
           ) : ActiveComponent ? (
-            <ErrorBoundaryWrapper onError={(err) => setToolError(err)} onReset={() => { setToolError(null); setActiveTool(null); }}>
-              <ActiveComponent onSelectTool={handleSelectTool} lang={lang} />
-            </ErrorBoundaryWrapper>
+            <div key={activeTool} style={{ animation: 'pageSlideIn 0.22s ease-out', height: '100%' }}>
+              <ErrorBoundaryWrapper onError={(err) => setToolError(err)} onReset={() => { setToolError(null); setActiveTool(null); }}>
+                <ActiveComponent onSelectTool={handleSelectTool} lang={lang} />
+              </ErrorBoundaryWrapper>
+            </div>
           ) : (
             <ComingSoon toolId={activeTool} />
           )}
