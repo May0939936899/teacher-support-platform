@@ -86,7 +86,7 @@ export default function ShortLinkRedirect() {
         </>
       )}
       <div style={{ position: 'absolute', bottom: '16px', fontSize: '12px', opacity: 0.3 }}>
-        SPUBUS SUPPORT
+        SPUBUS MAGIC
       </div>
     </div>
   );

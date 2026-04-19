@@ -2,7 +2,7 @@
 export const translations = {
   th: {
     // Sidebar
-    appName: 'SPUBUS SUPPORT',
+    appName: 'SPUBUS MAGIC',
     appSub: 'Platform',
     home: 'หน้าหลัก',
 
@@ -113,7 +113,7 @@ export const translations = {
     tools_count: 'เครื่องมือ',
   },
   en: {
-    appName: 'SPUBUS SUPPORT',
+    appName: 'SPUBUS MAGIC',
     appSub: 'Platform',
     home: 'Home',
 
@@ -200,14 +200,14 @@ export const translations = {
     phase_ready: 'Ready',
     coming_soon: 'Coming Soon',
 
-    login_title: 'SPUBUS SUPPORT',
+    login_title: 'SPUBUS MAGIC',
     login_sub: 'University Teaching Support System',
     login_google: 'Sign in with Google',
     login_email: 'Sign in with Email',
     login_or: 'or',
     logout: 'Sign Out',
 
-    dashboard_welcome: 'Welcome to SPUBUS SUPPORT',
+    dashboard_welcome: 'Welcome to SPUBUS MAGIC',
     dashboard_desc: 'University teaching support system — 38 tools in 4 areas, 9 categories',
     dashboard_phase1: 'Phase 1 — Ready to Use',
     dashboard_all: 'All 4 Areas',

@@ -86,10 +86,10 @@ function BusSplashScreen({ onFinish }) {
           background: 'linear-gradient(90deg, #00b4e6, #7c4dff, #e6007e)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
         }}>
-          SPUBUS SUPPORT
+          SPUBUS MAGIC
         </h1>
         <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', marginTop: '8px' }}>
-          ระบบสนับสนุนการสอนสำหรับอาจารย์
+          แพลตฟอร์ม AI เปลี่ยนห้องเรียนให้มีชีวิต
         </p>
       </div>
 
@@ -226,7 +226,7 @@ function TeacherLanding() {
       submitLogin: 'เข้าสู่ระบบ',
       submitReg: 'สมัครสมาชิก',
       close: 'ปิด',
-      footer: '© 2026 SPUBUS SUPPORT — คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม',
+      footer: '© 2026 SPUBUS MAGIC — คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม',
     },
     en: {
       hero_pre: 'AI-Powered Platform',
@@ -259,7 +259,7 @@ function TeacherLanding() {
       submitLogin: 'Sign In',
       submitReg: 'Sign Up',
       close: 'Close',
-      footer: '© 2026 SPUBUS SUPPORT — School of Business, Sripatum University',
+      footer: '© 2026 SPUBUS MAGIC — School of Business, Sripatum University',
     },
   }[lang];
 

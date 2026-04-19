@@ -728,7 +728,7 @@ export default function TeacherPage() {
         position: 'sticky', bottom: 0, background: '#fff',
         textAlign: 'center',
       }}>
-        <div style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 500 }}>SPUBUS SUPPORT v1.0</div>
+        <div style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 500 }}>SPUBUS MAGIC v1.0</div>
       </div>
     </div>
   );

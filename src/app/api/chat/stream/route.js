@@ -43,37 +43,23 @@ export async function POST(request) {
     }
     messages.push({ role: 'user', content: userContent });
 
-    // Try Claude first — quick non-stream test, then stream
-    if (process.env.ANTHROPIC_API_KEY) {
-      try {
-        const Anthropic = (await import('@anthropic-ai/sdk')).default;
-        const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-        // Quick test with 1 token to check if account works
-        const test = await client.messages.create({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 5,
-          messages: [{ role: 'user', content: 'hi' }],
-        });
-        // If we get here, Claude works — now stream the real request
-        const stream = await client.messages.stream({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          system: SYSTEM_PROMPT,
-          messages,
-        });
-        return streamFromAnthropicStream(stream);
-      } catch (e) {
-        console.error('[stream] Claude unavailable, using Gemini:', e.message);
-        if (process.env.GEMINI_API_KEY) {
-          return await streamGemini(messages);
-        }
-        throw e;
-      }
-    } else if (process.env.GEMINI_API_KEY) {
+    // Gemini (FREE tier) is primary. Claude only used if USE_PAID_CLAUDE=true is explicitly set.
+    if (process.env.GEMINI_API_KEY) {
       return await streamGemini(messages);
     }
+    if (process.env.USE_PAID_CLAUDE === 'true' && process.env.ANTHROPIC_API_KEY) {
+      const Anthropic = (await import('@anthropic-ai/sdk')).default;
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const stream = await client.messages.stream({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        system: SYSTEM_PROMPT,
+        messages,
+      });
+      return streamFromAnthropicStream(stream);
+    }
 
-    return new Response(JSON.stringify({ error: 'No API key' }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), { status: 500 });
   } catch (err) {
     console.error('[stream] Error:', err);
     return new Response(JSON.stringify({ error: err.message }), { status: 500 });

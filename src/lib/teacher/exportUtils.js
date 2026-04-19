@@ -144,7 +144,7 @@ export function buildTableHTML(title, headers, rows, summaryRows = []) {
         <tbody>${bodyRows}${summaryHTML}</tbody>
       </table>
       <p style="color:#94a3b8;font-size:11px;margin-top:16px;text-align:right;">
-        สร้างโดย SPUBUS SUPPORT · ${new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' })}
+        สร้างโดย SPUBUS MAGIC · ${new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' })}
       </p>
     </div>`;
 }
@@ -158,7 +158,7 @@ export function buildTextHTML(title, textContent) {
       <h2 style="color:#0b0b24;margin:0 0 16px;font-size:20px;border-bottom:3px solid #00b4e6;padding-bottom:10px;">${title}</h2>
       <div style="line-height:1.8;font-size:13px;color:#1e293b;">${withBreaks}</div>
       <p style="color:#94a3b8;font-size:11px;margin-top:16px;text-align:right;">
-        สร้างโดย SPUBUS SUPPORT · ${new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' })}
+        สร้างโดย SPUBUS MAGIC · ${new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' })}
       </p>
     </div>`;
 }

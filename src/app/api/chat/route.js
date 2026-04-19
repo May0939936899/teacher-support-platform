@@ -90,25 +90,15 @@ export async function POST(request) {
     let reply;
     let modelUsed;
 
-    // Try Claude first, fallback to Gemini
-    if (process.env.ANTHROPIC_API_KEY) {
-      try {
-        reply = await callClaude(messages, SYSTEM_PROMPT);
-        modelUsed = 'claude';
-      } catch (e) {
-        console.error('[chat] Claude error, falling back to Gemini:', e.message);
-        if (process.env.GEMINI_API_KEY) {
-          reply = await callGemini(messages, SYSTEM_PROMPT);
-          modelUsed = 'gemini';
-        } else {
-          throw e;
-        }
-      }
-    } else if (process.env.GEMINI_API_KEY) {
+    // Gemini (FREE tier) is primary. Claude only used if USE_PAID_CLAUDE=true is explicitly set.
+    if (process.env.GEMINI_API_KEY) {
       reply = await callGemini(messages, SYSTEM_PROMPT);
       modelUsed = 'gemini';
+    } else if (process.env.USE_PAID_CLAUDE === 'true' && process.env.ANTHROPIC_API_KEY) {
+      reply = await callClaude(messages, SYSTEM_PROMPT);
+      modelUsed = 'claude';
     } else {
-      return NextResponse.json({ error: 'No API key configured (ANTHROPIC_API_KEY or GEMINI_API_KEY)' }, { status: 500 });
+      return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
     }
 
     // Detect which cats were involved based on content

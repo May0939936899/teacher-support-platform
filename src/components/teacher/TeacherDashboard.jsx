@@ -63,9 +63,9 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
         <div style={{ position:'relative', zIndex:2, marginBottom:'12px' }}>
           <h1 style={{ margin:'0 0 2px', fontSize:'28px', fontWeight:800, letterSpacing:'0.02em' }}>
             <span style={{ color:'#fff' }}>SPUBUS</span>
-            <span style={{ color:CI.cyan, marginLeft:'10px', fontWeight:600 }}>SUPPORT</span>
+            <span style={{ color:CI.cyan, marginLeft:'10px', fontWeight:600 }}>MAGIC</span>
           </h1>
-          <p style={{ margin:0, fontSize:'14px', color:'rgba(255,255,255,0.6)' }}>แพลตฟอร์มสนับสนุนการสอน · คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม</p>
+          <p style={{ margin:0, fontSize:'14px', color:'rgba(255,255,255,0.6)' }}>แพลตฟอร์ม AI เปลี่ยนห้องเรียนให้มีชีวิต · คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม</p>
         </div>
         <div style={{ position:'relative', width:'100%', height:'70px', zIndex:2 }}>
           <svg width="100%" height="70" viewBox="-100 0 1400 70" preserveAspectRatio="none" style={{ position:'absolute', bottom:0, left:'-2%', width:'104%' }}>

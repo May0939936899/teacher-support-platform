@@ -181,7 +181,7 @@ body { font-family: 'Kanit', sans-serif; color: #1e293b; line-height: 1.8; backg
 <div class="cover">
   <h1>${title}</h1>
   <div class="subtitle">${topic}</div>
-  <div class="meta">สร้างโดย SPUBUS SUPPORT<br>${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+  <div class="meta">สร้างโดย SPUBUS MAGIC<br>${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
 </div>
 <div class="toc">
   <h2>สารบัญ</h2>
@@ -239,7 +239,7 @@ ${chapters.filter(c => c.generated).map((ch, i) => `<div class="chapter">
           <h1 style={{ fontSize: '42px', fontWeight: 800, marginBottom: '12px' }}>{title}</h1>
           <p style={{ fontSize: '20px', opacity: 0.9 }}>{topic}</p>
           <p style={{ marginTop: '24px', opacity: 0.7 }}>
-            SPUBUS SUPPORT<br />
+            SPUBUS MAGIC<br />
             {new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
