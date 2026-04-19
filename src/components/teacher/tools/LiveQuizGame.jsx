@@ -551,26 +551,52 @@ export default function LiveQuizGame() {
                 style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '16px', marginBottom: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', color: '#1e293b' }}
                 onFocus={e => e.target.style.borderColor = CI.cyan}
                 onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+              {/* Answer key hint */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>🎯 คลิกที่รูปทรงเพื่อเลือก <b>เฉลย</b></span>
+                {q.answer ? (
+                  <span style={{
+                    fontSize: '13px', fontWeight: 800, padding: '4px 12px', borderRadius: '20px',
+                    background: OPTION_COLORS[q.answer.charCodeAt(0) - 65] + '18',
+                    color: OPTION_COLORS[q.answer.charCodeAt(0) - 65],
+                    border: `1.5px solid ${OPTION_COLORS[q.answer.charCodeAt(0) - 65]}50`,
+                  }}>✓ เฉลย: ข้อ {q.answer}</span>
+                ) : (
+                  <span style={{ fontSize: '13px', color: '#f59e0b', fontWeight: 600 }}>⚠ ยังไม่ได้เลือกเฉลย</span>
+                )}
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                {q.options.map((opt, oi) => (
-                  <div key={oi} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <div onClick={() => { const qs = [...quiz.questions]; qs[i].answer = String.fromCharCode(65 + oi); setQuiz(v => ({ ...v, questions: qs })); }}
-                      style={{
-                        width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '15px', fontWeight: 800, cursor: 'pointer', flexShrink: 0,
-                        background: q.answer === String.fromCharCode(65 + oi) ? OPTION_COLORS[oi] : '#f1f5f9',
-                        color: q.answer === String.fromCharCode(65 + oi) ? '#fff' : '#94a3b8',
-                        transition: 'all 0.15s',
-                      }}>
-                      {OPTION_SHAPES[oi]}
+                {q.options.map((opt, oi) => {
+                  const isCorrect = q.answer === String.fromCharCode(65 + oi);
+                  return (
+                    <div key={oi} style={{
+                      display: 'flex', gap: '8px', alignItems: 'center',
+                      background: isCorrect ? OPTION_COLORS[oi] + '12' : 'transparent',
+                      borderRadius: '12px', padding: isCorrect ? '4px 6px 4px 4px' : '0',
+                      border: isCorrect ? `2px solid ${OPTION_COLORS[oi]}60` : '2px solid transparent',
+                      transition: 'all 0.2s',
+                    }}>
+                      <div onClick={() => { const qs = [...quiz.questions]; qs[i].answer = String.fromCharCode(65 + oi); setQuiz(v => ({ ...v, questions: qs })); }}
+                        style={{
+                          width: '40px', height: '40px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '16px', fontWeight: 800, cursor: 'pointer', flexShrink: 0,
+                          background: isCorrect ? OPTION_COLORS[oi] : '#f1f5f9',
+                          color: isCorrect ? '#fff' : '#94a3b8',
+                          transition: 'all 0.15s',
+                          boxShadow: isCorrect ? `0 4px 12px ${OPTION_COLORS[oi]}50` : 'none',
+                          position: 'relative',
+                        }}>
+                        {isCorrect ? '✓' : OPTION_SHAPES[oi]}
+                      </div>
+                      <input placeholder={`ตัวเลือก ${String.fromCharCode(65 + oi)}`} value={opt}
+                        onChange={e => { const qs = [...quiz.questions]; qs[i].options[oi] = e.target.value; setQuiz(v => ({ ...v, questions: qs })); }}
+                        style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: `2px solid ${isCorrect ? OPTION_COLORS[oi] + '80' : OPTION_COLORS[oi] + '25'}`, fontSize: '15px', outline: 'none', fontFamily: 'inherit', color: '#1e293b', background: isCorrect ? '#fff' : `${OPTION_COLORS[oi]}06`, fontWeight: isCorrect ? 700 : 400 }}
+                        onFocus={e => e.target.style.borderColor = OPTION_COLORS[oi]}
+                        onBlur={e => e.target.style.borderColor = isCorrect ? OPTION_COLORS[oi] + '80' : OPTION_COLORS[oi] + '25'} />
                     </div>
-                    <input placeholder={`ตัวเลือก ${String.fromCharCode(65 + oi)}`} value={opt}
-                      onChange={e => { const qs = [...quiz.questions]; qs[i].options[oi] = e.target.value; setQuiz(v => ({ ...v, questions: qs })); }}
-                      style={{ flex: 1, padding: '12px 14px', borderRadius: '10px', border: `2px solid ${OPTION_COLORS[oi]}25`, fontSize: '15px', outline: 'none', fontFamily: 'inherit', color: '#1e293b', background: `${OPTION_COLORS[oi]}06` }}
-                      onFocus={e => e.target.style.borderColor = OPTION_COLORS[oi]}
-                      onBlur={e => e.target.style.borderColor = OPTION_COLORS[oi] + '25'} />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '14px' }}>
                 <span style={{ fontSize: '14px', color: '#64748b' }}>⏱ เวลา:</span>

@@ -22,11 +22,13 @@ function generateQR(text, canvas) {
 
 export default function SmartQuiz() {
   const [mode, setMode] = useState('teacher');
-  const [isStudentLocked, setIsStudentLocked] = useState(false); // true = came via QR/URL, lock to student mode
-  const [quiz, setQuiz] = useState({ title: '', description: '', timeLimit: 30, questions: [] });
+  const [isStudentLocked, setIsStudentLocked] = useState(false);
+  const [quiz, setQuiz] = useState({ title: '', description: '', timeLimit: 30, questions: [], scheduleType: 'now', openAt: '', closeAt: '' });
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [studentView, setStudentView] = useState({ sessionCode: '', step: 'join', answers: {}, submitted: false, studentId: '', firstName: '', lastName: '' });
+  const [drafts, setDrafts] = useState([]);
+  const [showDrafts, setShowDrafts] = useState(false);
   const qrRef = useRef(null);
   const fileRef = useRef(null);
 
@@ -50,7 +52,52 @@ export default function SmartQuiz() {
     }).catch(() => {});
   }, []);
 
+  // Load drafts from localStorage
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('smartquiz_drafts') || '[]');
+      setDrafts(saved);
+    } catch {}
+  }, []);
+
   const saveSessions = (s) => { setSessions(s); };
+
+  // ===== DRAFT MANAGEMENT =====
+  const saveDraft = () => {
+    if (!quiz.title.trim()) { toast.error('กรุณาใส่ชื่อ Quiz ก่อนบันทึก'); return; }
+    try {
+      const existing = JSON.parse(localStorage.getItem('smartquiz_drafts') || '[]');
+      // Update if same title exists, otherwise create new
+      const existingIdx = existing.findIndex(d => d.quiz.title === quiz.title);
+      const draft = { id: existingIdx >= 0 ? existing[existingIdx].id : Date.now().toString(), quiz: { ...quiz }, savedAt: Date.now() };
+      const updated = existingIdx >= 0
+        ? existing.map((d, i) => i === existingIdx ? draft : d)
+        : [draft, ...existing].slice(0, 30);
+      localStorage.setItem('smartquiz_drafts', JSON.stringify(updated));
+      setDrafts(updated);
+      toast.success(`💾 บันทึก "${quiz.title}" แล้ว`);
+    } catch { toast.error('ไม่สามารถบันทึกได้'); }
+  };
+
+  const loadDraft = (draft) => {
+    setQuiz({ ...draft.quiz });
+    setCreateMode('manual');
+    setShowDrafts(false);
+    toast.success(`📂 โหลด "${draft.quiz.title}" แล้ว — ${draft.quiz.questions.length} ข้อ`);
+  };
+
+  const deleteDraft = (draftId) => {
+    const updated = drafts.filter(d => d.id !== draftId);
+    localStorage.setItem('smartquiz_drafts', JSON.stringify(updated));
+    setDrafts(updated);
+    toast('ลบ Draft แล้ว');
+  };
+
+  const clearQuiz = () => {
+    setQuiz({ title: '', description: '', timeLimit: 30, questions: [], scheduleType: 'now', openAt: '', closeAt: '' });
+    setAiText(''); setAiFile(null); setAiFilePreview(null); setExtractedText(''); setAiSummary('');
+    toast('เริ่มใหม่แล้ว');
+  };
 
   // ===== FILE HANDLING =====
   const handleFile = async (e) => {
@@ -368,17 +415,31 @@ export default function SmartQuiz() {
     if (emptyQ) { toast.error('มีคำถามที่ยังไม่ได้กรอก กรุณาตรวจสอบ'); return; }
     const missingAnswer = quiz.questions.find(q => (q.type === 'MC' || q.type === 'TF') && !q.answer);
     if (missingAnswer) { toast.error('มีข้อที่ยังไม่ได้ติ๊กเฉลย กรุณาเลือกคำตอบที่ถูกต้องก่อน'); return; }
+
+    let openTs = null, closeTs = null;
+    if (quiz.scheduleType === 'scheduled') {
+      if (!quiz.openAt || !quiz.closeAt) { toast.error('กรุณากำหนดเวลาเปิดและปิดรับคำตอบ'); return; }
+      openTs = new Date(quiz.openAt).getTime();
+      closeTs = new Date(quiz.closeAt).getTime();
+      if (isNaN(openTs) || isNaN(closeTs)) { toast.error('รูปแบบวันเวลาไม่ถูกต้อง'); return; }
+      if (closeTs <= openTs) { toast.error('เวลาปิดต้องหลังเวลาเปิด'); return; }
+    }
+
     try {
       const res = await fetch(QUIZ_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quiz: { ...quiz }, timeLimit: quiz.timeLimit }),
+        body: JSON.stringify({ quiz: { ...quiz }, timeLimit: quiz.timeLimit, openAt: openTs, closeAt: closeTs }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setSessions(prev => [data.session, ...prev]);
       setActiveSession(data.session);
-      toast.success(`สร้าง Session สำเร็จ! Code: ${data.code}`);
+      if (quiz.scheduleType === 'scheduled') {
+        toast.success(`📅 Session สำเร็จ! เปิด ${new Date(openTs).toLocaleString('th-TH')} Code: ${data.code}`);
+      } else {
+        toast.success(`สร้าง Session สำเร็จ! Code: ${data.code}`);
+      }
     } catch (err) {
       toast.error(err.message || 'ไม่สามารถสร้าง Session');
     }
@@ -529,12 +590,62 @@ export default function SmartQuiz() {
                   <input placeholder="ชื่อ Quiz *" value={quiz.title} onChange={e => setQuiz(q => ({ ...q, title: e.target.value }))} style={inp} />
                   <input placeholder="คำอธิบาย (ไม่บังคับ)" value={quiz.description} onChange={e => setQuiz(q => ({ ...q, description: e.target.value }))} style={inp} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
-                  <label style={{ fontSize: '14px', color: '#64748b', whiteSpace: 'nowrap', fontWeight: 600 }}>⏱️ เวลา:</label>
-                  <input type="number" min="5" max="180" value={quiz.timeLimit}
-                    onChange={e => setQuiz(q => ({ ...q, timeLimit: parseInt(e.target.value) || 30 }))}
-                    style={{ ...inp, width: '80px', textAlign: 'center' }} />
-                  <span style={{ fontSize: '14px', color: '#94a3b8' }}>นาที</span>
+
+                {/* Schedule toggle */}
+                <div style={{ marginTop: '14px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', marginBottom: '8px' }}>⏰ การเปิด-ปิดรับคำตอบ</div>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    {[{ id: 'now', icon: '🚀', label: 'เปิดทันที', sub: 'กำหนดจำนวนนาที' }, { id: 'scheduled', icon: '📅', label: 'กำหนดเวลา', sub: 'ระบุวันและเวลาเปิด-ปิด' }].map(t => (
+                      <button key={t.id} onClick={() => setQuiz(q => ({ ...q, scheduleType: t.id }))} style={{
+                        flex: 1, padding: '10px 14px', borderRadius: '12px', border: `2px solid ${quiz.scheduleType === t.id ? CI.cyan : '#e2e8f0'}`,
+                        background: quiz.scheduleType === t.id ? `${CI.cyan}10` : '#f8fafc',
+                        cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', transition: 'all 0.2s',
+                      }}>
+                        <div style={{ fontSize: '14px', fontWeight: 700, color: quiz.scheduleType === t.id ? CI.cyan : '#374151' }}>{t.icon} {t.label}</div>
+                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>{t.sub}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {quiz.scheduleType === 'now' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <label style={{ fontSize: '14px', color: '#64748b', whiteSpace: 'nowrap', fontWeight: 600 }}>⏱️ เวลาทำข้อสอบ:</label>
+                      <input type="number" min="5" max="720" value={quiz.timeLimit}
+                        onChange={e => setQuiz(q => ({ ...q, timeLimit: parseInt(e.target.value) || 30 }))}
+                        style={{ ...inp, width: '90px', textAlign: 'center' }} />
+                      <span style={{ fontSize: '14px', color: '#94a3b8' }}>นาที</span>
+                    </div>
+                  )}
+
+                  {quiz.scheduleType === 'scheduled' && (
+                    <div style={{ background: `${CI.cyan}06`, borderRadius: '12px', padding: '14px', border: `1.5px solid ${CI.cyan}25` }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ ...lbl, color: '#16a34a' }}>📅 เปิดรับคำตอบ</label>
+                          <input type="datetime-local" value={quiz.openAt}
+                            onChange={e => setQuiz(q => ({ ...q, openAt: e.target.value }))}
+                            style={{ ...inp, borderColor: quiz.openAt ? '#16a34a' : '#e2e8f0' }} />
+                        </div>
+                        <div>
+                          <label style={{ ...lbl, color: '#dc2626' }}>🔒 ปิดรับคำตอบ</label>
+                          <input type="datetime-local" value={quiz.closeAt}
+                            onChange={e => setQuiz(q => ({ ...q, closeAt: e.target.value }))}
+                            style={{ ...inp, borderColor: quiz.closeAt ? '#dc2626' : '#e2e8f0' }} />
+                        </div>
+                      </div>
+                      {quiz.openAt && quiz.closeAt && (() => {
+                        const openTs = new Date(quiz.openAt).getTime();
+                        const closeTs = new Date(quiz.closeAt).getTime();
+                        const mins = Math.round((closeTs - openTs) / 60000);
+                        if (mins <= 0) return <div style={{ color: '#dc2626', fontSize: '13px', marginTop: '8px', fontWeight: 600 }}>⚠️ เวลาปิดต้องหลังเวลาเปิด</div>;
+                        return (
+                          <div style={{ marginTop: '10px', fontSize: '13px', color: CI.cyan, fontWeight: 600 }}>
+                            ✅ เปิดนาน {mins >= 60 ? `${Math.floor(mins/60)} ชม. ${mins%60} นาที` : `${mins} นาที`} · {new Date(openTs).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })} → {new Date(closeTs).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -873,22 +984,37 @@ export default function SmartQuiz() {
             )}
 
             {/* Action buttons */}
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button onClick={addQuestion} style={{
-                flex: 1, padding: '14px', borderRadius: '12px', cursor: 'pointer',
+                flex: '1 1 140px', padding: '14px', borderRadius: '12px', cursor: 'pointer',
                 background: '#fff', color: CI.cyan, border: `2px dashed ${CI.cyan}`,
-                fontSize: '16px', fontWeight: 600, fontFamily: 'inherit',
+                fontSize: '15px', fontWeight: 600, fontFamily: 'inherit',
               }}>
                 + เพิ่มคำถาม
               </button>
-              <button onClick={startSession} style={{
-                flex: 1, padding: '14px', borderRadius: '12px', border: 'none', cursor: 'pointer',
-                background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`, color: '#fff',
-                fontSize: '16px', fontWeight: 700, fontFamily: 'inherit',
+              <button onClick={saveDraft} style={{
+                flex: '0 0 auto', padding: '14px 20px', borderRadius: '12px', cursor: 'pointer',
+                background: '#f0fdf4', color: '#16a34a', border: '2px solid #bbf7d0',
+                fontSize: '15px', fontWeight: 600, fontFamily: 'inherit',
               }}>
-                🚀 เริ่ม Session {quiz.questions.length > 0 && `(${quiz.questions.length} ข้อ)`}
+                💾 บันทึก Draft
+              </button>
+              <button onClick={clearQuiz} style={{
+                flex: '0 0 auto', padding: '14px 16px', borderRadius: '12px', cursor: 'pointer',
+                background: '#fef2f2', color: '#ef4444', border: '2px solid #fecaca',
+                fontSize: '15px', fontWeight: 600, fontFamily: 'inherit',
+              }}>
+                🗑 เริ่มใหม่
               </button>
             </div>
+            <button onClick={startSession} style={{
+              width: '100%', marginTop: '10px', padding: '16px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+              background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`, color: '#fff',
+              fontSize: '17px', fontWeight: 800, fontFamily: 'inherit',
+              boxShadow: `0 4px 20px ${CI.cyan}30`,
+            }}>
+              {quiz.scheduleType === 'scheduled' ? '📅' : '🚀'} {quiz.scheduleType === 'scheduled' ? 'สร้าง Session (กำหนดเวลา)' : 'เปิด Session ทันที'} {quiz.questions.length > 0 && `· ${quiz.questions.length} ข้อ`}
+            </button>
           </div>
 
           {/* Active session + QR */}
@@ -1100,12 +1226,59 @@ export default function SmartQuiz() {
         </div>
       )}
 
-      {/* Past sessions — only for teacher, never for locked student */}
+      {/* ===== DRAFTS SECTION ===== */}
+      {mode === 'teacher' && !isStudentLocked && drafts.length > 0 && (
+        <div style={{ marginTop: '24px' }}>
+          <button onClick={() => setShowDrafts(!showDrafts)} style={{
+            width: '100%', padding: '14px 20px', borderRadius: '14px', border: '2px solid #bbf7d0',
+            background: '#f0fdf4', color: '#16a34a', cursor: 'pointer', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            fontSize: '15px', fontWeight: 700,
+          }}>
+            <span>💾 แบบทดสอบที่บันทึกไว้ ({drafts.length} ชุด)</span>
+            <span style={{ fontSize: '18px' }}>{showDrafts ? '▲' : '▼'}</span>
+          </button>
+
+          {showDrafts && (
+            <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {drafts.map(d => (
+                <div key={d.id} style={{
+                  background: '#fff', borderRadius: '12px', padding: '14px 18px', border: '1px solid #e2e8f0',
+                  display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
+                }}>
+                  <div style={{ flex: 1, minWidth: '160px' }}>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>{d.quiz.title}</div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                      {d.quiz.questions.length} ข้อ · บันทึก {new Date(d.savedAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+                      {d.quiz.scheduleType === 'scheduled' && d.quiz.openAt && (
+                        <span style={{ marginLeft: '8px', color: CI.cyan }}>· 📅 {new Date(d.quiz.openAt).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      )}
+                    </div>
+                  </div>
+                  <button onClick={() => loadDraft(d)} style={{
+                    padding: '8px 16px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                    background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`, color: '#fff',
+                    fontSize: '14px', fontWeight: 700, fontFamily: 'inherit',
+                  }}>
+                    📂 โหลด
+                  </button>
+                  <button onClick={() => deleteDraft(d.id)} style={{
+                    padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                    background: '#fee2e2', color: '#ef4444', fontSize: '14px', fontFamily: 'inherit',
+                  }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===== Past sessions ===== */}
       {mode === 'teacher' && !isStudentLocked && sessions.length > 0 && (
         <div style={{ marginTop: '24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
             <h3 style={{ fontSize: '17px', color: '#1e293b', margin: 0, fontWeight: 700 }}>📋 Session ที่ผ่านมา</h3>
-            {sessions.some(s => !s.active || Date.now() >= s.expiresAt) && (
+            {sessions.some(s => !s.active || Date.now() >= (s.expires_at || s.expiresAt)) && (
               <button onClick={async () => {
                 await fetch(`${QUIZ_API}?action=closed`, { method: 'DELETE' });
                 setSessions(prev => prev.filter(s => s.active && Date.now() < (s.expires_at || s.expiresAt)));
@@ -1120,23 +1293,34 @@ export default function SmartQuiz() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {sessions.map(s => {
-              const isActive = s.active && Date.now() < s.expiresAt;
+              const now = Date.now();
+              const expiresAt = s.expires_at || s.expiresAt;
+              const opensAt = s.opens_at || 0;
+              const isScheduled = opensAt > now;
+              const isActive = s.active && now >= opensAt && now < expiresAt;
+              const isClosed = !s.active || now >= expiresAt;
               return (
                 <div key={s.id} style={{
                   background: '#fff', borderRadius: '12px', padding: '16px 20px', border: '1px solid #e2e8f0',
-                  display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap',
+                  display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
                 }}>
                   <span style={{
                     padding: '4px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 700,
-                    background: isActive ? '#dcfce7' : '#f1f5f9',
-                    color: isActive ? '#16a34a' : '#94a3b8',
+                    background: isClosed ? '#f1f5f9' : isScheduled ? '#fef9c3' : '#dcfce7',
+                    color: isClosed ? '#94a3b8' : isScheduled ? '#92400e' : '#16a34a',
                   }}>
-                    {isActive ? '🟢 Active' : 'ปิดแล้ว'}
+                    {isClosed ? 'ปิดแล้ว' : isScheduled ? `⏳ เปิด ${new Date(opensAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}` : '🟢 Active'}
                   </span>
                   <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '15px' }}>{s.quiz.title}</span>
                   <span style={{ color: '#64748b', fontSize: '14px', marginLeft: 'auto' }}>Code: <b>{s.id}</b></span>
-                  <span style={{ color: '#64748b', fontSize: '14px' }}>{s.responses.length} คน</span>
-                  {!isActive && (
+                  <span style={{ color: '#64748b', fontSize: '14px' }}>{(s.responses || []).length} คน</span>
+                  {!isClosed && (
+                    <button onClick={() => endSession(s.id)} style={{
+                      padding: '5px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                      background: '#fee2e2', color: '#ef4444', fontSize: '13px', fontFamily: 'inherit', fontWeight: 600,
+                    }}>⏹ ปิด</button>
+                  )}
+                  {isClosed && (
                     <button onClick={async () => {
                       await fetch(`${QUIZ_API}?code=${s.id}`, { method: 'DELETE' });
                       setSessions(prev => prev.filter(x => x.id !== s.id));
@@ -1144,9 +1328,7 @@ export default function SmartQuiz() {
                     }} style={{
                       background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: '8px',
                       padding: '5px 10px', cursor: 'pointer', fontSize: '13px', fontFamily: 'inherit',
-                    }}>
-                      ✕
-                    </button>
+                    }}>✕</button>
                   )}
                 </div>
               );

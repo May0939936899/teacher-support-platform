@@ -98,9 +98,14 @@ export async function GET(request) {
       return NextResponse.json({ error: 'ไม่พบ Session หรือหมดเวลาแล้ว' }, { status: 404 });
     }
 
-    // For student view, check if still active
-    if (!session.active || Date.now() > session.expires_at) {
-      return NextResponse.json({ error: 'Session หมดเวลาแล้ว' }, { status: 400 });
+    const now = Date.now();
+    // For student view, check schedule
+    if (!session.active || now > session.expires_at) {
+      return NextResponse.json({ error: 'Session หมดเวลาแล้ว หรือถูกปิดโดยอาจารย์' }, { status: 400 });
+    }
+    if (session.opens_at && now < session.opens_at) {
+      const opensDate = new Date(session.opens_at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' });
+      return NextResponse.json({ error: `ยังไม่ถึงเวลาเปิดข้อสอบ — เปิดเวลา ${opensDate}` }, { status: 400 });
     }
 
     return NextResponse.json({ session });
@@ -113,7 +118,7 @@ export async function GET(request) {
 // POST — create new session
 export async function POST(request) {
   try {
-    const { quiz, timeLimit } = await request.json();
+    const { quiz, timeLimit, openAt, closeAt } = await request.json();
     if (!quiz || !quiz.title || !quiz.questions?.length) {
       return NextResponse.json({ error: 'Missing quiz data' }, { status: 400 });
     }
@@ -126,7 +131,8 @@ export async function POST(request) {
       responses: [],
       active: true,
       created_at: now,
-      expires_at: now + (timeLimit || 30) * 60000,
+      opens_at: openAt || now,
+      expires_at: closeAt || (now + (timeLimit || 30) * 60000),
     };
 
     const saved = await saveSession(session);
@@ -165,8 +171,12 @@ export async function PATCH(request) {
     const upperCode = code.toUpperCase();
     const session = await getSession(upperCode);
     if (!session) return NextResponse.json({ error: 'ไม่พบ Session หรือหมดเวลาแล้ว' }, { status: 404 });
-    if (!session.active || Date.now() > session.expires_at) {
+    const nowPatch = Date.now();
+    if (!session.active || nowPatch > session.expires_at) {
       return NextResponse.json({ error: 'Session หมดเวลาแล้ว' }, { status: 400 });
+    }
+    if (session.opens_at && nowPatch < session.opens_at) {
+      return NextResponse.json({ error: 'ยังไม่ถึงเวลาเปิดข้อสอบ' }, { status: 400 });
     }
 
     // Check duplicate
