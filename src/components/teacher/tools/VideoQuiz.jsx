@@ -126,7 +126,7 @@ export default function VideoQuiz() {
       text: '',
       type: 'mc',
       options: ['', '', '', ''],
-      answer: 0,
+      answer: null, // null = ยังไม่ได้เลือกเฉลย
     }]);
   };
 
@@ -157,6 +157,8 @@ export default function VideoQuiz() {
     if (questions.length === 0) { toast.error('กรุณาเพิ่มคำถามอย่างน้อย 1 ข้อ'); return; }
     const hasEmpty = questions.some(q => !q.text);
     if (hasEmpty) { toast.error('กรุณากรอกคำถามให้ครบ'); return; }
+    const missingAnswer = questions.some(q => (q.type === 'mc' || q.type === 'tf') && q.answer === null);
+    if (missingAnswer) { toast.error('⚠️ มีข้อที่ยังไม่ได้เลือกเฉลย กรุณาเลือกก่อนเผยแพร่'); return; }
 
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -205,9 +207,9 @@ export default function VideoQuiz() {
       const userAnswer = studentAnswers[q.id];
       let correct = false;
       if (q.type === 'mc' || q.type === 'tf') {
-        correct = userAnswer === q.answer;
+        correct = q.answer !== null && userAnswer === q.answer;
       } else if (q.type === 'short') {
-        correct = typeof userAnswer === 'string' && typeof q.answer === 'string' &&
+        correct = q.answer && typeof userAnswer === 'string' && typeof q.answer === 'string' &&
           userAnswer.trim().toLowerCase() === q.answer.trim().toLowerCase();
       }
       return { questionId: q.id, userAnswer, correctAnswer: q.answer, correct };
@@ -331,42 +333,84 @@ export default function VideoQuiz() {
                   style={{ ...inp, marginBottom: '12px' }}
                   onFocus={e => e.target.style.borderColor = CI.cyan} onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
                 {q.type === 'mc' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {q.options.map((opt, oi) => (
-                      <div key={oi} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                        <div onClick={() => updateQ(idx, 'answer', oi)} style={{
-                          width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: '14px', fontWeight: 700, cursor: 'pointer', flexShrink: 0,
-                          background: q.answer === oi ? CI.cyan : '#f1f5f9',
-                          color: q.answer === oi ? '#fff' : '#94a3b8', transition: 'all 0.15s',
-                        }}>
-                          {String.fromCharCode(65 + oi)}
-                        </div>
-                        <input value={opt} onChange={e => updateOption(idx, oi, e.target.value)}
-                          placeholder={`ตัวเลือก ${String.fromCharCode(65 + oi)}`}
-                          style={{ ...inp, flex: 1 }} />
-                      </div>
-                    ))}
-                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '4px' }}>คลิกตัวอักษรเพื่อเลือกคำตอบที่ถูกต้อง</div>
+                  <div>
+                    {/* Answer key status bar */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                      <span style={{ fontSize: '13px', color: '#64748b' }}>🎯 คลิกที่วงกลมเพื่อเลือก <b>เฉลย</b></span>
+                      {q.answer !== null ? (
+                        <span style={{
+                          fontSize: '13px', fontWeight: 800, padding: '4px 12px', borderRadius: '20px',
+                          background: `${CI.cyan}18`, color: CI.cyan, border: `1.5px solid ${CI.cyan}50`,
+                        }}>✓ เฉลย: ข้อ {String.fromCharCode(65 + q.answer)}</span>
+                      ) : (
+                        <span style={{ fontSize: '13px', color: '#f59e0b', fontWeight: 600 }}>⚠ ยังไม่ได้เลือกเฉลย</span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {q.options.map((opt, oi) => {
+                        const isCorrect = q.answer === oi;
+                        return (
+                          <div key={oi} style={{
+                            display: 'flex', gap: '10px', alignItems: 'center',
+                            background: isCorrect ? `${CI.cyan}10` : 'transparent',
+                            borderRadius: '12px', padding: isCorrect ? '4px 8px 4px 4px' : '0',
+                            border: `2px solid ${isCorrect ? CI.cyan + '60' : 'transparent'}`,
+                            transition: 'all 0.2s',
+                          }}>
+                            <div onClick={() => updateQ(idx, 'answer', oi)} style={{
+                              width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '15px', fontWeight: 800, cursor: 'pointer', flexShrink: 0,
+                              background: isCorrect ? CI.cyan : '#f1f5f9',
+                              color: isCorrect ? '#fff' : '#94a3b8',
+                              boxShadow: isCorrect ? `0 4px 12px ${CI.cyan}50` : 'none',
+                              transition: 'all 0.15s',
+                            }}>
+                              {isCorrect ? '✓' : String.fromCharCode(65 + oi)}
+                            </div>
+                            <input value={opt} onChange={e => updateOption(idx, oi, e.target.value)}
+                              placeholder={`ตัวเลือก ${String.fromCharCode(65 + oi)}`}
+                              style={{ ...inp, flex: 1, fontWeight: isCorrect ? 700 : 400, background: isCorrect ? '#fff' : undefined }} />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
                 {q.type === 'tf' && (
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    {['ถูก (True)', 'ผิด (False)'].map((opt, oi) => (
-                      <button key={oi} onClick={() => updateQ(idx, 'answer', oi)} style={{
-                        flex: 1, padding: '12px', borderRadius: '12px', fontSize: '16px', fontWeight: 700, fontFamily: FONT, cursor: 'pointer',
-                        border: `2px solid ${q.answer === oi ? CI.cyan : '#e2e8f0'}`,
-                        background: q.answer === oi ? `${CI.cyan}10` : '#fff',
-                        color: q.answer === oi ? CI.cyan : '#64748b',
-                      }}>
-                        {oi === 0 ? '✓' : '✗'} {opt}
-                      </button>
-                    ))}
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                      <span style={{ fontSize: '13px', color: '#64748b' }}>🎯 เลือกเฉลย:</span>
+                      {q.answer !== null ? (
+                        <span style={{ fontSize: '13px', fontWeight: 800, padding: '3px 12px', borderRadius: '20px', background: `${CI.cyan}18`, color: CI.cyan, border: `1.5px solid ${CI.cyan}50` }}>
+                          ✓ เฉลย: {q.answer === 0 ? 'ถูก (True)' : 'ผิด (False)'}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '13px', color: '#f59e0b', fontWeight: 600 }}>⚠ ยังไม่ได้เลือก</span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      {[{ label: '✓ ถูก (True)', val: 0 }, { label: '✗ ผิด (False)', val: 1 }].map(({ label, val }) => (
+                        <button key={val} onClick={() => updateQ(idx, 'answer', val)} style={{
+                          flex: 1, padding: '14px', borderRadius: '12px', fontSize: '16px', fontWeight: 700, fontFamily: FONT, cursor: 'pointer',
+                          border: `2px solid ${q.answer === val ? CI.cyan : '#e2e8f0'}`,
+                          background: q.answer === val ? `${CI.cyan}12` : '#fff',
+                          color: q.answer === val ? CI.cyan : '#64748b',
+                          boxShadow: q.answer === val ? `0 4px 14px ${CI.cyan}30` : 'none',
+                          transition: 'all 0.15s',
+                        }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {q.type === 'short' && (
-                  <input value={typeof q.answer === 'string' ? q.answer : ''} onChange={e => updateQ(idx, 'answer', e.target.value)}
-                    placeholder="เฉลย (สำหรับตรวจอัตโนมัติ)" style={inp} />
+                  <div>
+                    <label style={{ ...lbl, color: '#16a34a', marginBottom: '6px' }}>✏️ เฉลย (ใช้ตรวจอัตโนมัติ)</label>
+                    <input value={typeof q.answer === 'string' ? q.answer : ''} onChange={e => updateQ(idx, 'answer', e.target.value)}
+                      placeholder="พิมพ์คำตอบที่ถูกต้อง..." style={{ ...inp, borderColor: q.answer ? '#16a34a' : undefined }} />
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>ระบบจะตรวจโดยเทียบตัวอักษร (ตรงตัว — ไม่สนตัวใหญ่/เล็ก)</div>
+                  </div>
                 )}
               </div>
             ))}
@@ -402,8 +446,14 @@ export default function VideoQuiz() {
                     <div style={{ position: 'absolute', left: '-20px', top: '4px', width: '14px', height: '14px', borderRadius: '50%', background: `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`, border: '2px solid #fff', boxShadow: `0 0 0 2px ${CI.cyan}` }} />
                     <div style={{ fontSize: '14px', fontWeight: 700, color: CI.cyan }}>{q.timestamp}</div>
                     <div style={{ fontSize: '14px', color: '#1e293b', marginTop: '2px', fontWeight: 600 }}>{q.text || `คำถามข้อ ${idx + 1}`}</div>
-                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
-                      {q.type === 'mc' ? 'Multiple Choice' : q.type === 'tf' ? 'True/False' : 'Short Answer'}
+                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>{q.type === 'mc' ? 'MC' : q.type === 'tf' ? 'T/F' : 'Short'}</span>
+                      {(q.type === 'mc' || q.type === 'tf') && (
+                        q.answer !== null
+                          ? <span style={{ color: '#16a34a', fontWeight: 700 }}>✓ {q.type === 'mc' ? `ข้อ ${String.fromCharCode(65 + q.answer)}` : q.answer === 0 ? 'ถูก' : 'ผิด'}</span>
+                          : <span style={{ color: '#f59e0b', fontWeight: 600 }}>⚠ ไม่มีเฉลย</span>
+                      )}
+                      {q.type === 'short' && q.answer && <span style={{ color: '#16a34a', fontWeight: 700 }}>✓ มีเฉลย</span>}
                     </div>
                   </div>
                 ))}
