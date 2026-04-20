@@ -380,14 +380,26 @@ export default function MillionaireGame() {
     }, 1000);
   }, [stopTimer, handleTimeout]);
 
+  const [timerStarted, setTimerStarted] = useState(false);
+
+  // Reset state on new question — but do NOT auto-start timer
   useEffect(() => {
     if (gamePhase === 'playing') {
       setSelectedAnswer(null);
       setHiddenOptions([]);
       setAwardPending(false);
-      startTimer(timerSeconds);
+      setTimeLeft(timerSeconds);   // show full time, paused
+      setTimerStarted(false);
+      stopTimer();
     }
   }, [currentQ, gamePhase]); // eslint-disable-line
+
+  // Teacher manually starts the timer
+  const beginTimer = useCallback(() => {
+    if (timerStarted || gamePhase !== 'playing') return;
+    setTimerStarted(true);
+    startTimer(timerSeconds);
+  }, [timerStarted, gamePhase, startTimer, timerSeconds]);
 
   useEffect(() => () => stopTimer(), [stopTimer]);
 
@@ -914,6 +926,26 @@ export default function MillionaireGame() {
               <div style={{ marginBottom: 20, textAlign: 'center' }}>
                 <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>⏱️ เวลาเหลือ</div>
                 <TimerCircle seconds={timeLeft} maxSeconds={timerSeconds} size={96} />
+
+                {/* ▶ ปุ่มเริ่มจับเวลา — เฉพาะผู้คุม */}
+                {gamePhase === 'playing' && !timerStarted && (
+                  <button
+                    onClick={beginTimer}
+                    style={{
+                      marginTop: 10, width: '100%', padding: '9px 0', borderRadius: 10, border: 'none',
+                      background: 'linear-gradient(135deg,#d97706,#f59e0b)',
+                      color: '#000', fontSize: 13, fontWeight: 900,
+                      cursor: 'pointer', fontFamily: FONT,
+                      boxShadow: '0 3px 12px rgba(217,119,6,0.35)',
+                      animation: 'awardPulse 1.5s ease-in-out infinite',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.04)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+                  >▶ เริ่มจับเวลา</button>
+                )}
+                {gamePhase === 'playing' && timerStarted && (
+                  <div style={{ marginTop: 8, fontSize: 11, color: '#10b981', fontWeight: 700 }}>⏱ กำลังนับ...</div>
+                )}
               </div>
               <div>
                 <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>💡 ความช่วยเหลือ</div>
