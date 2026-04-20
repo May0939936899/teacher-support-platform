@@ -114,9 +114,75 @@ function drawWheel(canvas, items, rotationAngle) {
   ctx.fillText('🎯', cx, cy);
 }
 
+// ---- Web Audio helpers ----
+function getAudioCtx(ref) {
+  if (!ref.current) {
+    try {
+      ref.current = new (window.AudioContext || window.webkitAudioContext)();
+    } catch {}
+  }
+  return ref.current;
+}
+
+function playTick(audioCtxRef, intensity = 1) {
+  const ctx = getAudioCtx(audioCtxRef);
+  if (!ctx) return;
+  try {
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    // Short wooden-click sound: high freq → drop fast
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(900 + intensity * 300, now);
+    osc.frequency.exponentialRampToValueAtTime(200, now + 0.025);
+    gain.gain.setValueAtTime(0.25 * Math.min(intensity, 1), now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+    osc.start(now);
+    osc.stop(now + 0.035);
+  } catch {}
+}
+
+function playWinFanfare(audioCtxRef) {
+  const ctx = getAudioCtx(audioCtxRef);
+  if (!ctx) return;
+  try {
+    // Ascending cheerful melody: C5-E5-G5-C6 + harmony
+    const melody = [523, 659, 784, 1047, 1319];
+    melody.forEach((freq, i) => {
+      const t = ctx.currentTime + i * 0.13;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = i === melody.length - 1 ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.28, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      osc.start(t);
+      osc.stop(t + 0.4);
+    });
+    // Short drum hit at start
+    const noise = ctx.createOscillator();
+    const noiseGain = ctx.createGain();
+    noise.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noise.type = 'sawtooth';
+    noise.frequency.setValueAtTime(80, ctx.currentTime);
+    noiseGain.gain.setValueAtTime(0.4, ctx.currentTime);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18);
+    noise.start(ctx.currentTime);
+    noise.stop(ctx.currentTime + 0.2);
+  } catch {}
+}
+
 export default function SpinWheel() {
   const canvasRef = useRef(null);
   const rafRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const lastSegmentRef = useRef(-1);
   const [rawText, setRawText] = useState(DEFAULT_ITEMS.join('\n'));
   const [items, setItems] = useState(DEFAULT_ITEMS);
   const [originalItems, setOriginalItems] = useState(DEFAULT_ITEMS);
@@ -173,26 +239,32 @@ export default function SpinWheel() {
     toast.success(`บันทึก ${parsed.length} รายการแล้ว`);
   }, [rawText]);
 
-  // Spin logic with requestAnimationFrame
+  // Spin logic with requestAnimationFrame + Web Audio ticks
   const spin = useCallback(() => {
     if (spinning) return;
     if (items.length < 2) {
       toast.error('ต้องมีรายการอย่างน้อย 2 รายการ');
       return;
     }
+    // Resume audio context (browser requires user gesture)
+    const ctx = getAudioCtx(audioCtxRef);
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+
     setShowWinner(false);
     setWinner(null);
+    lastSegmentRef.current = -1;
 
     const totalRotation = (Math.random() * 4 + 8) * 2 * Math.PI; // 8-12 full spins
     const duration = 3000 + Math.random() * 2000; // 3-5 seconds
     const startTime = performance.now();
     const startAngle = rotationAngle;
+    const numSegments = items.length;
+    const arc = (2 * Math.PI) / numSegments;
+    const pointerAngle = (3 * Math.PI) / 2;
 
     setSpinning(true);
 
-    function easeOut(t) {
-      return 1 - Math.pow(1 - t, 4);
-    }
+    function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
 
     function frame(now) {
       const elapsed = now - startTime;
@@ -203,24 +275,27 @@ export default function SpinWheel() {
       setRotationAngle(currentAngle);
       drawWheel(canvasRef.current, items, currentAngle);
 
+      // Detect segment change → play tick
+      const normalizedAngle = ((currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      const relativeAngle = ((pointerAngle - normalizedAngle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+      const currentSegment = Math.floor(relativeAngle / arc) % numSegments;
+      if (currentSegment !== lastSegmentRef.current) {
+        lastSegmentRef.current = currentSegment;
+        // intensity: louder/higher when fast (early), softer when slow (near end)
+        playTick(audioCtxRef, 1 - progress * 0.6);
+      }
+
       if (progress < 1) {
         rafRef.current = requestAnimationFrame(frame);
       } else {
-        // Determine winner: the pointer is at the top (angle = -PI/2 relative to canvas)
-        // The segment at the pointer position
-        const numSegments = items.length;
-        const arc = (2 * Math.PI) / numSegments;
-        // Normalize the final angle
-        const normalizedAngle = ((currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-        // Pointer is at top = 3PI/2 (270°) in canvas coords (or -PI/2)
-        // Find which segment the pointer falls in
-        const pointerAngle = (3 * Math.PI) / 2;
-        const relativeAngle = ((pointerAngle - normalizedAngle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
         const winnerIndex = Math.floor(relativeAngle / arc) % numSegments;
         const winnerName = items[winnerIndex];
 
         setWinner(winnerName);
         setSpinning(false);
+
+        // 🎉 Win fanfare
+        playWinFanfare(audioCtxRef);
 
         // Confetti burst
         setConfetti(generateConfettiParticles(70));
