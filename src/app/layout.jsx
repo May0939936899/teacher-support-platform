@@ -8,6 +8,13 @@ export const metadata = {
   icons: { icon: '/favicon.ico' },
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,   // ป้องกัน auto-zoom บน iOS เมื่อ focus input
+  userScalable: false,
+};
+
 export default function RootLayout({ children }) {
   return (
     <html lang="th">

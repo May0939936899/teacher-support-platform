@@ -836,7 +836,7 @@ export default function TeacherPage() {
       )}
 
       {/* ===== MAIN CONTENT ===== */}
-      <main style={{ flex: 1, overflow: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: '100%' }}>
         {/* Header bar */}
         <div style={{
           padding: isMobile ? '8px 12px' : '10px 24px', background: '#fff', borderBottom: '1px solid #e2e8f0',
@@ -1057,7 +1057,7 @@ export default function TeacherPage() {
             to   { opacity: 1; transform: translateY(0); }
           }
         `}</style>
-        <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%' }}>
           {toolError ? (
             <ErrorFallback error={toolError} onReset={() => { setToolError(null); setActiveTool(null); }} />
           ) : !activeTool ? (
