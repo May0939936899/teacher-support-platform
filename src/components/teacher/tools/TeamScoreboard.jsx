@@ -2,6 +2,73 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
+// ── Share panel ────────────────────────────────────────────
+function SharePanel({ sessionCode, onClose }) {
+  const url = typeof window !== 'undefined'
+    ? `${window.location.origin}/s/scoreboard/${sessionCode}`
+    : `/s/scoreboard/${sessionCode}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}&color=1a1a3e&bgcolor=ffffff&margin=10`;
+
+  const copy = () => {
+    navigator.clipboard.writeText(url);
+    toast.success('คัดลอกลิงก์แล้ว!');
+  };
+
+  return (
+    <div style={{
+      background: '#fff', border: '2px solid #00b4e6',
+      borderRadius: 18, padding: '24px 22px', marginBottom: 20,
+      boxShadow: '0 4px 24px #00b4e620',
+      animation: 'fadeIn 0.2s ease',
+    }}>
+      <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 20 }}>📡</span>
+          <strong style={{ fontSize: 16, color: '#1a1a3e' }}>แชร์ให้นักศึกษา</strong>
+          <span style={{
+            background: '#10b98120', border: '1px solid #10b98150', borderRadius: 20,
+            padding: '2px 10px', fontSize: 12, color: '#10b981', fontWeight: 700,
+          }}>● LIVE</span>
+        </div>
+        <button onClick={onClose} style={{
+          background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#94a3b8',
+        }}>✕</button>
+      </div>
+      <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        {/* QR */}
+        <div style={{ textAlign: 'center', flexShrink: 0 }}>
+          <img src={qrUrl} alt="QR Code" width={140} height={140}
+            style={{ borderRadius: 12, border: '2px solid #e2e8f0', display: 'block' }} />
+          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6 }}>สแกน QR</div>
+        </div>
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 600 }}>รหัส Session</div>
+          <div style={{
+            fontSize: 36, fontWeight: 900, letterSpacing: 6, color: '#00b4e6',
+            marginBottom: 12, fontFamily: 'monospace',
+          }}>{sessionCode}</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 6, fontWeight: 600 }}>ลิงก์โดยตรง</div>
+          <div style={{
+            background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
+            padding: '8px 12px', fontSize: 12, color: '#475569', wordBreak: 'break-all',
+            marginBottom: 10,
+          }}>{url}</div>
+          <button onClick={copy} style={{
+            width: '100%', padding: '10px 0', borderRadius: 10,
+            background: 'linear-gradient(135deg,#00b4e6,#7c4dff)', border: 'none',
+            color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+          }}>📋 คัดลอกลิงก์</button>
+          <p style={{ fontSize: 11, color: '#94a3b8', margin: '8px 0 0', textAlign: 'center' }}>
+            นักศึกษาดูคะแนน + เปลี่ยนชื่อทีมได้ · ปรับคะแนนไม่ได้
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', sans-serif";
 const LS_KEY = 'team_scoreboard_v2';
 
@@ -149,8 +216,62 @@ export default function TeamScoreboard() {
   const [animating, setAnimating] = useState({});
   const [addAmount, setAddAmount] = useState(1);
   const [prevLeader, setPrevLeader] = useState(null);
+  const [sessionCode, setSessionCode] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const audioRef = useRef(null);
   const historyRef = useRef(null);
+  const syncTimerRef = useRef(null);
+
+  // Auto-sync teams to session when scores/names change
+  const syncSession = useCallback(async (teamsToSync, code) => {
+    if (!code) return;
+    try {
+      await fetch('/api/teacher/scoreboard', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, teams: teamsToSync }),
+      });
+    } catch {}
+  }, []);
+
+  // Debounced sync on teams change
+  useEffect(() => {
+    if (!sessionCode) return;
+    clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => syncSession(teams, sessionCode), 400);
+    return () => clearTimeout(syncTimerRef.current);
+  }, [teams, sessionCode, syncSession]);
+
+  const startSession = useCallback(async () => {
+    setSessionLoading(true);
+    try {
+      const res = await fetch('/api/teacher/scoreboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teams }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setSessionCode(data.code);
+      setShowShare(true);
+      toast.success(`สร้าง Session "${data.code}" แล้ว!`);
+    } catch (e) {
+      toast.error('ไม่สามารถสร้าง session: ' + e.message);
+    } finally {
+      setSessionLoading(false);
+    }
+  }, [teams]);
+
+  const stopSession = useCallback(async () => {
+    if (!sessionCode) return;
+    try {
+      await fetch(`/api/teacher/scoreboard?code=${sessionCode}`, { method: 'DELETE' });
+    } catch {}
+    setSessionCode(null);
+    setShowShare(false);
+    toast('ปิด session แล้ว', { icon: '🔒' });
+  }, [sessionCode]);
 
   // Load from localStorage
   useEffect(() => {
@@ -247,26 +368,71 @@ export default function TeamScoreboard() {
     <div style={{ fontFamily: FONT, color: '#1a1a3e', minHeight: '100%' }}>
 
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900 }}>🏆 กระดานคะแนนทีม</h2>
+          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 10 }}>
+            🏆 กระดานคะแนนทีม
+            {sessionCode && (
+              <span style={{
+                fontSize: 13, fontWeight: 700, background: '#10b98120',
+                border: '1px solid #10b98150', borderRadius: 20,
+                padding: '3px 10px', color: '#10b981',
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+              }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} />
+                LIVE · {sessionCode}
+              </span>
+            )}
+          </h2>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
             คลิกชื่อทีมเพื่อแก้ไข · กด + เพิ่ม / − ลดคะแนน
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {/* Share button */}
+          {!sessionCode ? (
+            <button onClick={startSession} disabled={sessionLoading} style={{
+              padding: '8px 18px', borderRadius: 10,
+              background: sessionLoading ? '#e2e8f0' : 'linear-gradient(135deg,#10b981,#00b4e6)',
+              color: sessionLoading ? '#94a3b8' : '#fff',
+              border: 'none', fontSize: 14, fontWeight: 700,
+              cursor: sessionLoading ? 'wait' : 'pointer', fontFamily: FONT,
+            }}>
+              {sessionLoading ? '⏳...' : '📡 แชร์ให้นักศึกษา'}
+            </button>
+          ) : (
+            <>
+              <button onClick={() => setShowShare(v => !v)} style={{
+                padding: '8px 16px', borderRadius: 10,
+                background: showShare ? '#e0f6fd' : 'linear-gradient(135deg,#10b981,#00b4e6)',
+                color: showShare ? '#00b4e6' : '#fff',
+                border: showShare ? '1.5px solid #00b4e6' : 'none',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
+              }}>📡 {showShare ? 'ซ่อน QR' : 'แสดง QR'}</button>
+              <button onClick={stopSession} style={{
+                padding: '8px 14px', borderRadius: 10,
+                background: '#fff', border: '1.5px solid #fca5a5',
+                color: '#ef4444', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
+              }}>🔒 ปิด</button>
+            </>
+          )}
           <button onClick={addTeam} style={{
-            padding: '8px 18px', borderRadius: 10,
+            padding: '8px 16px', borderRadius: 10,
             background: 'linear-gradient(135deg,#00b4e6,#7c4dff)',
             color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
-          }}>+ เพิ่มทีม</button>
+          }}>+ ทีม</button>
           <button onClick={resetAll} style={{
-            padding: '8px 16px', borderRadius: 10,
-            background: '#fff', border: '1.5px solid #fca5a5',
-            color: '#ef4444', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
-          }}>🔄 รีเซ็ต</button>
+            padding: '8px 14px', borderRadius: 10,
+            background: '#fff', border: '1.5px solid #e2e8f0',
+            color: '#64748b', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
+          }}>🔄</button>
         </div>
       </div>
+
+      {/* ── Share panel ── */}
+      {showShare && sessionCode && (
+        <SharePanel sessionCode={sessionCode} onClose={() => setShowShare(false)} />
+      )}
 
       {/* ── Add amount selector ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
