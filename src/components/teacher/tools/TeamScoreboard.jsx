@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import toast from 'react-hot-toast';
 
 // ── Share panel ────────────────────────────────────────────
@@ -222,6 +222,11 @@ export default function TeamScoreboard() {
   const audioRef = useRef(null);
   const historyRef = useRef(null);
   const syncTimerRef = useRef(null);
+  // Stable refs so callbacks never capture stale state
+  const teamsRef = useRef(teams);
+  const prevLeaderRef = useRef(prevLeader);
+  useEffect(() => { teamsRef.current = teams; }, [teams]);
+  useEffect(() => { prevLeaderRef.current = prevLeader; }, [prevLeader]);
 
   // Auto-sync teams to session when scores/names change
   const syncSession = useCallback(async (teamsToSync, code) => {
@@ -300,58 +305,65 @@ export default function TeamScoreboard() {
   };
 
   const addScore = useCallback((id, pts) => {
-    if (audioRef.current?.state === 'suspended') audioRef.current.resume();
     getAudioCtx(audioRef);
-    setTeams(prev => {
-      const next = prev.map(t => t.id === id ? { ...t, score: t.score + pts } : t);
-      const newLeader = getLeader(next);
-      if (newLeader && newLeader !== prevLeader) {
-        setPrevLeader(newLeader);
-        setTimeout(() => playLeaderChange(audioRef), 100);
-      } else {
-        playPop(audioRef);
-      }
-      return next;
-    });
-    const team = teams.find(t => t.id === id);
+    if (audioRef.current?.state === 'suspended') audioRef.current.resume();
+
+    // Pure functional update — no side-effects inside updater
+    setTeams(prev => prev.map(t => t.id === id ? { ...t, score: t.score + pts } : t));
+
+    // Read latest teams from ref (never stale)
+    const currentTeams = teamsRef.current;
+    const nextTeams = currentTeams.map(t => t.id === id ? { ...t, score: t.score + pts } : t);
+    const newLeader = getLeader(nextTeams);
+    if (newLeader && newLeader !== prevLeaderRef.current) {
+      prevLeaderRef.current = newLeader;
+      setPrevLeader(newLeader);
+      setTimeout(() => playLeaderChange(audioRef), 100);
+    } else {
+      playPop(audioRef);
+    }
+
     triggerAnim(id);
+    const team = currentTeams.find(t => t.id === id);
     const entry = { text: `+${pts} ${team?.emoji || ''} ${team?.name || ''}`, color: team?.color, time: Date.now() };
     setHistory(h => [entry, ...h].slice(0, 20));
     if (historyRef.current) historyRef.current.scrollTop = 0;
-  }, [teams, prevLeader, getLeader]);
+  }, [getLeader]); // stable — never recreated on teams change
 
   const subScore = useCallback((id) => {
+    getAudioCtx(audioRef);
+    if (audioRef.current?.state === 'suspended') audioRef.current.resume();
     playMinus(audioRef);
     setTeams(prev => prev.map(t => t.id === id ? { ...t, score: Math.max(0, t.score - 1) } : t));
-    const team = teams.find(t => t.id === id);
     triggerAnim(id);
+    const team = teamsRef.current.find(t => t.id === id);
     const entry = { text: `-1 ${team?.emoji || ''} ${team?.name || ''}`, color: '#94a3b8', time: Date.now() };
     setHistory(h => [entry, ...h].slice(0, 20));
-  }, [teams]);
+  }, []); // stable — no deps
 
   const updateName = useCallback((id, name) => {
     setTeams(prev => prev.map(t => t.id === id ? { ...t, name } : t));
   }, []);
 
   const addTeam = useCallback(() => {
-    const idx = teams.length;
+    const idx = teamsRef.current.length;
     const newTeam = {
       id: makeId(),
-      name: `ทีม ${teams.length + 1}`,
+      name: `ทีม ${idx + 1}`,
       emoji: TEAM_EMOJIS[idx % TEAM_EMOJIS.length],
       score: 0,
       color: PALETTE[idx % PALETTE.length],
     };
     setTeams(prev => [...prev, newTeam]);
     toast.success(`เพิ่ม ${newTeam.name} แล้ว`);
-  }, [teams.length]);
+  }, []); // stable
 
   const removeTeam = useCallback((id) => {
-    if (teams.length <= 2) { toast.error('ต้องมีอย่างน้อย 2 ทีม'); return; }
-    const team = teams.find(t => t.id === id);
+    if (teamsRef.current.length <= 2) { toast.error('ต้องมีอย่างน้อย 2 ทีม'); return; }
+    const team = teamsRef.current.find(t => t.id === id);
     setTeams(prev => prev.filter(t => t.id !== id));
     toast(`ลบ ${team?.name} แล้ว`, { icon: '🗑️' });
-  }, [teams]);
+  }, []); // stable
 
   const resetAll = useCallback(() => {
     setTeams(prev => prev.map(t => ({ ...t, score: 0 })));
@@ -549,7 +561,7 @@ export default function TeamScoreboard() {
       {/* ── Score cards ── */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: `repeat(${Math.min(teams.length, 4)}, minmax(160px, 1fr))`,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
         gap: 14, marginBottom: 20,
       }}>
         {teams.map((team, i) => {

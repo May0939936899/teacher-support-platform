@@ -72,6 +72,7 @@ export const translations = {
     tool_spin_wheel: 'วงล้อสุ่ม',
     tool_random_group: 'สุ่มกลุ่มนักเรียน',
     tool_scoreboard: 'กระดานคะแนนทีม',
+    tool_millionaire: 'เกมเศรษฐี',
 
     // Marketing
     side_marketing: 'ด้านสื่อสารการตลาด',
@@ -182,6 +183,7 @@ export const translations = {
     tool_spin_wheel: 'Spin Wheel',
     tool_random_group: 'Random Group Maker',
     tool_scoreboard: 'Team Scoreboard',
+    tool_millionaire: 'Millionaire Quiz Game',
 
     // Marketing
     side_marketing: 'Marketing Communications',
@@ -279,6 +281,7 @@ export const translations = {
     tool_spin_wheel: '转盘抽签',
     tool_random_group: '随机分组',
     tool_scoreboard: '团队积分榜',
+    tool_millionaire: '百万富翁游戏',
 
     // Marketing
     side_marketing: '营销传播',
@@ -376,6 +379,7 @@ export const translations = {
     tool_spin_wheel: 'スピンホイール',
     tool_random_group: 'ランダムグループ',
     tool_scoreboard: 'チームスコアボード',
+    tool_millionaire: 'ミリオネアゲーム',
 
     // Marketing
     side_marketing: 'マーケティング',

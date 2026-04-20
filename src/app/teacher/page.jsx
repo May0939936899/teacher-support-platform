@@ -26,7 +26,7 @@ const ContentDifferentiator = dynamic(() => import('@/components/teacher/tools/C
 const AutoGrader = dynamic(() => import('@/components/teacher/tools/AutoGrader'), { ssr: false });
 const RubricGenerator = dynamic(() => import('@/components/teacher/tools/RubricGenerator'), { ssr: false });
 const FlashcardBuilder = dynamic(() => import('@/components/teacher/tools/FlashcardBuilder'), { ssr: false });
-const WordGuessingGame = dynamic(() => import('@/components/teacher/tools/WordGuessingGame'), { ssr: false });
+const MillionaireGame = dynamic(() => import('@/components/teacher/tools/MillionaireGame'), { ssr: false });
 const SpinWheel = dynamic(() => import('@/components/teacher/tools/SpinWheel'), { ssr: false });
 const RandomGroup = dynamic(() => import('@/components/teacher/tools/RandomGroup'), { ssr: false });
 const TeamScoreboard = dynamic(() => import('@/components/teacher/tools/TeamScoreboard'), { ssr: false });
@@ -75,7 +75,7 @@ function buildMenu(lang) {
         { labelKey: 'group_fun_activities', items: [
           { id: 'interactive-activity',   labelKey: 'tool_interactive',    icon: '🎯', phase: 0 },
           { id: 'live-quiz',              labelKey: 'tool_live_quiz',      icon: '🎮', phase: 0 },
-          { id: 'word-guessing',          labelKey: 'tool_word_guessing',  icon: '🔤', phase: 0 },
+          { id: 'millionaire-game',        labelKey: 'tool_millionaire',    icon: '🎰', phase: 0 },
           { id: 'spin-wheel',             labelKey: 'tool_spin_wheel',     icon: '🎡', phase: 0 },
           { id: 'random-group',           labelKey: 'tool_random_group',   icon: '🎲', phase: 0 },
           { id: 'team-scoreboard',        labelKey: 'tool_scoreboard',     icon: '🏆', phase: 0 },
@@ -190,7 +190,7 @@ const TOOL_MAP = {
   'auto-grader': AutoGrader,
   'rubric-generator': RubricGenerator,
   'flashcard-builder': FlashcardBuilder,
-  'word-guessing': WordGuessingGame,
+  'millionaire-game': MillionaireGame,
   'spin-wheel': SpinWheel,
   'random-group': RandomGroup,
   'team-scoreboard': TeamScoreboard,
