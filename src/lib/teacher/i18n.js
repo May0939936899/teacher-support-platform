@@ -69,6 +69,8 @@ export const translations = {
     tool_kpi: 'แดชบอร์ดตัวชี้วัด',
     tool_broadcast: 'ส่งประกาศถึงนักศึกษา',
     tool_ebook: 'สร้างหนังสืออิเล็กทรอนิกส์',
+    tool_spin_wheel: 'วงล้อสุ่ม',
+    tool_random_group: 'สุ่มกลุ่มนักเรียน',
 
     // Marketing
     side_marketing: 'ด้านสื่อสารการตลาด',
@@ -176,6 +178,8 @@ export const translations = {
     tool_kpi: 'KPI Dashboard',
     tool_broadcast: 'LINE & Email Broadcast',
     tool_ebook: 'E-book Builder',
+    tool_spin_wheel: 'Spin Wheel',
+    tool_random_group: 'Random Group Maker',
 
     // Marketing
     side_marketing: 'Marketing Communications',
@@ -270,6 +274,8 @@ export const translations = {
     tool_kpi: 'KPI 仪表盘',
     tool_broadcast: '公告推送',
     tool_ebook: '电子书制作',
+    tool_spin_wheel: '转盘抽签',
+    tool_random_group: '随机分组',
 
     // Marketing
     side_marketing: '营销传播',
@@ -364,6 +370,8 @@ export const translations = {
     tool_kpi: 'KPI ダッシュボード',
     tool_broadcast: 'お知らせ配信',
     tool_ebook: '電子書籍作成',
+    tool_spin_wheel: 'スピンホイール',
+    tool_random_group: 'ランダムグループ',
 
     // Marketing
     side_marketing: 'マーケティング',
