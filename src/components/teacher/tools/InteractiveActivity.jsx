@@ -600,101 +600,121 @@ const MODE_CARDS = [
 ];
 
 function LandingPage({ onSelect }) {
-  const [hovered, setHovered] = useState(null);
+  const [hovered, setHovered] = useState('wordcloud');
+  const active = MODE_CARDS.find(m => m.id === hovered) || MODE_CARDS[0];
+
   return (
-    <div style={{ padding: '32px 24px', maxWidth: '1000px', margin: '0 auto', fontFamily: FONT }}>
+    <div style={{ padding: '28px 24px', maxWidth: '960px', margin: '0 auto', fontFamily: FONT }}>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <div style={{ fontSize: '52px', marginBottom: '12px' }}>🎯</div>
-        <h2 style={{ fontSize: '28px', fontWeight: 900, color: CI.dark, margin: '0 0 10px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '10px' }}>🎯</div>
+        <h2 style={{ fontSize: '26px', fontWeight: 900, color: CI.dark, margin: '0 0 8px' }}>
           Interactive Activities
         </h2>
-        <p style={{ fontSize: '16px', color: '#64748b', margin: 0 }}>
+        <p style={{ fontSize: '15px', color: '#64748b', margin: 0 }}>
           เลือกกิจกรรมที่ต้องการสร้าง แล้วคลิกเพื่อเข้าสร้างคำถาม
         </p>
       </div>
 
-      {/* 3 Cards */}
+      {/* 3 Compact Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-        gap: '20px',
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: '16px',
+        marginBottom: '20px',
       }}>
-        {MODE_CARDS.map(m => (
-          <div
-            key={m.id}
-            onClick={() => onSelect(m.id)}
-            onMouseEnter={() => setHovered(m.id)}
-            onMouseLeave={() => setHovered(null)}
-            style={{
-              background: m.bg,
-              border: `2px solid ${hovered === m.id ? m.border : `${m.border}30`}`,
-              borderRadius: '22px',
-              padding: '32px 26px 28px',
-              cursor: 'pointer',
-              transition: 'all 0.22s cubic-bezier(0.34,1.56,0.64,1)',
-              transform: hovered === m.id ? 'translateY(-6px) scale(1.02)' : 'translateY(0) scale(1)',
-              boxShadow: hovered === m.id ? `0 16px 40px ${m.color}28` : '0 2px 12px rgba(0,0,0,0.06)',
-              textAlign: 'center',
-            }}
-          >
-            {/* Icon */}
-            <div style={{
-              fontSize: '56px', marginBottom: '16px', lineHeight: 1,
-              filter: hovered === m.id ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' : 'none',
-              transition: 'filter 0.2s',
-            }}>{m.emoji}</div>
+        {MODE_CARDS.map(m => {
+          const isActive = hovered === m.id;
+          return (
+            <div
+              key={m.id}
+              onClick={() => onSelect(m.id)}
+              onMouseEnter={() => setHovered(m.id)}
+              style={{
+                background: m.bg,
+                border: `2px solid ${isActive ? m.border : `${m.border}35`}`,
+                borderRadius: '20px',
+                padding: '26px 20px 22px',
+                cursor: 'pointer',
+                transition: 'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+                transform: isActive ? 'translateY(-5px) scale(1.02)' : 'translateY(0) scale(1)',
+                boxShadow: isActive ? `0 14px 36px ${m.color}28` : '0 2px 10px rgba(0,0,0,0.06)',
+                textAlign: 'center',
+              }}
+            >
+              {/* Icon */}
+              <div style={{
+                fontSize: '50px', lineHeight: 1, marginBottom: '14px',
+                filter: isActive ? 'drop-shadow(0 3px 8px rgba(0,0,0,0.18))' : 'none',
+                transition: 'filter 0.2s',
+              }}>{m.emoji}</div>
 
-            {/* Title */}
-            <h3 style={{
-              fontSize: '22px', fontWeight: 900,
-              color: hovered === m.id ? m.color : CI.dark,
-              margin: '0 0 4px', transition: 'color 0.2s',
-            }}>{m.label}</h3>
-            <div style={{ fontSize: '13px', color: m.color, fontWeight: 700, marginBottom: '14px', opacity: 0.8 }}>
-              {m.labelTh}
+              {/* Title */}
+              <h3 style={{
+                fontSize: '20px', fontWeight: 900, margin: '0 0 4px',
+                color: isActive ? m.color : CI.dark,
+                transition: 'color 0.2s',
+              }}>{m.label}</h3>
+              <div style={{
+                fontSize: '12px', fontWeight: 700, color: m.color,
+                marginBottom: '20px', opacity: isActive ? 1 : 0.75,
+              }}>{m.labelTh}</div>
+
+              {/* CTA button */}
+              <div style={{
+                width: '100%', padding: '11px 0', borderRadius: '12px',
+                background: isActive
+                  ? `linear-gradient(135deg, ${m.color}, ${m.color}bb)`
+                  : `${m.color}18`,
+                color: isActive ? '#fff' : m.color,
+                fontSize: '14px', fontWeight: 800, fontFamily: FONT,
+                transition: 'all 0.2s',
+                boxShadow: isActive ? `0 4px 14px ${m.color}45` : 'none',
+                letterSpacing: 0.2,
+              }}>
+                {isActive ? 'เริ่มสร้างกิจกรรม →' : 'คลิกเพื่อเข้าใช้งาน'}
+              </div>
             </div>
+          );
+        })}
+      </div>
 
-            {/* Description */}
-            <p style={{
-              fontSize: '14px', color: '#64748b', lineHeight: 1.65,
-              margin: '0 0 22px',
-            }}>{m.desc}</p>
-
-            {/* Feature list */}
-            <div style={{
-              display: 'flex', flexDirection: 'column', gap: '8px',
-              marginBottom: '26px', textAlign: 'left',
-            }}>
-              {m.features.map((f, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span style={{
-                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                    background: `${m.color}18`, color: m.color,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '12px', fontWeight: 900,
-                  }}>✓</span>
-                  <span style={{ fontSize: '13px', color: '#475569', lineHeight: 1.4 }}>{f}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* CTA button */}
-            <div style={{
-              display: 'inline-block', width: '100%',
-              padding: '12px 0', borderRadius: '14px',
-              background: hovered === m.id
-                ? `linear-gradient(135deg, ${m.color}, ${m.color}bb)`
-                : `${m.color}18`,
-              color: hovered === m.id ? '#fff' : m.color,
-              fontSize: '15px', fontWeight: 800, fontFamily: FONT,
-              transition: 'all 0.2s', letterSpacing: 0.3,
-              boxShadow: hovered === m.id ? `0 4px 16px ${m.color}45` : 'none',
-            }}>
-              {hovered === m.id ? 'เริ่มสร้างกิจกรรม →' : 'คลิกเพื่อเข้าใช้งาน'}
-            </div>
+      {/* Description panel — แสดงด้านล่างกล่อง */}
+      <div style={{
+        background: active.bg,
+        border: `2px solid ${active.border}40`,
+        borderRadius: '18px',
+        padding: '22px 28px',
+        transition: 'background 0.25s, border-color 0.25s',
+        display: 'flex', gap: '28px', alignItems: 'flex-start', flexWrap: 'wrap',
+      }}>
+        {/* Left: desc */}
+        <div style={{ flex: 2, minWidth: 200 }}>
+          <div style={{
+            fontSize: '15px', fontWeight: 800, color: active.color,
+            marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px',
+          }}>
+            <span>{active.emoji}</span> {active.label}
           </div>
-        ))}
+          <p style={{ fontSize: '14px', color: '#475569', lineHeight: 1.75, margin: 0 }}>
+            {active.desc}
+          </p>
+        </div>
+
+        {/* Right: features */}
+        <div style={{ flex: 1, minWidth: 180, display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center' }}>
+          {active.features.map((f, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{
+                width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                background: `${active.color}20`, color: active.color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '11px', fontWeight: 900,
+              }}>✓</span>
+              <span style={{ fontSize: '13px', color: '#475569' }}>{f}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
