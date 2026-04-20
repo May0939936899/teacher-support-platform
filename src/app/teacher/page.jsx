@@ -73,7 +73,6 @@ function buildMenu(lang) {
           { id: 'interactive-activity',   labelKey: 'tool_interactive',    icon: '🎯', phase: 0 },
           { id: 'live-quiz',              labelKey: 'tool_live_quiz',      icon: '🎮', phase: 0 },
           { id: 'word-guessing',          labelKey: 'tool_word_guessing',  icon: '🔤', phase: 0 },
-          { id: 'exit-ticket',            labelKey: 'tool_exit_ticket',    icon: '📋', phase: 0 },
         ]},
         { labelKey: 'group_exam', items: [
           { id: 'smart-quiz',             labelKey: 'tool_smart_quiz',     icon: '📝', phase: 0 },
