@@ -77,7 +77,6 @@ function buildMenu(lang) {
         { labelKey: 'group_exam', items: [
           { id: 'smart-quiz',             labelKey: 'tool_smart_quiz',     icon: '📝', phase: 0 },
           { id: 'video-quiz',             labelKey: 'tool_video_quiz',     icon: '🎬', phase: 0 },
-          { id: 'content-differentiator', labelKey: 'tool_differentiator', icon: '📶', phase: 0 },
           { id: 'auto-grader',            labelKey: 'tool_auto_grader',    icon: '✅', phase: 0 },
         ]},
       ],
