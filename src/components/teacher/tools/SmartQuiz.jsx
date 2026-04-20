@@ -3,6 +3,84 @@ import { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import AntiCheatGuard from './AntiCheatGuard';
 
+// ============================================================
+// CLIENT-SIDE QUIZ PARSER — no API cost
+// รองรับรูปแบบ: ก/ข/ค/ง, A/B/C/D, 1/2/3/4, เฉลย/คำตอบ/Answer
+// ============================================================
+function parseQuizFromText(rawText) {
+  const questions = [];
+  const thaiToLatin = { 'ก': 'A', 'ข': 'B', 'ค': 'C', 'ง': 'D' };
+  const numToLatin = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
+
+  const isOptionLine = (line) => /^[A-Da-dก-ง1-4][.)]\s+\S/.test(line);
+  const isAnswerLine = (line) => /^(?:เฉลย|คำตอบ|ตอบ|answer|ans|key|เฉลย้อ)\s*[:\s]/i.test(line);
+  const isQuestionLine = (line) => /^\d+[.)]\s*\S/.test(line) || /^ข้อ(?:ที่)?\s*\d+/.test(line);
+
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+
+  let qText = '';
+  let opts = [];
+  let ans = '';
+  let inQuestion = false;
+
+  const pushQuestion = () => {
+    if (!qText.trim()) return;
+    const optsFilled = opts.filter(o => o.trim());
+    let type = 'SHORT';
+    if (optsFilled.length >= 2 && optsFilled.length <= 4) {
+      const lowOpts = optsFilled.map(o => o.toLowerCase());
+      if (lowOpts.some(o => /ถูก|true/.test(o)) && lowOpts.some(o => /ผิด|false/.test(o))) {
+        type = 'TF';
+      } else {
+        type = 'MC';
+      }
+    }
+
+    let finalAns = '';
+    if (ans) {
+      const raw = ans.trim();
+      if (type === 'MC') {
+        finalAns = thaiToLatin[raw] || numToLatin[raw]
+          || (/^[A-Da-d]$/.test(raw) ? raw.toUpperCase() : raw.toUpperCase().charAt(0));
+      } else if (type === 'TF') {
+        finalAns = /ถูก|true|^1$|^ก$|^a$/i.test(raw) ? 'True' : 'False';
+      } else {
+        finalAns = raw;
+      }
+    }
+
+    const padded = [...opts];
+    while (type === 'MC' && padded.length < 4) padded.push('');
+
+    questions.push({
+      id: Date.now().toString() + '_' + questions.length + '_' + Math.random().toString(36).slice(2, 5),
+      type,
+      text: qText.trim(),
+      options: type === 'MC' ? padded.slice(0, 4) : [],
+      answer: finalAns,
+      points: 1,
+      explanation: '',
+    });
+  };
+
+  for (const line of lines) {
+    if (isQuestionLine(line)) {
+      if (inQuestion) pushQuestion();
+      qText = line.replace(/^(?:ข้อ(?:ที่)?\s*)?\d+[.)]\s*/, '');
+      opts = []; ans = ''; inQuestion = true;
+    } else if (isAnswerLine(line) && inQuestion) {
+      ans = line.replace(/^(?:เฉลย|คำตอบ|ตอบ|answer|ans|key|เฉลย้อ)\s*[:\s]*/i, '').trim();
+    } else if (isOptionLine(line) && inQuestion) {
+      opts.push(line.replace(/^[A-Da-dก-ง1-4][.)]\s*/, ''));
+    } else if (inQuestion && opts.length === 0) {
+      qText += ' ' + line;
+    }
+  }
+  if (inQuestion) pushQuestion();
+
+  return questions;
+}
+
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
 
@@ -42,6 +120,10 @@ export default function SmartQuiz() {
   const [aiTypes, setAiTypes] = useState({ MC: true, TF: true, SHORT: false });
   const [aiLoading, setAiLoading] = useState(false);
   const [extractedText, setExtractedText] = useState('');
+
+  // Import quiz (paste + client-side parse) states
+  const [importText, setImportText] = useState('');
+  const [importParsed, setImportParsed] = useState(null); // array | null
 
   const QUIZ_API = '/api/teacher/smartquiz';
 
@@ -96,6 +178,7 @@ export default function SmartQuiz() {
   const clearQuiz = () => {
     setQuiz({ title: '', description: '', timeLimit: 30, questions: [], scheduleType: 'now', openAt: '', closeAt: '' });
     setAiText(''); setAiFile(null); setAiFilePreview(null); setExtractedText(''); setAiSummary('');
+    setImportText(''); setImportParsed(null);
     toast('เริ่มใหม่แล้ว');
   };
 
@@ -538,7 +621,7 @@ export default function SmartQuiz() {
           <div>
             {/* Step 1: Choose creation mode — prominent visual selection */}
             <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '12px', marginBottom: '20px' }}>
                 {/* Card: Manual */}
                 <button onClick={() => setCreateMode('manual')} style={{
                   padding: '14px 16px', borderRadius: '14px',
@@ -557,6 +640,26 @@ export default function SmartQuiz() {
                       <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.4 }}>พิมพ์คำถามและตัวเลือกทีละข้อ</div>
                     </div>
                     {createMode === 'manual' && <span style={{ fontSize: '12px', color: CI.cyan, fontWeight: 700 }}>✓</span>}
+                  </div>
+                </button>
+                {/* Card: Import (paste + parse) */}
+                <button onClick={() => setCreateMode('import')} style={{
+                  padding: '14px 16px', borderRadius: '14px',
+                  border: `2px solid ${createMode === 'import' ? '#f59e0b' : '#e2e8f0'}`,
+                  background: createMode === 'import' ? 'linear-gradient(135deg, #fef9c308, #fef3c710)' : '#fff',
+                  cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s', fontFamily: 'inherit',
+                  boxShadow: createMode === 'import' ? '0 4px 16px #f59e0b20' : '0 1px 4px rgba(0,0,0,0.04)',
+                }}
+                onMouseEnter={e => { if (createMode !== 'import') { e.currentTarget.style.borderColor = '#f59e0b60'; } }}
+                onMouseLeave={e => { if (createMode !== 'import') { e.currentTarget.style.borderColor = '#e2e8f0'; } }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '24px' }}>📋</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 700, color: createMode === 'import' ? '#d97706' : '#1e293b' }}>วางข้อสอบ+เฉลย</div>
+                      <div style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.4 }}>แยกข้อสอบอัตโนมัติ ไม่เสีย API</div>
+                    </div>
+                    {createMode === 'import' && <span style={{ fontSize: '12px', color: '#d97706', fontWeight: 700 }}>✓</span>}
                   </div>
                 </button>
                 {/* Card: AI */}
@@ -855,6 +958,126 @@ export default function SmartQuiz() {
                     <>✨ สร้างข้อสอบด้วย AI ({aiNumQ} ข้อ)</>
                   )}
                 </button>
+              </div>
+            )}
+
+            {/* ===== IMPORT PANEL (paste + client-side parse) ===== */}
+            {createMode === 'import' && (
+              <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', border: '2px solid #fde68a', marginBottom: '20px' }}>
+                <h4 style={{ margin: '0 0 6px', fontSize: '18px', color: '#1e293b', fontWeight: 700 }}>
+                  📋 วางข้อสอบ+เฉลย — แยกอัตโนมัติ
+                </h4>
+                <p style={{ color: '#64748b', fontSize: '13px', margin: '0 0 14px', lineHeight: 1.6 }}>
+                  วางข้อสอบที่มีตัวเลือกและเฉลยครบ ระบบจะแยกข้อ ตัวเลือก และเฉลยให้เอง — <strong style={{ color: '#d97706' }}>ไม่ใช้ API เลย</strong>
+                </p>
+
+                {/* Format hint */}
+                <div style={{ background: '#fef9c3', borderRadius: '10px', padding: '12px 14px', marginBottom: '14px', fontSize: '12px', color: '#92400e', lineHeight: 1.8 }}>
+                  <strong>รูปแบบที่รองรับ:</strong>{' '}
+                  <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>1. คำถาม</code>{' '}
+                  ตามด้วยตัวเลือก{' '}
+                  <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>A. / ก.</code>{' '}
+                  แล้วบรรทัดเฉลย{' '}
+                  <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>เฉลย: A</code>{' '}
+                  หรือ{' '}
+                  <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>คำตอบ: ก</code>
+                </div>
+
+                <textarea
+                  placeholder={`ตัวอย่าง:\n\n1. ข้อใดคือเมืองหลวงของไทย\nA. เชียงใหม่\nB. กรุงเทพมหานคร\nC. ภูเก็ต\nD. ขอนแก่น\nเฉลย: B\n\n2. 7 × 8 มีค่าเท่าใด\nก. 54\nข. 56\nค. 58\nง. 60\nคำตอบ: ข`}
+                  value={importText}
+                  onChange={e => { setImportText(e.target.value); setImportParsed(null); }}
+                  style={{ ...inp, minHeight: '220px', resize: 'vertical', lineHeight: 1.8, fontSize: '13px', fontFamily: "'Courier New', monospace" }}
+                />
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => {
+                      const parsed = parseQuizFromText(importText);
+                      if (parsed.length === 0) {
+                        toast.error('ไม่พบข้อสอบในรูปแบบที่รองรับ — ลองดูตัวอย่างด้านบน');
+                        return;
+                      }
+                      setImportParsed(parsed);
+                      toast.success(`พบ ${parsed.length} ข้อ — ตรวจสอบด้านล่าง แล้วกด "นำเข้า"`);
+                    }}
+                    disabled={!importText.trim()}
+                    style={{
+                      flex: 1, padding: '13px', borderRadius: '10px', border: 'none',
+                      background: importText.trim() ? '#f59e0b' : '#e2e8f0',
+                      color: '#fff', cursor: importText.trim() ? 'pointer' : 'not-allowed',
+                      fontWeight: 700, fontSize: '15px', fontFamily: 'inherit',
+                    }}
+                  >
+                    🔍 แยกข้อสอบ
+                  </button>
+                  {importParsed && importParsed.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setQuiz(prev => ({ ...prev, questions: [...prev.questions, ...importParsed] }));
+                        toast.success(`✅ นำเข้า ${importParsed.length} ข้อสำเร็จ!`);
+                        setImportText(''); setImportParsed(null);
+                        setCreateMode('manual');
+                      }}
+                      style={{
+                        flex: 1, padding: '13px', borderRadius: '10px', border: 'none',
+                        background: '#16a34a', color: '#fff', cursor: 'pointer',
+                        fontWeight: 700, fontSize: '15px', fontFamily: 'inherit',
+                      }}
+                    >
+                      ✅ นำเข้า {importParsed.length} ข้อ
+                    </button>
+                  )}
+                </div>
+
+                {/* Preview of parsed questions */}
+                {importParsed && importParsed.length > 0 && (
+                  <div style={{ marginTop: '16px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 700, color: '#64748b', marginBottom: '8px' }}>
+                      ตรวจสอบ {importParsed.length} ข้อที่พบ:
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '320px', overflowY: 'auto', paddingRight: '4px' }}>
+                      {importParsed.map((q, i) => (
+                        <div key={q.id} style={{
+                          background: '#f8fafc', borderRadius: '10px', padding: '11px 14px',
+                          border: `1.5px solid ${q.answer ? '#bbf7d0' : '#fde68a'}`,
+                          fontSize: '13px',
+                        }}>
+                          <div style={{ fontWeight: 700, color: '#1e293b', marginBottom: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{
+                              background: q.type === 'MC' ? '#e0f2fe' : q.type === 'TF' ? '#f0fdf4' : '#fef9c3',
+                              color: q.type === 'MC' ? '#0369a1' : q.type === 'TF' ? '#166534' : '#92400e',
+                              borderRadius: 4, padding: '1px 6px', fontSize: 11, fontWeight: 700,
+                            }}>{q.type}</span>
+                            <span>ข้อ {i + 1}: {q.text.slice(0, 70)}{q.text.length > 70 ? '…' : ''}</span>
+                          </div>
+                          {q.type === 'MC' && q.options.filter(o => o).length > 0 && (
+                            <div style={{ color: '#475569', fontSize: 12, marginTop: 3, display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                              {q.options.filter(o => o).map((o, oi) => {
+                                const letter = String.fromCharCode(65 + oi);
+                                const isCorrect = q.answer === letter;
+                                return (
+                                  <span key={oi} style={{
+                                    background: isCorrect ? '#dcfce7' : '#f1f5f9',
+                                    color: isCorrect ? '#166534' : '#475569',
+                                    padding: '1px 7px', borderRadius: 4, fontWeight: isCorrect ? 700 : 400,
+                                  }}>
+                                    {letter}. {o.slice(0, 25)}{o.length > 25 ? '…' : ''}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          )}
+                          <div style={{ marginTop: 5, fontSize: 12 }}>
+                            {q.answer
+                              ? <span style={{ color: '#16a34a', fontWeight: 700 }}>✓ เฉลย: {q.answer}</span>
+                              : <span style={{ color: '#d97706' }}>⚠️ ไม่พบเฉลย — กรอกเองหลังนำเข้า</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
