@@ -536,13 +536,14 @@ export default function TeamScoreboard() {
                 />
               </div>
 
-              {/* Score */}
+              {/* Score — ตัวใหญ่กลางการ์ด */}
               <div style={{
-                fontSize: 60, fontWeight: 900, color: team.color,
-                lineHeight: 1, marginBottom: 16,
+                fontSize: 96, fontWeight: 900, color: team.color,
+                lineHeight: 1, margin: '12px 0 20px',
                 transition: 'transform 0.15s',
-                transform: animating[team.id] ? 'scale(1.3)' : 'scale(1)',
-                display: 'block',
+                transform: animating[team.id] ? 'scale(1.2)' : 'scale(1)',
+                textAlign: 'center',
+                textShadow: `0 4px 20px ${team.color}40`,
               }}>
                 {team.score}
               </div>
