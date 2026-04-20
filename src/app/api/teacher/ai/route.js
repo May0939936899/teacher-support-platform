@@ -5,13 +5,12 @@ import { NextResponse } from 'next/server';
 // ลำดับ: ฉลาดที่สุด → เร็วที่สุด → fallback
 // ============================================================
 
-// Gemini free-tier models (ทุกตัวใช้ v1beta — Google ยกเลิก v1 สำหรับหลาย model แล้ว)
+// Gemini free-tier models — ใช้เฉพาะ 2.0+ (1.5 ถูก deprecate แล้ว)
 const GEMINI_MODELS = [
-  { name: 'gemini-2.5-flash-preview-04-17', api: 'v1beta' }, // ฉลาด + เร็ว (free)
-  { name: 'gemini-2.0-flash',               api: 'v1beta' }, // stable free
-  { name: 'gemini-2.0-flash-lite',          api: 'v1beta' }, // เร็วมาก free
-  { name: 'gemini-1.5-flash',               api: 'v1beta' }, // fallback
-  { name: 'gemini-1.5-flash-8b',            api: 'v1beta' }, // fallback เบาสุด
+  { name: 'gemini-2.5-flash-preview-04-17', api: 'v1beta' },
+  { name: 'gemini-2.5-flash',               api: 'v1beta' },
+  { name: 'gemini-2.0-flash',               api: 'v1beta' },
+  { name: 'gemini-2.0-flash-lite',          api: 'v1beta' },
 ];
 
 const SYSTEM_INSTRUCTION = 'คุณเป็น AI ผู้ช่วยอาจารย์มหาวิทยาลัยที่เก่งมาก ตอบเป็นภาษาไทยเสมอ (ยกเว้นถูกขอให้ใช้ภาษาอื่น) ตอบอย่างละเอียด มีคุณภาพ เป็นมืออาชีพ ถูกต้องตามหลักวิชาการ';
