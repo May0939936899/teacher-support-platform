@@ -71,6 +71,7 @@ export const translations = {
     tool_ebook: 'สร้างหนังสืออิเล็กทรอนิกส์',
     tool_spin_wheel: 'วงล้อสุ่ม',
     tool_random_group: 'สุ่มกลุ่มนักเรียน',
+    tool_scoreboard: 'กระดานคะแนนทีม',
 
     // Marketing
     side_marketing: 'ด้านสื่อสารการตลาด',
@@ -180,6 +181,7 @@ export const translations = {
     tool_ebook: 'E-book Builder',
     tool_spin_wheel: 'Spin Wheel',
     tool_random_group: 'Random Group Maker',
+    tool_scoreboard: 'Team Scoreboard',
 
     // Marketing
     side_marketing: 'Marketing Communications',
@@ -276,6 +278,7 @@ export const translations = {
     tool_ebook: '电子书制作',
     tool_spin_wheel: '转盘抽签',
     tool_random_group: '随机分组',
+    tool_scoreboard: '团队积分榜',
 
     // Marketing
     side_marketing: '营销传播',
@@ -372,6 +375,7 @@ export const translations = {
     tool_ebook: '電子書籍作成',
     tool_spin_wheel: 'スピンホイール',
     tool_random_group: 'ランダムグループ',
+    tool_scoreboard: 'チームスコアボード',
 
     // Marketing
     side_marketing: 'マーケティング',

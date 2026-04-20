@@ -29,6 +29,7 @@ const FlashcardBuilder = dynamic(() => import('@/components/teacher/tools/Flashc
 const WordGuessingGame = dynamic(() => import('@/components/teacher/tools/WordGuessingGame'), { ssr: false });
 const SpinWheel = dynamic(() => import('@/components/teacher/tools/SpinWheel'), { ssr: false });
 const RandomGroup = dynamic(() => import('@/components/teacher/tools/RandomGroup'), { ssr: false });
+const TeamScoreboard = dynamic(() => import('@/components/teacher/tools/TeamScoreboard'), { ssr: false });
 // Phase 3 — Documents
 const SlideMaker = dynamic(() => import('@/components/teacher/tools/SlideMaker'), { ssr: false });
 const FormBuilder = dynamic(() => import('@/components/teacher/tools/FormBuilder'), { ssr: false });
@@ -77,6 +78,7 @@ function buildMenu(lang) {
           { id: 'word-guessing',          labelKey: 'tool_word_guessing',  icon: '🔤', phase: 0 },
           { id: 'spin-wheel',             labelKey: 'tool_spin_wheel',     icon: '🎡', phase: 0 },
           { id: 'random-group',           labelKey: 'tool_random_group',   icon: '🎲', phase: 0 },
+          { id: 'team-scoreboard',        labelKey: 'tool_scoreboard',     icon: '🏆', phase: 0 },
         ]},
         { labelKey: 'group_exam', items: [
           { id: 'smart-quiz',             labelKey: 'tool_smart_quiz',     icon: '📝', phase: 0 },
@@ -191,6 +193,7 @@ const TOOL_MAP = {
   'word-guessing': WordGuessingGame,
   'spin-wheel': SpinWheel,
   'random-group': RandomGroup,
+  'team-scoreboard': TeamScoreboard,
   // Phase 3 — Documents
   'slide-maker': SlideMaker,
   'form-builder': FormBuilder,
