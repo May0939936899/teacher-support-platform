@@ -129,18 +129,23 @@ function playTick(audioCtxRef, intensity = 1) {
   if (!ctx) return;
   try {
     const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    // Short wooden-click sound: high freq → drop fast
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(900 + intensity * 300, now);
-    osc.frequency.exponentialRampToValueAtTime(200, now + 0.025);
-    gain.gain.setValueAtTime(0.25 * Math.min(intensity, 1), now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
-    osc.start(now);
-    osc.stop(now + 0.035);
+    // Bell / ding sound: sine harmonics with quick attack, melodic decay
+    const baseFreq = 660 + intensity * 280;
+    [[1.0, 0.22], [2.76, 0.10], [5.4, 0.045]].forEach(([harmonic, vol]) => {
+      const freq = baseFreq * harmonic;
+      if (freq > 9000) return;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(vol * Math.min(intensity, 1), now + 0.003);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    });
   } catch {}
 }
 

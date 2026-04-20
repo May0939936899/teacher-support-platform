@@ -562,9 +562,147 @@ function formatTime(secs) {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+// ========= LANDING PAGE =========
+const MODE_CARDS = [
+  {
+    id: 'wordcloud',
+    emoji: '☁️',
+    label: 'Word Cloud',
+    labelTh: 'เมฆคำ',
+    desc: 'ให้นักศึกษาส่งคำผ่านสมาร์ทโฟน สร้างภาพ Word Cloud แบบ Real-time คำที่ถูกพูดถึงบ่อยจะแสดงขนาดใหญ่ขึ้น',
+    color: '#00b4e6',
+    bg: 'linear-gradient(135deg,#f0fdff,#e0f7fa)',
+    border: '#00b4e6',
+    features: ['นักศึกษาส่งคำผ่านสมาร์ทโฟน', 'คำยิ่งถูกพูดถึงบ่อย ยิ่งใหญ่ขึ้น', 'ดาวน์โหลดผลเป็น Excel'],
+  },
+  {
+    id: 'poll',
+    emoji: '📊',
+    label: 'Live Poll',
+    labelTh: 'โหวตสด',
+    desc: 'สร้างคำถาม + ตัวเลือก ให้นักศึกษาโหวตจากโทรศัพท์ เห็นผลกราฟแบบ Real-time ทันที',
+    color: '#e6007e',
+    bg: 'linear-gradient(135deg,#fff0f7,#fce7f3)',
+    border: '#e6007e',
+    features: ['เพิ่มตัวเลือกได้ไม่จำกัด', 'เห็นผลกราฟแบบ Real-time', 'ดาวน์โหลดสรุปโหวต Excel'],
+  },
+  {
+    id: 'brainstorm',
+    emoji: '💡',
+    label: 'Brainstorm Board',
+    labelTh: 'กระดานระดมสมอง',
+    desc: 'กระดาน Sticky Notes ดิจิทัล นักศึกษาส่งไอเดียพร้อมกัน เห็นผลแบบ Real-time บนกระดาน',
+    color: '#7c4dff',
+    bg: 'linear-gradient(135deg,#f5f0ff,#ede9fe)',
+    border: '#7c4dff',
+    features: ['โพสอิทสีสันสวยงาม', 'นักศึกษาส่งไอเดียพร้อมกัน', 'ดาวน์โหลดรายการไอเดีย'],
+  },
+];
+
+function LandingPage({ onSelect }) {
+  const [hovered, setHovered] = useState(null);
+  return (
+    <div style={{ padding: '32px 24px', maxWidth: '1000px', margin: '0 auto', fontFamily: FONT }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <div style={{ fontSize: '52px', marginBottom: '12px' }}>🎯</div>
+        <h2 style={{ fontSize: '28px', fontWeight: 900, color: CI.dark, margin: '0 0 10px' }}>
+          Interactive Activities
+        </h2>
+        <p style={{ fontSize: '16px', color: '#64748b', margin: 0 }}>
+          เลือกกิจกรรมที่ต้องการสร้าง แล้วคลิกเพื่อเข้าสร้างคำถาม
+        </p>
+      </div>
+
+      {/* 3 Cards */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+        gap: '20px',
+      }}>
+        {MODE_CARDS.map(m => (
+          <div
+            key={m.id}
+            onClick={() => onSelect(m.id)}
+            onMouseEnter={() => setHovered(m.id)}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              background: m.bg,
+              border: `2px solid ${hovered === m.id ? m.border : `${m.border}30`}`,
+              borderRadius: '22px',
+              padding: '32px 26px 28px',
+              cursor: 'pointer',
+              transition: 'all 0.22s cubic-bezier(0.34,1.56,0.64,1)',
+              transform: hovered === m.id ? 'translateY(-6px) scale(1.02)' : 'translateY(0) scale(1)',
+              boxShadow: hovered === m.id ? `0 16px 40px ${m.color}28` : '0 2px 12px rgba(0,0,0,0.06)',
+              textAlign: 'center',
+            }}
+          >
+            {/* Icon */}
+            <div style={{
+              fontSize: '56px', marginBottom: '16px', lineHeight: 1,
+              filter: hovered === m.id ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' : 'none',
+              transition: 'filter 0.2s',
+            }}>{m.emoji}</div>
+
+            {/* Title */}
+            <h3 style={{
+              fontSize: '22px', fontWeight: 900,
+              color: hovered === m.id ? m.color : CI.dark,
+              margin: '0 0 4px', transition: 'color 0.2s',
+            }}>{m.label}</h3>
+            <div style={{ fontSize: '13px', color: m.color, fontWeight: 700, marginBottom: '14px', opacity: 0.8 }}>
+              {m.labelTh}
+            </div>
+
+            {/* Description */}
+            <p style={{
+              fontSize: '14px', color: '#64748b', lineHeight: 1.65,
+              margin: '0 0 22px',
+            }}>{m.desc}</p>
+
+            {/* Feature list */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: '8px',
+              marginBottom: '26px', textAlign: 'left',
+            }}>
+              {m.features.map((f, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{
+                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    background: `${m.color}18`, color: m.color,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '12px', fontWeight: 900,
+                  }}>✓</span>
+                  <span style={{ fontSize: '13px', color: '#475569', lineHeight: 1.4 }}>{f}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA button */}
+            <div style={{
+              display: 'inline-block', width: '100%',
+              padding: '12px 0', borderRadius: '14px',
+              background: hovered === m.id
+                ? `linear-gradient(135deg, ${m.color}, ${m.color}bb)`
+                : `${m.color}18`,
+              color: hovered === m.id ? '#fff' : m.color,
+              fontSize: '15px', fontWeight: 800, fontFamily: FONT,
+              transition: 'all 0.2s', letterSpacing: 0.3,
+              boxShadow: hovered === m.id ? `0 4px 16px ${m.color}45` : 'none',
+            }}>
+              {hovered === m.id ? 'เริ่มสร้างกิจกรรม →' : 'คลิกเพื่อเข้าใช้งาน'}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ========= MAIN COMPONENT =========
 export default function InteractiveActivity() {
-  const [mode, setMode] = useState('wordcloud');
+  const [mode, setMode] = useState(null);
   const [roomCode, setRoomCode] = useState('');
   const [showQR, setShowQR] = useState(false);
   const [timerDuration, setTimerDuration] = useState(300); // default 5 min
@@ -627,6 +765,9 @@ export default function InteractiveActivity() {
   const isWarning = timeLeft !== null && timeLeft <= 60 && timeLeft > 30;
   const timerColor = isUrgent ? '#ef4444' : isWarning ? '#f97316' : CI.cyan;
 
+  // ── Landing page ──
+  if (!mode) return <LandingPage onSelect={setMode} />;
+
   const modes = [
     { id: 'wordcloud', label: '☁️ Word Cloud', desc: 'สร้าง Word Cloud จากคำของนักศึกษา' },
     { id: 'poll', label: '📊 Live Poll', desc: 'สร้าง Poll แบบ Real-time' },
@@ -637,7 +778,17 @@ export default function InteractiveActivity() {
     <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: FONT }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-        <h3 style={{ margin: 0, fontSize: '22px', color: CI.dark, fontWeight: 700 }}>🎯 Interactive Activities</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button onClick={() => { setMode(null); setRoomCode(''); setShowQR(false); clearTimeout(timerRef.current); setTimeLeft(null); setTimerRunning(false); }} style={{
+            padding: '6px 14px', borderRadius: '10px', border: '1.5px solid #e2e8f0',
+            background: '#f8fafc', color: '#64748b', cursor: 'pointer',
+            fontSize: '14px', fontWeight: 700, fontFamily: FONT,
+            display: 'flex', alignItems: 'center', gap: '6px',
+          }}>← โหมด</button>
+          <h3 style={{ margin: 0, fontSize: '22px', color: CI.dark, fontWeight: 700 }}>
+            {MODE_CARDS.find(m => m.id === mode)?.emoji} {MODE_CARDS.find(m => m.id === mode)?.label}
+          </h3>
+        </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
 
           {/* Timer display when running */}

@@ -34,17 +34,17 @@ const SAMPLE_QUESTIONS = [
 
 const OPTION_KEYS = ['A', 'B', 'C', 'D'];
 
-// Color scheme per option — WWTBAM-inspired
+// Color scheme per option — light theme
 const OPT = {
-  A: { dark: '#051a40', mid: '#1d4ed8', neon: '#93c5fd', glow: '#3b82f6' },
-  B: { dark: '#3b1a00', mid: '#c2410c', neon: '#fdba74', glow: '#f97316' },
-  C: { dark: '#022c1a', mid: '#047857', neon: '#6ee7b7', glow: '#10b981' },
-  D: { dark: '#3b0028', mid: '#9d174d', neon: '#f9a8d4', glow: '#e6007e' },
+  A: { dark: '#dbeafe', mid: '#3b82f6', neon: '#1e3a8a', glow: '#3b82f6' },
+  B: { dark: '#ffedd5', mid: '#f97316', neon: '#7c2d12', glow: '#f97316' },
+  C: { dark: '#dcfce7', mid: '#16a34a', neon: '#14532d', glow: '#16a34a' },
+  D: { dark: '#fdf4ff', mid: '#c026d3', neon: '#6b21a8', glow: '#c026d3' },
 };
 
 const TEAM_CFG = [
-  { color: '#3b82f6', bg: '#051a40', dim: '#0a2a6e', emoji: '🔵', label: 'ทีม A' },
-  { color: '#e6007e', bg: '#3b0028', dim: '#6e0050', emoji: '🔴', label: 'ทีม B' },
+  { color: '#2563eb', bg: '#eff6ff', dim: '#dbeafe', emoji: '🔵', label: 'ทีม A' },
+  { color: '#db2777', bg: '#fdf2f8', dim: '#fce7f3', emoji: '🔴', label: 'ทีม B' },
 ];
 
 // ── Confetti ─────────────────────────────────────────────────────────────────
@@ -168,7 +168,7 @@ function TimerCircle({ seconds, maxSeconds, size = 100 }) {
   const urgent = frac <= 0.25;
   return (
     <svg width={size} height={size} style={{ display: 'block', margin: '0 auto' }}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#0a1530" strokeWidth={9} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={9} />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={col} strokeWidth={9}
         strokeDasharray={circ}
         strokeDashoffset={circ * (1 - frac)}
@@ -199,22 +199,22 @@ function AudienceModal({ options, correctAnswer, onClose }) {
     pcts[k] = idx === wrongs.length - 1 ? remaining - perWrong * (wrongs.length - 1) : perWrong;
   });
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-      <div style={{ background: 'linear-gradient(135deg,#0d1a3a,#1a0d4a)', border: '2px solid #4a3a8a', borderRadius: 22, padding: '36px 40px', maxWidth: 440, width: '90%', textAlign: 'center', boxShadow: '0 0 80px rgba(124,77,255,0.5)' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+      <div style={{ background: '#ffffff', border: '2px solid #e2e8f0', borderRadius: 22, padding: '36px 40px', maxWidth: 440, width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
         <div style={{ fontSize: 44, marginBottom: 6 }}>👥</div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: '#ffd700', marginBottom: 24, fontFamily: FONT }}>ผลโหวตจากห้องเรียน</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginBottom: 24, fontFamily: FONT }}>ผลโหวตจากห้องเรียน</div>
         {OPTION_KEYS.filter(k => options[k]).map(k => (
           <div key={k} style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
               <span style={{ color: OPT[k].neon, fontSize: 14, fontFamily: FONT, fontWeight: 700 }}>{k}: {options[k]}</span>
               <span style={{ color: OPT[k].neon, fontWeight: 700, fontSize: 14 }}>{pcts[k]}%</span>
             </div>
-            <div style={{ background: '#0a1020', borderRadius: 10, height: 28, overflow: 'hidden', border: `1px solid ${OPT[k].mid}40` }}>
-              <div style={{ width: `${pcts[k]}%`, height: '100%', background: `linear-gradient(90deg,${OPT[k].mid},${OPT[k].neon})`, borderRadius: 10, transition: 'width 1.3s cubic-bezier(0.34,1.56,0.64,1)', boxShadow: `0 0 12px ${OPT[k].glow}` }} />
+            <div style={{ background: '#f1f5f9', borderRadius: 10, height: 28, overflow: 'hidden', border: `1px solid ${OPT[k].mid}30` }}>
+              <div style={{ width: `${pcts[k]}%`, height: '100%', background: `linear-gradient(90deg,${OPT[k].mid}80,${OPT[k].mid})`, borderRadius: 10, transition: 'width 1.3s cubic-bezier(0.34,1.56,0.64,1)', boxShadow: `0 0 8px ${OPT[k].glow}50` }} />
             </div>
           </div>
         ))}
-        <button onClick={onClose} style={{ marginTop: 18, padding: '10px 32px', borderRadius: 10, border: '1px solid #4a3a8a', background: 'transparent', color: '#8899bb', cursor: 'pointer', fontFamily: FONT, fontSize: 14 }}>ปิด</button>
+        <button onClick={onClose} style={{ marginTop: 18, padding: '10px 32px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b', cursor: 'pointer', fontFamily: FONT, fontSize: 14 }}>ปิด</button>
       </div>
     </div>
   );
@@ -503,12 +503,12 @@ export default function MillionaireGame() {
     const isCorrect = q && key === q.answer;
 
     if (gamePhase === 'reveal') {
-      if (isCorrect) return { bg: 'linear-gradient(135deg,#064e3b,#065f46)', border: '#10b981', color: '#6ee7b7', shadow: `0 0 28px #10b98170` };
-      if (isSel) return { bg: 'linear-gradient(135deg,#450a0a,#6b1a1a)', border: '#ef4444', color: '#fca5a5', shadow: `0 0 28px #ef444460` };
-      return { bg: opt.dark, border: '#1a2030', color: '#2a3a5a', shadow: 'none' };
+      if (isCorrect) return { bg: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', border: '#16a34a', color: '#14532d', shadow: `0 0 20px rgba(22,163,74,0.25)` };
+      if (isSel) return { bg: 'linear-gradient(135deg,#fee2e2,#fecaca)', border: '#ef4444', color: '#991b1b', shadow: `0 0 20px rgba(239,68,68,0.25)` };
+      return { bg: '#f1f5f9', border: '#e2e8f0', color: '#94a3b8', shadow: 'none' };
     }
-    if (gamePhase === 'locked' && isSel) return { bg: `linear-gradient(135deg,${opt.dark},${opt.mid}80)`, border: opt.neon, color: opt.neon, shadow: `0 0 32px ${opt.glow}` };
-    return { bg: opt.dark, border: `${opt.mid}90`, color: opt.neon, shadow: 'none' };
+    if (gamePhase === 'locked' && isSel) return { bg: `linear-gradient(135deg,${opt.dark},${opt.dark})`, border: opt.mid, color: opt.neon, shadow: `0 0 20px ${opt.glow}40` };
+    return { bg: opt.dark, border: `${opt.mid}60`, color: opt.neon, shadow: 'none' };
   };
 
   // ── Global CSS ────────────────────────────────────────────────────────────────
@@ -518,20 +518,20 @@ export default function MillionaireGame() {
     @keyframes winBounce{0%{transform:scale(0.2) rotate(-15deg);opacity:0}60%{transform:scale(1.12) rotate(4deg);opacity:1}80%{transform:scale(0.96) rotate(-1deg)}100%{transform:scale(1) rotate(0)}}
     @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
-    @keyframes ladderBlink{0%,100%{background:linear-gradient(90deg,#3d2a00,#5a3d00)}50%{background:linear-gradient(90deg,#6a4800,#8a6200)}}
+    @keyframes ladderBlink{0%,100%{background:linear-gradient(90deg,#fef3c7,#fde68a);border-color:#f59e0b}50%{background:linear-gradient(90deg,#fde68a,#fcd34d);border-color:#d97706}}
     @keyframes urgentPulse{0%,100%{opacity:1}50%{opacity:0.35}}
-    @keyframes borderGlow{0%,100%{box-shadow:0 0 12px rgba(80,120,255,0.15),inset 0 0 30px rgba(80,120,255,0.04)}50%{box-shadow:0 0 32px rgba(80,120,255,0.4),inset 0 0 60px rgba(80,120,255,0.08)}}
+    @keyframes borderGlow{0%,100%{box-shadow:0 0 10px rgba(59,130,246,0.08),inset 0 0 20px rgba(59,130,246,0.02)}50%{box-shadow:0 0 24px rgba(59,130,246,0.16),inset 0 0 40px rgba(59,130,246,0.04)}}
     @keyframes revealPop{0%{transform:scale(0.85);opacity:0}60%{transform:scale(1.06)}100%{transform:scale(1);opacity:1}}
     @keyframes slideL{from{transform:translateX(-24px);opacity:0}to{transform:translateX(0);opacity:1}}
     @keyframes slideR{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}
     @keyframes awardPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
     @keyframes teamWin{0%{transform:scale(0.9);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
-    @keyframes starTwinkle{0%,100%{opacity:0.2;transform:scale(1)}50%{opacity:0.8;transform:scale(1.4)}}
+    @keyframes starTwinkle{0%,100%{opacity:0.06;transform:scale(1)}50%{opacity:0.18;transform:scale(1.4)}}
   `;
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
-    <div style={{ fontFamily: FONT, minHeight: '100vh', background: '#020818', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ fontFamily: FONT, minHeight: '100vh', background: '#f8fafc', position: 'relative', overflow: 'hidden' }}>
       <style>{CSS}</style>
 
       {/* Starfield BG */}
@@ -542,7 +542,7 @@ export default function MillionaireGame() {
             width: i % 7 === 0 ? 3 : i % 4 === 0 ? 2 : 1.5,
             height: i % 7 === 0 ? 3 : i % 4 === 0 ? 2 : 1.5,
             borderRadius: '50%',
-            background: ['#ffd700', '#93c5fd', '#fff', '#c4b5fd', '#6ee7b7'][i % 5],
+            background: ['rgba(217,119,6,0.25)', 'rgba(59,130,246,0.2)', 'rgba(16,185,129,0.18)', 'rgba(192,38,211,0.18)', 'rgba(245,158,11,0.2)'][i % 5],
             top: `${(i * 17 + 5) % 95}%`,
             left: `${(i * 23 + 11) % 97}%`,
             animation: `starTwinkle ${2 + (i % 5) * 0.7}s ease-in-out ${(i * 0.13) % 2}s infinite`,
@@ -580,7 +580,7 @@ export default function MillionaireGame() {
             <h1 style={{ margin: '0 0 6px', fontSize: 44, fontWeight: 900, background: 'linear-gradient(135deg,#ffd700,#ff8c00,#ff4500,#ffd700)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', animation: 'goldPulse 3s ease-in-out infinite', letterSpacing: 2 }}>
               เกมเศรษฐี
             </h1>
-            <p style={{ color: '#4a5a8a', fontSize: 14, margin: 0, letterSpacing: 1 }}>Who Wants to Be a Millionaire? — Classroom Edition</p>
+            <p style={{ color: '#94a3b8', fontSize: 14, margin: 0, letterSpacing: 1 }}>Who Wants to Be a Millionaire? — Classroom Edition</p>
           </div>
 
           {/* Mode selector */}
@@ -591,23 +591,23 @@ export default function MillionaireGame() {
             ].map(m => (
               <button key={m.id} onClick={() => setGameMode(m.id)} style={{
                 padding: '18px 16px', borderRadius: 16, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
-                background: gameMode === m.id ? 'linear-gradient(135deg,#1a1200,#2d2000)' : '#0a0f1f',
-                border: `2px solid ${gameMode === m.id ? '#ffd700' : '#1e2a4a'}`,
-                boxShadow: gameMode === m.id ? '0 0 24px rgba(255,215,0,0.25)' : 'none',
+                background: gameMode === m.id ? 'linear-gradient(135deg,#fefce8,#fef3c7)' : '#ffffff',
+                border: `2px solid ${gameMode === m.id ? '#d97706' : '#e2e8f0'}`,
+                boxShadow: gameMode === m.id ? '0 0 20px rgba(217,119,6,0.15)' : '0 1px 3px rgba(0,0,0,0.06)',
                 transition: 'all 0.2s',
               }}>
                 <div style={{ fontSize: 32, marginBottom: 8 }}>{m.icon}</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: gameMode === m.id ? '#ffd700' : '#6677aa', marginBottom: 4 }}>{m.title}</div>
-                <div style={{ fontSize: 12, color: '#2a3a5a' }}>{m.desc}</div>
-                {gameMode === m.id && <div style={{ marginTop: 8, color: '#ffd700', fontSize: 12 }}>✓ เลือกแล้ว</div>}
+                <div style={{ fontSize: 16, fontWeight: 800, color: gameMode === m.id ? '#92400e' : '#475569', marginBottom: 4 }}>{m.title}</div>
+                <div style={{ fontSize: 12, color: '#94a3b8' }}>{m.desc}</div>
+                {gameMode === m.id && <div style={{ marginTop: 8, color: '#d97706', fontSize: 12 }}>✓ เลือกแล้ว</div>}
               </button>
             ))}
           </div>
 
           {/* Team names */}
           {gameMode === 'teams' && (
-            <div style={{ background: '#0a0f1f', border: '1px solid #1e2a4a', borderRadius: 14, padding: '18px 20px', marginBottom: 18, animation: 'fadeUp 0.3s ease' }}>
-              <div style={{ color: '#ffd700', fontSize: 14, fontWeight: 800, marginBottom: 14 }}>⚔️ ตั้งชื่อทีม</div>
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '18px 20px', marginBottom: 18, animation: 'fadeUp 0.3s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              <div style={{ color: '#0f172a', fontSize: 14, fontWeight: 800, marginBottom: 14 }}>⚔️ ตั้งชื่อทีม</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {[0, 1].map(i => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -625,17 +625,17 @@ export default function MillionaireGame() {
           )}
 
           {/* Timer */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, background: '#0a0f1f', border: '1px solid #1e2a4a', borderRadius: 14, padding: '12px 20px', flexWrap: 'wrap' }}>
-            <span style={{ color: '#4a5a8a', fontSize: 13, fontWeight: 600 }}>⏱️ เวลาต่อข้อ:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: '12px 20px', flexWrap: 'wrap', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <span style={{ color: '#64748b', fontSize: 13, fontWeight: 600 }}>⏱️ เวลาต่อข้อ:</span>
             {[15, 30, 45, 60].map(s => (
-              <button key={s} onClick={() => setTimerSeconds(s)} style={{ padding: '6px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: FONT, fontSize: 13, background: timerSeconds === s ? 'linear-gradient(135deg,#854d0e,#ffd700)' : '#1e2a4a', color: timerSeconds === s ? '#000' : '#4a5a8a', fontWeight: timerSeconds === s ? 800 : 400, transition: 'all 0.15s' }}>{s}s</button>
+              <button key={s} onClick={() => setTimerSeconds(s)} style={{ padding: '6px 18px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: FONT, fontSize: 13, background: timerSeconds === s ? 'linear-gradient(135deg,#854d0e,#ffd700)' : '#f1f5f9', color: timerSeconds === s ? '#000' : '#64748b', fontWeight: timerSeconds === s ? 800 : 400, transition: 'all 0.15s' }}>{s}s</button>
             ))}
           </div>
 
           {/* Tabs */}
-          <div style={{ display: 'flex', background: '#0a0f1f', borderRadius: 12, padding: 4, marginBottom: 18, gap: 4, border: '1px solid #1e2a4a' }}>
+          <div style={{ display: 'flex', background: '#ffffff', borderRadius: 12, padding: 4, marginBottom: 18, gap: 4, border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             {[{ id: 'manual', label: '✏️ สร้างเอง' }, { id: 'ai', label: '🤖 AI สร้างให้' }].map(t => (
-              <button key={t.id} onClick={() => setSetupTab(t.id)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: setupTab === t.id ? 'linear-gradient(135deg,#1a1200,#2d2000)' : 'transparent', color: setupTab === t.id ? '#ffd700' : '#4a5a8a', fontWeight: setupTab === t.id ? 700 : 400, fontSize: 14, fontFamily: FONT, transition: 'all 0.2s' }}>{t.label}</button>
+              <button key={t.id} onClick={() => setSetupTab(t.id)} style={{ flex: 1, padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer', background: setupTab === t.id ? 'linear-gradient(135deg,#fefce8,#fef3c7)' : 'transparent', color: setupTab === t.id ? '#92400e' : '#64748b', fontWeight: setupTab === t.id ? 700 : 400, fontSize: 14, fontFamily: FONT, transition: 'all 0.2s' }}>{t.label}</button>
             ))}
           </div>
 
@@ -643,33 +643,33 @@ export default function MillionaireGame() {
           {setupTab === 'manual' && (
             <div>
               {questions.map((q, idx) => (
-                <div key={q.id} style={{ background: '#0a0f1f', border: '1px solid #1e2a4a', borderRadius: 14, marginBottom: 10, overflow: 'hidden', animation: 'fadeUp 0.25s ease' }}>
+                <div key={q.id} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, marginBottom: 10, overflow: 'hidden', animation: 'fadeUp 0.25s ease', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
                   <div onClick={() => toggleCollapse(q.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', cursor: 'pointer', userSelect: 'none' }}>
                     <span style={{ background: 'linear-gradient(135deg,#854d0e,#ffd700)', color: '#000', borderRadius: 8, padding: '3px 10px', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>ข้อ {idx + 1}</span>
-                    <span style={{ color: '#4a5a8a', flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.question || '(ยังไม่มีคำถาม)'}</span>
-                    {q.answer && <span style={{ background: '#022c1a', color: '#10b981', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>✓ {q.answer}</span>}
-                    <button onClick={e => { e.stopPropagation(); removeQuestion(q.id); }} style={{ background: '#2a0a0a', border: 'none', color: '#ef4444', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 12, fontFamily: FONT }}>🗑</button>
-                    <span style={{ color: '#2a3a5a', fontSize: 14 }}>{collapsed[q.id] ? '▼' : '▲'}</span>
+                    <span style={{ color: '#64748b', flex: 1, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.question || '(ยังไม่มีคำถาม)'}</span>
+                    {q.answer && <span style={{ background: '#dcfce7', color: '#14532d', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>✓ {q.answer}</span>}
+                    <button onClick={e => { e.stopPropagation(); removeQuestion(q.id); }} style={{ background: '#fee2e2', border: 'none', color: '#ef4444', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 12, fontFamily: FONT }}>🗑</button>
+                    <span style={{ color: '#94a3b8', fontSize: 14 }}>{collapsed[q.id] ? '▼' : '▲'}</span>
                   </div>
                   {!collapsed[q.id] && (
-                    <div style={{ padding: '0 18px 18px', borderTop: '1px solid #1e2a4a' }}>
+                    <div style={{ padding: '0 18px 18px', borderTop: '1px solid #f1f5f9' }}>
                       <textarea placeholder="คำถาม..." value={q.question} onChange={e => updateQuestion(q.id, 'question', e.target.value)}
-                        style={{ width: '100%', marginTop: 12, padding: '10px 14px', borderRadius: 8, border: '1px solid #2a3a5a', background: '#050c1f', color: '#e2e8f0', fontFamily: FONT, fontSize: 15, resize: 'vertical', minHeight: 56, outline: 'none', boxSizing: 'border-box' }} />
+                        style={{ width: '100%', marginTop: 12, padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#ffffff', color: '#0f172a', fontFamily: FONT, fontSize: 15, resize: 'vertical', minHeight: 56, outline: 'none', boxSizing: 'border-box' }} />
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
                         {OPTION_KEYS.map(key => (
                           <div key={key} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                             <span style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: q.answer === key ? OPT[key].mid : OPT[key].dark, color: q.answer === key ? '#fff' : OPT[key].neon, fontSize: 12, fontWeight: 800, border: `1.5px solid ${OPT[key].mid}` }}>{key}</span>
                             <input placeholder={`ตัวเลือก ${key}`} value={q.options[key]} onChange={e => updateOption(q.id, key, e.target.value)}
-                              style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: `1px solid ${OPT[key].mid}40`, background: OPT[key].dark, color: OPT[key].neon, fontFamily: FONT, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+                              style={{ flex: 1, padding: '8px 10px', borderRadius: 8, border: `1px solid ${OPT[key].mid}50`, background: OPT[key].dark, color: OPT[key].neon, fontFamily: FONT, fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
                           </div>
                         ))}
                       </div>
                       <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={{ color: '#4a5a8a', fontSize: 12 }}>เฉลย:</span>
+                        <span style={{ color: '#64748b', fontSize: 12 }}>เฉลย:</span>
                         {OPTION_KEYS.map(key => (
                           <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                            <input type="radio" name={`ans_${q.id}`} checked={q.answer === key} onChange={() => updateQuestion(q.id, 'answer', key)} style={{ accentColor: OPT[key].neon }} />
-                            <span style={{ color: q.answer === key ? OPT[key].neon : '#2a3a5a', fontSize: 13, fontWeight: q.answer === key ? 700 : 400 }}>{key}</span>
+                            <input type="radio" name={`ans_${q.id}`} checked={q.answer === key} onChange={() => updateQuestion(q.id, 'answer', key)} style={{ accentColor: OPT[key].mid }} />
+                            <span style={{ color: q.answer === key ? OPT[key].neon : '#94a3b8', fontSize: 13, fontWeight: q.answer === key ? 700 : 400 }}>{key}</span>
                           </label>
                         ))}
                       </div>
@@ -678,9 +678,9 @@ export default function MillionaireGame() {
                 </div>
               ))}
               {questions.length < 15 && (
-                <button onClick={addQuestion} style={{ width: '100%', padding: 14, borderRadius: 12, border: '1px dashed #2a3a5a', background: 'transparent', color: '#3b82f6', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: FONT, marginBottom: 12, transition: 'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#2a3a5a'; }}>
+                <button onClick={addQuestion} style={{ width: '100%', padding: 14, borderRadius: 12, border: '1px dashed #cbd5e1', background: 'transparent', color: '#3b82f6', cursor: 'pointer', fontSize: 14, fontWeight: 600, fontFamily: FONT, marginBottom: 12, transition: 'all 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.background = '#eff6ff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.background = 'transparent'; }}>
                   ➕ เพิ่มคำถาม ({questions.length}/15)
                 </button>
               )}
@@ -689,41 +689,41 @@ export default function MillionaireGame() {
 
           {/* AI tab */}
           {setupTab === 'ai' && (
-            <div style={{ background: '#0a0f1f', border: '1px solid #1e2a4a', borderRadius: 14, padding: 24, marginBottom: 16 }}>
-              <div style={{ fontSize: 16, fontWeight: 800, color: '#ffd700', marginBottom: 16 }}>🤖 AI สร้างคำถาม</div>
+            <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 14, padding: 24, marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', marginBottom: 16 }}>🤖 AI สร้างคำถาม</div>
               <div style={{ marginBottom: 12 }}>
-                <label style={{ color: '#4a5a8a', fontSize: 12, display: 'block', marginBottom: 6 }}>หัวข้อ *</label>
+                <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>หัวข้อ *</label>
                 <input placeholder="เช่น บัญชีการเงิน, กฎหมายธุรกิจ, ประวัติศาสตร์..." value={aiTopic} onChange={e => setAiTopic(e.target.value)}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #2a3a5a', background: '#050c1f', color: '#e2e8f0', fontFamily: FONT, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#ffffff', color: '#0f172a', fontFamily: FONT, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
                 {[{ label: 'ความยาก', val: aiDifficulty, opts: ['ง่าย', 'ปานกลาง', 'ยาก'], set: setAiDifficulty }, { label: 'จำนวน', val: aiCount, opts: [3, 5, 7, 10, 15], set: v => setAiCount(Number(v)) }].map(({ label, val, opts, set }) => (
                   <div key={label}>
-                    <label style={{ color: '#4a5a8a', fontSize: 12, display: 'block', marginBottom: 6 }}>{label}</label>
-                    <select value={val} onChange={e => set(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1px solid #2a3a5a', background: '#050c1f', color: '#e2e8f0', fontFamily: FONT, fontSize: 13, outline: 'none' }}>
+                    <label style={{ color: '#64748b', fontSize: 12, display: 'block', marginBottom: 6 }}>{label}</label>
+                    <select value={val} onChange={e => set(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1px solid #e2e8f0', background: '#ffffff', color: '#0f172a', fontFamily: FONT, fontSize: 13, outline: 'none' }}>
                       {opts.map(o => <option key={o} value={o}>{o}{label === 'จำนวน' ? ' ข้อ' : ''}</option>)}
                     </select>
                   </div>
                 ))}
               </div>
-              <button onClick={generateWithAI} disabled={aiLoading} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: aiLoading ? '#1e2a4a' : 'linear-gradient(135deg,#7c4dff,#00b4e6)', color: '#fff', fontWeight: 800, fontSize: 15, fontFamily: FONT, cursor: aiLoading ? 'not-allowed' : 'pointer' }}>
+              <button onClick={generateWithAI} disabled={aiLoading} style={{ width: '100%', padding: 14, borderRadius: 12, border: 'none', background: aiLoading ? '#e2e8f0' : 'linear-gradient(135deg,#7c4dff,#00b4e6)', color: aiLoading ? '#94a3b8' : '#fff', fontWeight: 800, fontSize: 15, fontFamily: FONT, cursor: aiLoading ? 'not-allowed' : 'pointer' }}>
                 {aiLoading ? <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}><span style={{ display: 'inline-block', animation: 'spin 1s linear infinite' }}>⏳</span>AI กำลังสร้าง...</span> : '✨ AI สร้างเลย'}
               </button>
               {aiPreview && (
                 <div style={{ marginTop: 20 }}>
-                  <div style={{ color: '#10b981', fontSize: 13, fontWeight: 700, marginBottom: 10 }}>✅ {aiPreview.length} คำถามพร้อมแล้ว</div>
+                  <div style={{ color: '#14532d', fontSize: 13, fontWeight: 700, marginBottom: 10 }}>✅ {aiPreview.length} คำถามพร้อมแล้ว</div>
                   {aiPreview.map((q, i) => (
-                    <div key={q.id} style={{ background: '#050c1f', borderRadius: 10, padding: 12, marginBottom: 8, border: '1px solid #1e2a4a' }}>
-                      <div style={{ color: '#ffd700', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>ข้อ {i + 1} · เฉลย: {q.answer}</div>
-                      <div style={{ color: '#e2e8f0', fontSize: 13, marginBottom: 6 }}>{q.question}</div>
+                    <div key={q.id} style={{ background: '#f8fafc', borderRadius: 10, padding: 12, marginBottom: 8, border: '1px solid #e2e8f0' }}>
+                      <div style={{ color: '#d97706', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>ข้อ {i + 1} · เฉลย: {q.answer}</div>
+                      <div style={{ color: '#0f172a', fontSize: 13, marginBottom: 6 }}>{q.question}</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-                        {OPTION_KEYS.map(k => <div key={k} style={{ fontSize: 12, color: q.answer === k ? OPT[k].neon : '#2a3a5a', fontWeight: q.answer === k ? 700 : 400 }}>{k}: {q.options[k]} {q.answer === k && '✓'}</div>)}
+                        {OPTION_KEYS.map(k => <div key={k} style={{ fontSize: 12, color: q.answer === k ? OPT[k].neon : '#94a3b8', fontWeight: q.answer === k ? 700 : 400 }}>{k}: {q.options[k]} {q.answer === k && '✓'}</div>)}
                       </div>
                     </div>
                   ))}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
-                    <button onClick={acceptAi} style={{ padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#022c1a,#065f46)', color: '#6ee7b7', fontWeight: 700, fontSize: 13, fontFamily: FONT }}>➕ เพิ่มต่อจากเดิม</button>
-                    <button onClick={replaceAi} style={{ padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#1a0d4a,#2d1a7a)', color: '#c4b5fd', fontWeight: 700, fontSize: 13, fontFamily: FONT }}>🔄 แทนที่ทั้งหมด</button>
+                    <button onClick={acceptAi} style={{ padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)', color: '#14532d', fontWeight: 700, fontSize: 13, fontFamily: FONT }}>➕ เพิ่มต่อจากเดิม</button>
+                    <button onClick={replaceAi} style={{ padding: 12, borderRadius: 10, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#ede9fe,#ddd6fe)', color: '#4c1d95', fontWeight: 700, fontSize: 13, fontFamily: FONT }}>🔄 แทนที่ทั้งหมด</button>
                   </div>
                 </div>
               )}
@@ -731,11 +731,11 @@ export default function MillionaireGame() {
           )}
 
           {/* Stats */}
-          <div style={{ background: '#0a0f1f', border: '1px solid #1e2a4a', borderRadius: 12, padding: '12px 18px', marginBottom: 16, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-            <span style={{ color: '#4a5a8a', fontSize: 13 }}>📋 คำถาม: <strong style={{ color: '#ffd700' }}>{questions.length}</strong>/15</span>
-            <span style={{ color: '#4a5a8a', fontSize: 13 }}>✅ พร้อม: <strong style={{ color: '#10b981' }}>{questions.filter(q => q.question?.trim() && q.options?.A && q.options?.B && q.options?.C && q.options?.D && q.answer).length}</strong></span>
-            <span style={{ color: '#4a5a8a', fontSize: 13 }}>⏱️ {timerSeconds}s/ข้อ</span>
-            {gameMode === 'teams' && <span style={{ color: '#4a5a8a', fontSize: 13 }}>⚔️ {teamNames[0]} vs {teamNames[1]}</span>}
+          <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 12, padding: '12px 18px', marginBottom: 16, display: 'flex', gap: 20, flexWrap: 'wrap', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+            <span style={{ color: '#64748b', fontSize: 13 }}>📋 คำถาม: <strong style={{ color: '#d97706' }}>{questions.length}</strong>/15</span>
+            <span style={{ color: '#64748b', fontSize: 13 }}>✅ พร้อม: <strong style={{ color: '#16a34a' }}>{questions.filter(q => q.question?.trim() && q.options?.A && q.options?.B && q.options?.C && q.options?.D && q.answer).length}</strong></span>
+            <span style={{ color: '#64748b', fontSize: 13 }}>⏱️ {timerSeconds}s/ข้อ</span>
+            {gameMode === 'teams' && <span style={{ color: '#64748b', fontSize: 13 }}>⚔️ {teamNames[0]} vs {teamNames[1]}</span>}
           </div>
 
           {/* Start */}
@@ -753,30 +753,30 @@ export default function MillionaireGame() {
 
           {/* Team score bar */}
           {gameMode === 'teams' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '14px 20px', gap: 12, background: 'rgba(0,0,0,0.5)', borderBottom: '1px solid #1e2a4a', backdropFilter: 'blur(8px)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', padding: '14px 20px', gap: 12, background: 'rgba(255,255,255,0.95)', borderBottom: '1px solid #e2e8f0', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
               {[0, 1].map((i, arrIdx) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: arrIdx === 0 ? 'flex-start' : 'flex-end', flexDirection: arrIdx === 0 ? 'row' : 'row-reverse', animation: arrIdx === 0 ? 'slideL 0.4s ease' : 'slideR 0.4s ease' }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 12, background: TEAM_CFG[i].bg, border: `2.5px solid ${TEAM_CFG[i].color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: `0 0 14px ${TEAM_CFG[i].color}50`, flexShrink: 0 }}>{TEAM_CFG[i].emoji}</div>
+                  <div style={{ width: 42, height: 42, borderRadius: 12, background: TEAM_CFG[i].bg, border: `2.5px solid ${TEAM_CFG[i].color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, boxShadow: `0 0 10px ${TEAM_CFG[i].color}30`, flexShrink: 0 }}>{TEAM_CFG[i].emoji}</div>
                   <div style={{ textAlign: arrIdx === 0 ? 'left' : 'right' }}>
                     <div style={{ color: TEAM_CFG[i].color, fontSize: 13, fontWeight: 800 }}>{teamNames[i]}</div>
-                    <div style={{ color: '#ffd700', fontSize: 22, fontWeight: 900, textShadow: '0 0 12px rgba(255,215,0,0.5)' }}>฿{teamScores[i].toLocaleString()}</div>
+                    <div style={{ color: '#d97706', fontSize: 22, fontWeight: 900 }}>฿{teamScores[i].toLocaleString()}</div>
                   </div>
                 </div>
               ))}
               <div style={{ textAlign: 'center' }}>
-                <div style={{ color: '#ffd700', fontSize: 22 }}>⚔️</div>
-                <div style={{ color: '#2a3a5a', fontSize: 11, fontWeight: 600 }}>ข้อ {currentLevel}/{gameQuestions.length}</div>
+                <div style={{ color: '#0f172a', fontSize: 22 }}>⚔️</div>
+                <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600 }}>ข้อ {currentLevel}/{gameQuestions.length}</div>
               </div>
             </div>
           )}
 
           {/* Solo top bar */}
           {gameMode === 'solo' && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', borderBottom: '1px solid #1e2a4a', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
-              <div style={{ color: '#ffd700', fontWeight: 800, fontSize: 18, textShadow: '0 0 12px rgba(255,215,0,0.5)' }}>🎰 เกมเศรษฐี</div>
-              <div style={{ color: '#2a3a5a', fontSize: 13 }}>ข้อ {currentLevel}/{gameQuestions.length} · ฿{prizeEntry?.amount}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+              <div style={{ color: '#d97706', fontWeight: 800, fontSize: 18 }}>🎰 เกมเศรษฐี</div>
+              <div style={{ color: '#64748b', fontSize: 13 }}>ข้อ {currentLevel}/{gameQuestions.length} · ฿{prizeEntry?.amount}</div>
               {gamePhase === 'playing' && (
-                <button onClick={walkAway} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #1e2a4a', background: 'transparent', color: '#4a5a8a', cursor: 'pointer', fontSize: 12, fontFamily: FONT }}>🚶 เดินออก</button>
+                <button onClick={walkAway} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b', cursor: 'pointer', fontSize: 12, fontFamily: FONT }}>🚶 เดินออก</button>
               )}
             </div>
           )}
@@ -787,11 +787,11 @@ export default function MillionaireGame() {
             {/* Left: timer + lifelines */}
             <div style={{ paddingRight: 16 }}>
               <div style={{ marginBottom: 20, textAlign: 'center' }}>
-                <div style={{ color: '#2a3a5a', fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>⏱️ เวลาเหลือ</div>
+                <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>⏱️ เวลาเหลือ</div>
                 <TimerCircle seconds={timeLeft} maxSeconds={timerSeconds} size={96} />
               </div>
               <div>
-                <div style={{ color: '#2a3a5a', fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>💡 ความช่วยเหลือ</div>
+                <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>💡 ความช่วยเหลือ</div>
                 {[
                   { k: 'fifty', icon: '🎯', label: '50:50', desc: 'ตัด 2 ตัวผิด', action: useFiftyFifty },
                   { k: 'audience', icon: '👥', label: 'ถามห้อง', desc: 'ดูผลโหวต', action: useAudience },
@@ -799,12 +799,12 @@ export default function MillionaireGame() {
                 ].map(ll => {
                   const active = lifelines[ll.k] && gamePhase === 'playing';
                   return (
-                    <button key={ll.k} onClick={ll.action} disabled={!active} style={{ width: '100%', marginBottom: 8, padding: '10px 12px', borderRadius: 12, border: lifelines[ll.k] ? '1px solid #2a3a6a' : '1px solid #0d1228', background: lifelines[ll.k] ? 'linear-gradient(135deg,#0d1530,#1a2040)' : '#050c1f', color: lifelines[ll.k] ? '#e2e8f0' : '#1e2a4a', cursor: active ? 'pointer' : 'not-allowed', fontFamily: FONT, textAlign: 'left', opacity: lifelines[ll.k] ? 1 : 0.3, transition: 'all 0.2s', boxShadow: active ? `0 0 12px rgba(80,120,255,0.1)` : 'none' }}
-                      onMouseEnter={e => { if (active) e.currentTarget.style.boxShadow = '0 0 20px rgba(80,120,255,0.3)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.boxShadow = active ? '0 0 12px rgba(80,120,255,0.1)' : 'none'; }}>
+                    <button key={ll.k} onClick={ll.action} disabled={!active} style={{ width: '100%', marginBottom: 8, padding: '10px 12px', borderRadius: 12, border: lifelines[ll.k] ? '1px solid #e2e8f0' : '1px solid #f1f5f9', background: lifelines[ll.k] ? '#ffffff' : '#f8fafc', color: lifelines[ll.k] ? '#0f172a' : '#cbd5e1', cursor: active ? 'pointer' : 'not-allowed', fontFamily: FONT, textAlign: 'left', opacity: lifelines[ll.k] ? 1 : 0.55, transition: 'all 0.2s', boxShadow: active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}
+                      onMouseEnter={e => { if (active) { e.currentTarget.style.boxShadow = '0 4px 12px rgba(59,130,246,0.15)'; e.currentTarget.style.borderColor = '#bfdbfe'; } }}
+                      onMouseLeave={e => { e.currentTarget.style.boxShadow = active ? '0 1px 4px rgba(0,0,0,0.08)' : 'none'; e.currentTarget.style.borderColor = lifelines[ll.k] ? '#e2e8f0' : '#f1f5f9'; }}>
                       <div style={{ fontSize: 18, marginBottom: 2 }}>{ll.icon}</div>
                       <div style={{ fontSize: 12, fontWeight: 700 }}>{ll.label}</div>
-                      <div style={{ fontSize: 10, color: lifelines[ll.k] ? '#4a5a8a' : '#1e2a4a' }}>{lifelines[ll.k] ? ll.desc : 'ใช้แล้ว'}</div>
+                      <div style={{ fontSize: 10, color: lifelines[ll.k] ? '#94a3b8' : '#cbd5e1' }}>{lifelines[ll.k] ? ll.desc : 'ใช้แล้ว'}</div>
                     </button>
                   );
                 })}
@@ -819,9 +819,9 @@ export default function MillionaireGame() {
               </div>
 
               {/* Question box */}
-              <div style={{ background: 'linear-gradient(135deg,#0d1a40,#050c25)', border: '1.5px solid #2a3a6a', borderRadius: 20, padding: '28px 32px', marginBottom: 28, width: '100%', boxSizing: 'border-box', textAlign: 'center', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'borderGlow 3s ease-in-out infinite', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)', width: 240, height: 140, background: 'radial-gradient(ellipse,rgba(100,130,255,0.07) 0%,transparent 70%)', pointerEvents: 'none' }} />
-                <p style={{ color: '#fff', fontSize: 21, fontWeight: 700, lineHeight: 1.65, margin: 0, textShadow: '0 0 20px rgba(100,130,255,0.25)' }}>
+              <div style={{ background: '#ffffff', border: '1.5px solid #e2e8f0', borderRadius: 20, padding: '28px 32px', marginBottom: 28, width: '100%', boxSizing: 'border-box', textAlign: 'center', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', animation: 'borderGlow 3s ease-in-out infinite', position: 'relative', overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+                <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)', width: 240, height: 140, background: 'radial-gradient(ellipse,rgba(59,130,246,0.04) 0%,transparent 70%)', pointerEvents: 'none' }} />
+                <p style={{ color: '#0f172a', fontSize: 21, fontWeight: 700, lineHeight: 1.65, margin: 0 }}>
                   {currentQuestion.question}
                 </p>
               </div>
@@ -839,7 +839,7 @@ export default function MillionaireGame() {
                       style={{ padding: '14px 18px', borderRadius: 12, background: s.bg, border: `2px solid ${s.border}`, color: s.color, boxShadow: s.shadow, cursor: canClick ? 'pointer' : 'default', fontFamily: FONT, fontSize: 15, fontWeight: 600, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.22s', outline: 'none', animation: isRevealCorrect ? 'revealPop 0.4s ease' : 'none', clipPath: 'polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%)' }}
                       onMouseEnter={e => { if (canClick) { e.currentTarget.style.boxShadow = `0 0 28px ${OPT[key].glow}70`; e.currentTarget.style.borderColor = OPT[key].neon; e.currentTarget.style.transform = 'scale(1.015)'; } }}
                       onMouseLeave={e => { e.currentTarget.style.boxShadow = s.shadow; e.currentTarget.style.borderColor = s.border; e.currentTarget.style.transform = 'scale(1)'; }}>
-                      <span style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: s.bg === OPT[key].dark ? OPT[key].mid : (gamePhase === 'reveal' && currentQuestion.answer === key ? '#10b981' : gamePhase === 'reveal' && selectedAnswer === key ? '#ef4444' : OPT[key].mid), color: '#fff', fontSize: 14, fontWeight: 900, boxShadow: `0 0 10px ${OPT[key].glow}60` }}>{key}</span>
+                      <span style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: gamePhase === 'reveal' && currentQuestion.answer === key ? '#16a34a' : gamePhase === 'reveal' && selectedAnswer === key ? '#ef4444' : OPT[key].mid, color: '#fff', fontSize: 14, fontWeight: 900, boxShadow: `0 0 8px ${OPT[key].glow}40` }}>{key}</span>
                       <span>{currentQuestion.options[key]}</span>
                     </button>
                   );
@@ -877,24 +877,24 @@ export default function MillionaireGame() {
                   {gameMode === 'teams' && (
                     <div>
                       <div style={{ marginBottom: 16 }}>
-                        <div style={{ color: '#ffd700', fontSize: 15, fontWeight: 800, marginBottom: 4 }}>
+                        <div style={{ color: '#d97706', fontSize: 15, fontWeight: 800, marginBottom: 4 }}>
                           ✅ เฉลย: {currentQuestion.answer} — {currentQuestion.options[currentQuestion.answer]}
                         </div>
-                        <div style={{ color: '#4a5a8a', fontSize: 12 }}>กดทีมที่ตอบถูกต้อง</div>
+                        <div style={{ color: '#64748b', fontSize: 12 }}>กดทีมที่ตอบถูกต้อง</div>
                       </div>
                       {awardPending && (
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, animation: 'fadeUp 0.3s ease' }}>
                           {[0, 1].map(i => (
-                            <button key={i} onClick={() => awardTeam(i)} style={{ padding: '16px 8px', borderRadius: 14, border: `2.5px solid ${TEAM_CFG[i].color}`, background: TEAM_CFG[i].bg, color: TEAM_CFG[i].color, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: FONT, boxShadow: `0 0 20px ${TEAM_CFG[i].color}45`, animation: 'awardPulse 1.8s ease-in-out infinite', transition: 'all 0.15s' }}
+                            <button key={i} onClick={() => awardTeam(i)} style={{ padding: '16px 8px', borderRadius: 14, border: `2.5px solid ${TEAM_CFG[i].color}`, background: TEAM_CFG[i].bg, color: TEAM_CFG[i].color, fontWeight: 800, fontSize: 14, cursor: 'pointer', fontFamily: FONT, boxShadow: `0 0 16px ${TEAM_CFG[i].color}30`, animation: 'awardPulse 1.8s ease-in-out infinite', transition: 'all 0.15s' }}
                               onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.06)'; e.currentTarget.style.boxShadow = `0 0 32px ${TEAM_CFG[i].color}70`; }}
                               onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = `0 0 20px ${TEAM_CFG[i].color}45`; }}>
                               ✅ {teamNames[i]}<br />
                               <span style={{ fontSize: 11, fontWeight: 400, opacity: 0.85 }}>+฿{prizeEntry?.amount}</span>
                             </button>
                           ))}
-                          <button onClick={() => awardTeam(-1)} style={{ padding: '16px 12px', borderRadius: 14, border: '1.5px solid #1e2a4a', background: '#050c1f', color: '#2a3a5a', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: FONT, transition: 'all 0.15s', alignSelf: 'center' }}
+                          <button onClick={() => awardTeam(-1)} style={{ padding: '16px 12px', borderRadius: 14, border: '1.5px solid #e2e8f0', background: '#f8fafc', color: '#94a3b8', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: FONT, transition: 'all 0.15s', alignSelf: 'center' }}
                             onMouseEnter={e => { e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.color = '#ef4444'; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e2a4a'; e.currentTarget.style.color = '#2a3a5a'; }}>
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.color = '#94a3b8'; }}>
                             ❌ ผิดทั้งคู่
                           </button>
                         </div>
@@ -907,17 +907,17 @@ export default function MillionaireGame() {
 
             {/* Right: prize ladder */}
             <div style={{ paddingLeft: 16 }}>
-              <div style={{ color: '#2a3a5a', fontSize: 11, fontWeight: 700, letterSpacing: 1, textAlign: 'center', marginBottom: 8 }}>🏆 รางวัล</div>
+              <div style={{ color: '#64748b', fontSize: 11, fontWeight: 700, letterSpacing: 1, textAlign: 'center', marginBottom: 8 }}>🏆 รางวัล</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {[...PRIZES].reverse().map(prize => {
                   const isCurr = prize.level === currentLevel;
                   const isPast = prize.level < currentLevel;
                   return (
-                    <div key={prize.level} style={{ padding: '5px 10px', borderRadius: 7, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, background: isCurr ? 'linear-gradient(90deg,#3d2a00,#5a3d00)' : prize.safe && !isPast ? 'rgba(16,185,129,0.07)' : 'transparent', border: isCurr ? '1px solid #ffc107' : prize.safe ? '1px solid rgba(16,185,129,0.25)' : '1px solid transparent', animation: isCurr ? 'ladderBlink 2s ease-in-out infinite' : 'none', boxShadow: isCurr ? '0 0 14px rgba(255,193,7,0.35)' : 'none' }}>
-                      <span style={{ color: isPast ? '#10b981' : isCurr ? '#ffd700' : prize.safe ? '#34d399' : '#1e2a4a', fontSize: 10 }}>
+                    <div key={prize.level} style={{ padding: '5px 10px', borderRadius: 7, fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, background: isCurr ? 'linear-gradient(90deg,#fef3c7,#fde68a)' : prize.safe && !isPast ? 'rgba(16,185,129,0.06)' : 'transparent', border: isCurr ? '1px solid #d97706' : prize.safe ? '1px solid rgba(16,185,129,0.2)' : '1px solid transparent', animation: isCurr ? 'ladderBlink 2s ease-in-out infinite' : 'none', boxShadow: isCurr ? '0 0 10px rgba(217,119,6,0.2)' : 'none' }}>
+                      <span style={{ color: isPast ? '#16a34a' : isCurr ? '#d97706' : prize.safe ? '#16a34a' : '#cbd5e1', fontSize: 10 }}>
                         {isPast ? '✓' : prize.safe ? '🛡' : `${prize.level}.`}
                       </span>
-                      <span style={{ color: isCurr ? '#ffd700' : isPast ? '#34d399' : prize.safe ? '#34d399' : '#1e2a4a', fontWeight: isCurr ? 900 : isPast ? 600 : 400, flex: 1, textAlign: 'right' }}>
+                      <span style={{ color: isCurr ? '#92400e' : isPast ? '#16a34a' : prize.safe ? '#16a34a' : '#94a3b8', fontWeight: isCurr ? 900 : isPast ? 600 : 400, flex: 1, textAlign: 'right' }}>
                         ฿{prize.amount}
                       </span>
                     </div>
@@ -931,63 +931,63 @@ export default function MillionaireGame() {
 
       {/* ═══════════════ WIN ═══════════════ */}
       {gamePhase === 'won' && (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(ellipse at center,#1a1200 0%,#020818 70%)', padding: 32, textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(to bottom, #fffbeb, #fef3c7)', padding: 32, textAlign: 'center', position: 'relative', zIndex: 1 }}>
           {gameMode === 'teams' ? (
             <div style={{ animation: 'winBounce 0.8s cubic-bezier(0.34,1.56,0.64,1)' }}>
-              <div style={{ fontSize: 80, marginBottom: 12, filter: 'drop-shadow(0 0 30px rgba(255,215,0,0.6))' }}>⚔️</div>
-              <h1 style={{ fontSize: 42, fontWeight: 900, margin: '0 0 28px', color: '#ffd700', animation: 'goldPulse 2s ease-in-out infinite' }}>
+              <div style={{ fontSize: 80, marginBottom: 12 }}>⚔️</div>
+              <h1 style={{ fontSize: 42, fontWeight: 900, margin: '0 0 28px', color: '#d97706', animation: 'goldPulse 2s ease-in-out infinite' }}>
                 {teamWinner === 'tie' ? '🤝 เสมอกัน!' : teamWinner !== null ? `🏆 ${teamNames[teamWinner]} ชนะ!` : 'จบการแข่งขัน!'}
               </h1>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 480, margin: '0 auto 36px' }}>
                 {[0, 1].map(i => (
-                  <div key={i} style={{ background: TEAM_CFG[i].bg, border: `2.5px solid ${i === teamWinner ? '#ffd700' : TEAM_CFG[i].color}`, borderRadius: 20, padding: '28px 20px', textAlign: 'center', boxShadow: i === teamWinner ? '0 0 40px rgba(255,215,0,0.4)' : `0 0 24px ${TEAM_CFG[i].color}30`, animation: i === teamWinner ? 'teamWin 0.6s ease, awardPulse 2s 0.6s ease-in-out infinite' : 'teamWin 0.6s ease' }}>
+                  <div key={i} style={{ background: TEAM_CFG[i].bg, border: `2.5px solid ${i === teamWinner ? '#d97706' : TEAM_CFG[i].color}`, borderRadius: 20, padding: '28px 20px', textAlign: 'center', boxShadow: i === teamWinner ? '0 0 30px rgba(217,119,6,0.2)' : `0 0 16px ${TEAM_CFG[i].color}20`, animation: i === teamWinner ? 'teamWin 0.6s ease, awardPulse 2s 0.6s ease-in-out infinite' : 'teamWin 0.6s ease' }}>
                     <div style={{ fontSize: 40, marginBottom: 8 }}>{i === teamWinner ? '🏆' : TEAM_CFG[i].emoji}</div>
                     <div style={{ color: TEAM_CFG[i].color, fontSize: 16, fontWeight: 800, marginBottom: 4 }}>{teamNames[i]}</div>
-                    <div style={{ color: '#ffd700', fontSize: 28, fontWeight: 900, textShadow: '0 0 16px rgba(255,215,0,0.5)' }}>฿{teamScores[i].toLocaleString()}</div>
-                    {i === teamWinner && <div style={{ color: '#ffd700', fontSize: 12, marginTop: 6 }}>👑 ผู้ชนะ</div>}
+                    <div style={{ color: '#d97706', fontSize: 28, fontWeight: 900 }}>฿{teamScores[i].toLocaleString()}</div>
+                    {i === teamWinner && <div style={{ color: '#d97706', fontSize: 12, marginTop: 6 }}>👑 ผู้ชนะ</div>}
                   </div>
                 ))}
               </div>
             </div>
           ) : (
             <div style={{ animation: 'winBounce 0.8s cubic-bezier(0.34,1.56,0.64,1)' }}>
-              <div style={{ fontSize: 80, marginBottom: 12, filter: 'drop-shadow(0 0 30px rgba(255,215,0,0.6))' }}>🎉</div>
-              <h1 style={{ fontSize: 52, fontWeight: 900, margin: '0 0 8px', background: 'linear-gradient(135deg,#ffd700,#ff8c00,#ffd700)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', animation: 'goldPulse 2s ease-in-out infinite' }}>ยินดีด้วย!</h1>
-              <div style={{ color: '#4a5a8a', fontSize: 18, marginBottom: 14 }}>คุณได้รับรางวัล</div>
-              <div style={{ fontSize: 64, fontWeight: 900, color: '#ffd700', textShadow: '0 0 48px rgba(255,215,0,0.9)', marginBottom: 36, animation: 'goldPulse 1.5s ease-in-out infinite' }}>฿{finalPrize}</div>
+              <div style={{ fontSize: 80, marginBottom: 12 }}>🎉</div>
+              <h1 style={{ fontSize: 52, fontWeight: 900, margin: '0 0 8px', background: 'linear-gradient(135deg,#d97706,#ea580c,#d97706)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text', animation: 'goldPulse 2s ease-in-out infinite' }}>ยินดีด้วย!</h1>
+              <div style={{ color: '#64748b', fontSize: 18, marginBottom: 14 }}>คุณได้รับรางวัล</div>
+              <div style={{ fontSize: 64, fontWeight: 900, color: '#d97706', textShadow: '0 0 32px rgba(217,119,6,0.35)', marginBottom: 36, animation: 'goldPulse 1.5s ease-in-out infinite' }}>฿{finalPrize}</div>
             </div>
           )}
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button onClick={restartGame} style={{ padding: '14px 32px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#854d0e,#ffd700)', color: '#000', fontWeight: 800, fontSize: 16, fontFamily: FONT, boxShadow: '0 4px 20px rgba(255,215,0,0.4)', transition: 'all 0.2s' }}
+            <button onClick={restartGame} style={{ padding: '14px 32px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#854d0e,#ffd700)', color: '#000', fontWeight: 800, fontSize: 16, fontFamily: FONT, boxShadow: '0 4px 20px rgba(217,119,6,0.3)', transition: 'all 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.04)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>🔄 เล่นอีกครั้ง</button>
-            <button onClick={goToSetup} style={{ padding: '14px 32px', borderRadius: 12, border: '1px solid #2a3a5a', cursor: 'pointer', background: 'transparent', color: '#4a5a8a', fontWeight: 600, fontSize: 16, fontFamily: FONT, transition: 'all 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = '#4a5a8a'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = '#2a3a5a'}>🏠 กลับตั้งค่า</button>
+            <button onClick={goToSetup} style={{ padding: '14px 32px', borderRadius: 12, border: '1px solid #e2e8f0', cursor: 'pointer', background: '#ffffff', color: '#64748b', fontWeight: 600, fontSize: 16, fontFamily: FONT, transition: 'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#94a3b8'; e.currentTarget.style.background = '#f8fafc'; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.background = '#ffffff'; }}>🏠 กลับตั้งค่า</button>
           </div>
         </div>
       )}
 
       {/* ═══════════════ LOST ═══════════════ */}
       {gamePhase === 'lost' && (
-        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(ellipse at center,#1a0a0a 0%,#020818 70%)', padding: 32, textAlign: 'center', position: 'relative', zIndex: 1 }}>
-          <div style={{ fontSize: 80, marginBottom: 12, animation: 'winBounce 0.6s ease', filter: 'drop-shadow(0 0 20px rgba(239,68,68,0.5))' }}>💔</div>
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(to bottom, #fff1f2, #fee2e2)', padding: 32, textAlign: 'center', position: 'relative', zIndex: 1 }}>
+          <div style={{ fontSize: 80, marginBottom: 12, animation: 'winBounce 0.6s ease' }}>💔</div>
           <h1 style={{ fontSize: 44, fontWeight: 900, color: '#ef4444', margin: '0 0 12px' }}>เสียรางวัล!</h1>
           {currentQuestion && (
-            <div style={{ color: '#4a5a8a', fontSize: 15, marginBottom: 24 }}>
-              เฉลยข้อ {currentLevel}: <span style={{ color: '#10b981', fontWeight: 700 }}>{currentQuestion.answer}: {currentQuestion.options[currentQuestion.answer]}</span>
+            <div style={{ color: '#64748b', fontSize: 15, marginBottom: 24 }}>
+              เฉลยข้อ {currentLevel}: <span style={{ color: '#16a34a', fontWeight: 700 }}>{currentQuestion.answer}: {currentQuestion.options[currentQuestion.answer]}</span>
             </div>
           )}
-          <div style={{ background: 'linear-gradient(135deg,#1a0d0a,#2a1a0a)', border: '1px solid #3a2a1a', borderRadius: 20, padding: '24px 44px', marginBottom: 36 }}>
-            <div style={{ color: '#4a5a8a', fontSize: 13, marginBottom: 6 }}>รางวัลที่ได้รับ (Safe Haven)</div>
-            <div style={{ fontSize: 44, fontWeight: 900, color: finalPrize === '0' ? '#1e2a4a' : '#ffd700', textShadow: finalPrize !== '0' ? '0 0 30px rgba(255,215,0,0.5)' : 'none' }}>
+          <div style={{ background: '#ffffff', border: '1px solid #fecaca', borderRadius: 20, padding: '24px 44px', marginBottom: 36, boxShadow: '0 4px 16px rgba(239,68,68,0.1)' }}>
+            <div style={{ color: '#64748b', fontSize: 13, marginBottom: 6 }}>รางวัลที่ได้รับ (Safe Haven)</div>
+            <div style={{ fontSize: 44, fontWeight: 900, color: finalPrize === '0' ? '#cbd5e1' : '#d97706' }}>
               ฿{finalPrize === '0' ? '0' : finalPrize}
             </div>
-            {finalPrize === '0' && <div style={{ color: '#1e2a4a', fontSize: 12, marginTop: 4 }}>ไม่ถึง Safe Haven (ข้อ 5)</div>}
+            {finalPrize === '0' && <div style={{ color: '#94a3b8', fontSize: 12, marginTop: 4 }}>ไม่ถึง Safe Haven (ข้อ 5)</div>}
           </div>
           <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center' }}>
             <button onClick={restartGame} style={{ padding: '14px 32px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#854d0e,#ffd700)', color: '#000', fontWeight: 800, fontSize: 16, fontFamily: FONT }}>🔄 เล่นอีกครั้ง</button>
-            <button onClick={goToSetup} style={{ padding: '14px 32px', borderRadius: 12, border: '1px solid #2a3a5a', cursor: 'pointer', background: 'transparent', color: '#4a5a8a', fontWeight: 600, fontSize: 16, fontFamily: FONT }}>🏠 กลับตั้งค่า</button>
+            <button onClick={goToSetup} style={{ padding: '14px 32px', borderRadius: 12, border: '1px solid #e2e8f0', cursor: 'pointer', background: '#ffffff', color: '#64748b', fontWeight: 600, fontSize: 16, fontFamily: FONT }}>🏠 กลับตั้งค่า</button>
           </div>
         </div>
       )}

@@ -25,7 +25,7 @@ function SharePanel({ sessionCode, onClose }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 20 }}>📡</span>
-          <strong style={{ fontSize: 16, color: '#1a1a3e' }}>แชร์ให้นักศึกษา</strong>
+          <strong style={{ fontSize: 16, color: '#1a1a3e' }}>สร้าง QR ให้ผู้เล่น</strong>
           <span style={{
             background: '#10b98120', border: '1px solid #10b98150', borderRadius: 20,
             padding: '2px 10px', fontSize: 12, color: '#10b981', fontWeight: 700,
@@ -377,7 +377,10 @@ export default function TeamScoreboard() {
   const leaderId = getLeader(teams);
 
   return (
-    <div style={{ fontFamily: FONT, color: '#1a1a3e', minHeight: '100%' }}>
+    <div style={{ fontFamily: FONT, color: '#1a1a3e', minHeight: '100%', display: showShare && sessionCode ? 'grid' : 'block', gridTemplateColumns: showShare && sessionCode ? '1fr 320px' : '1fr', gap: 20, alignItems: 'start' }}>
+
+      {/* ── Left column (all main content) ── */}
+      <div>
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
@@ -410,7 +413,7 @@ export default function TeamScoreboard() {
               border: 'none', fontSize: 14, fontWeight: 700,
               cursor: sessionLoading ? 'wait' : 'pointer', fontFamily: FONT,
             }}>
-              {sessionLoading ? '⏳...' : '📡 แชร์ให้นักศึกษา'}
+              {sessionLoading ? '⏳...' : '🎰 สร้าง QR ให้ผู้เล่น'}
             </button>
           ) : (
             <>
@@ -440,11 +443,6 @@ export default function TeamScoreboard() {
           }}>🔄</button>
         </div>
       </div>
-
-      {/* ── Share panel ── */}
-      {showShare && sessionCode && (
-        <SharePanel sessionCode={sessionCode} onClose={() => setShowShare(false)} />
-      )}
 
       {/* ── Add amount selector ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -679,6 +677,16 @@ export default function TeamScoreboard() {
           </div>
         </div>
       )}
+
+      </div>{/* end left column */}
+
+      {/* ── Right column: QR panel ── */}
+      {showShare && sessionCode && (
+        <div style={{ position: 'sticky', top: 20, alignSelf: 'start' }}>
+          <SharePanel sessionCode={sessionCode} onClose={() => setShowShare(false)} />
+        </div>
+      )}
+
     </div>
   );
 }
