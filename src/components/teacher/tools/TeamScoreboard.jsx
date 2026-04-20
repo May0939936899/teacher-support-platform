@@ -450,31 +450,100 @@ export default function TeamScoreboard() {
         ))}
       </div>
 
-      {/* ── Progress bar overview ── */}
+      {/* ── Chart overview ── */}
       <div style={{
-        background: '#fff', borderRadius: 14, padding: '16px 20px',
-        marginBottom: 20, border: '1.5px solid #e2e8f0',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+        background: 'linear-gradient(135deg, #1a1a3e 0%, #0f172a 100%)',
+        borderRadius: 18, padding: '20px 24px', marginBottom: 20,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.15)',
+        position: 'relative', overflow: 'hidden',
       }}>
-        {teams.map((team, i) => (
-          <div key={team.id} style={{ marginBottom: i < teams.length - 1 ? 12 : 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-              <span style={{ fontSize: 14, fontWeight: 700 }}>
-                {team.emoji} {team.name}
-                {team.id === leaderId && <span style={{ marginLeft: 6, fontSize: 14 }}>👑</span>}
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: team.color }}>{team.score} แต้ม</span>
-            </div>
-            <div style={{ background: '#f1f5f9', borderRadius: 99, height: 10, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%', borderRadius: 99, background: team.color,
-                width: `${(team.score / maxScore) * 100}%`,
-                minWidth: team.score > 0 ? 20 : 0,
-                transition: 'width 0.45s cubic-bezier(0.34,1.56,0.64,1)',
-              }} />
-            </div>
-          </div>
-        ))}
+        {/* bg decoration */}
+        <div style={{
+          position: 'absolute', top: -40, right: -40, width: 160, height: 160,
+          borderRadius: '50%', background: 'rgba(255,255,255,0.03)', pointerEvents: 'none',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: -30, left: -30, width: 120, height: 120,
+          borderRadius: '50%', background: 'rgba(255,255,255,0.02)', pointerEvents: 'none',
+        }} />
+
+        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: 1, marginBottom: 16, textTransform: 'uppercase' }}>
+          📊 ภาพรวมคะแนน
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {[...teams]
+            .map((t, i) => ({ ...t, rank: ranks[i] }))
+            .sort((a, b) => b.score - a.score)
+            .map((team) => {
+              const pct = maxScore > 0 ? (team.score / maxScore) * 100 : 0;
+              const isLeader = team.id === leaderId;
+              return (
+                <div key={team.id}>
+                  {/* Row: emoji + name + score */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{team.emoji}</span>
+                    <span style={{
+                      fontSize: 14, fontWeight: 700, color: '#fff', flex: 1,
+                      display: 'flex', alignItems: 'center', gap: 6,
+                    }}>
+                      {team.name}
+                      {isLeader && team.score > 0 && <span style={{ fontSize: 13 }}>👑</span>}
+                    </span>
+                    {/* Score badge */}
+                    <span style={{
+                      background: `${team.color}30`,
+                      border: `1px solid ${team.color}60`,
+                      borderRadius: 20, padding: '2px 12px',
+                      fontSize: 15, fontWeight: 900, color: team.color,
+                      letterSpacing: 0.5, minWidth: 48, textAlign: 'center',
+                    }}>
+                      {team.score}
+                    </span>
+                  </div>
+
+                  {/* Bar track */}
+                  <div style={{
+                    background: 'rgba(255,255,255,0.07)',
+                    borderRadius: 99, height: 14, overflow: 'hidden',
+                    position: 'relative',
+                  }}>
+                    {/* Fill */}
+                    <div style={{
+                      height: '100%', borderRadius: 99,
+                      background: isLeader && team.score > 0
+                        ? `linear-gradient(90deg, ${team.color}, ${team.color}cc)`
+                        : team.color,
+                      width: `${pct}%`,
+                      minWidth: team.score > 0 ? 24 : 0,
+                      transition: 'width 0.5s cubic-bezier(0.34,1.56,0.64,1)',
+                      boxShadow: isLeader && team.score > 0 ? `0 0 12px ${team.color}80` : 'none',
+                      position: 'relative',
+                    }}>
+                      {/* Shine streak */}
+                      {pct > 8 && (
+                        <div style={{
+                          position: 'absolute', top: 2, left: 6, right: 12, height: 4,
+                          borderRadius: 99, background: 'rgba(255,255,255,0.25)',
+                        }} />
+                      )}
+                    </div>
+                    {/* Percentage text inside */}
+                    {pct > 12 && (
+                      <div style={{
+                        position: 'absolute', left: 10, top: 0, bottom: 0,
+                        display: 'flex', alignItems: 'center',
+                        fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.85)',
+                        pointerEvents: 'none',
+                      }}>
+                        {Math.round(pct)}%
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
       </div>
 
       {/* ── Score cards ── */}
