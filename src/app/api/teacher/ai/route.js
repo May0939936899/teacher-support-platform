@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 
 // ============================================================
-// Teacher AI API — Gemini 2.5 Pro (primary) → Flash fallbacks
+// Teacher AI API — Gemini free-tier model chain (all v1beta)
+// ลำดับ: ฉลาดที่สุด → เร็วที่สุด → fallback
 // ============================================================
 
-// Gemini models — { name, apiVersion }
-// v1beta สำหรับ model ใหม่, v1 สำหรับ stable models
+// Gemini free-tier models (ทุกตัวใช้ v1beta — Google ยกเลิก v1 สำหรับหลาย model แล้ว)
 const GEMINI_MODELS = [
-  { name: 'gemini-2.0-flash',        api: 'v1beta' },
-  { name: 'gemini-2.0-flash-lite',   api: 'v1beta' },
-  { name: 'gemini-1.5-flash',        api: 'v1'     },
-  { name: 'gemini-1.5-flash-8b',     api: 'v1'     },
+  { name: 'gemini-2.5-flash-preview-04-17', api: 'v1beta' }, // ฉลาด + เร็ว (free)
+  { name: 'gemini-2.0-flash',               api: 'v1beta' }, // stable free
+  { name: 'gemini-2.0-flash-lite',          api: 'v1beta' }, // เร็วมาก free
+  { name: 'gemini-1.5-flash',               api: 'v1beta' }, // fallback
+  { name: 'gemini-1.5-flash-8b',            api: 'v1beta' }, // fallback เบาสุด
 ];
 
 const SYSTEM_INSTRUCTION = 'คุณเป็น AI ผู้ช่วยอาจารย์มหาวิทยาลัยที่เก่งมาก ตอบเป็นภาษาไทยเสมอ (ยกเว้นถูกขอให้ใช้ภาษาอื่น) ตอบอย่างละเอียด มีคุณภาพ เป็นมืออาชีพ ถูกต้องตามหลักวิชาการ';
@@ -30,17 +31,12 @@ async function callGemini(prompt, imageData = null) {
     try {
       const url = `https://generativelanguage.googleapis.com/${api}/models/${model}:generateContent?key=${apiKey}`;
 
-      // systemInstruction is only supported in v1beta
+      // ทุก model ใช้ v1beta → รองรับ systemInstruction ได้ทั้งหมด
       const bodyObj = {
         contents: [{ parts }],
         generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+        systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
       };
-      if (api === 'v1beta') {
-        bodyObj.systemInstruction = { parts: [{ text: SYSTEM_INSTRUCTION }] };
-      } else {
-        // v1: prepend system instruction into the prompt
-        bodyObj.contents = [{ parts: [{ text: `${SYSTEM_INSTRUCTION}\n\n${prompt}` }, ...(imageData ? [{ inlineData: { mimeType: imageData.mediaType || 'image/png', data: imageData.base64 } }] : [])] }];
-      }
 
       console.log(`[AI] Trying ${model} (${api})...`);
       const res = await fetch(url, {
