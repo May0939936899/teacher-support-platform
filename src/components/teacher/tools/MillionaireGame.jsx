@@ -255,9 +255,87 @@ export default function MillionaireGame() {
   const [teamWinner, setTeamWinner] = useState(null); // null | 0 | 1 | 'tie'
   const [awardPending, setAwardPending] = useState(false);
 
+  // Student voting (Kahoot-style)
+  const [voteRoom, setVoteRoom] = useState(null);       // room code string
+  const [showQR, setShowQR] = useState(false);          // QR panel visible
+  const [voteData, setVoteData] = useState({ A: 0, B: 0, C: 0, D: 0, total: 0 });
+  const voteRoomRef = useRef(null);
+  const votePollRef = useRef(null);
+
   const timerRef = useRef(null);
   const tickRef = useRef(null);
   const audioRef = useRef(null);
+
+  // ── Vote room helpers ──────────────────────────────────────
+  const genRoomCode = () => {
+    const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    return Array.from({ length: 6 }, () => c[Math.floor(Math.random() * c.length)]).join('');
+  };
+
+  const createVoteRoom = useCallback(async () => {
+    const code = genRoomCode();
+    voteRoomRef.current = code;
+    setVoteRoom(code);
+    try {
+      await fetch('/api/teacher/millionaire', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', room: code }),
+      });
+    } catch {}
+    return code;
+  }, []);
+
+  const pushQuestion = useCallback(async (q, idx, roomCode) => {
+    const code = roomCode || voteRoomRef.current;
+    if (!code || !q) return;
+    setVoteData({ A: 0, B: 0, C: 0, D: 0, total: 0 });
+    try {
+      await fetch('/api/teacher/millionaire', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_question', room: code, question: { question: q.question, options: q.options }, questionIndex: idx }),
+      });
+    } catch {}
+  }, []);
+
+  const revealToStudents = useCallback(async (correctAnswer) => {
+    const code = voteRoomRef.current;
+    if (!code) return;
+    try {
+      await fetch('/api/teacher/millionaire', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reveal', room: code, correctAnswer }),
+      });
+    } catch {}
+  }, []);
+
+  const closeVoteRoom = useCallback(async () => {
+    const code = voteRoomRef.current;
+    clearInterval(votePollRef.current);
+    if (!code) return;
+    voteRoomRef.current = null;
+    setVoteRoom(null);
+    setShowQR(false);
+    try { await fetch(`/api/teacher/millionaire?room=${code}`, { method: 'DELETE' }); } catch {}
+  }, []);
+
+  // Poll votes while game is playing
+  useEffect(() => {
+    if (!voteRoom || (gamePhase !== 'playing' && gamePhase !== 'locked' && gamePhase !== 'reveal')) {
+      clearInterval(votePollRef.current);
+      return;
+    }
+    clearInterval(votePollRef.current);
+    votePollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/teacher/millionaire?room=${voteRoom}&action=get_votes`);
+        if (res.ok) {
+          const d = await res.json();
+          setVoteData({ ...d.votes, total: d.total });
+        }
+      } catch {}
+    }, 2000);
+    return () => clearInterval(votePollRef.current);
+  }, [voteRoom, gamePhase]);
 
   // Persist questions
   useEffect(() => {
@@ -314,10 +392,11 @@ export default function MillionaireGame() {
   useEffect(() => () => stopTimer(), [stopTimer]);
 
   // Start game
-  const startGame = useCallback(() => {
+  const startGame = useCallback(async () => {
     const valid = questions.filter(q => q.question?.trim() && q.options?.A && q.options?.B && q.options?.C && q.options?.D && q.answer);
     if (valid.length < 3) { toast.error('ต้องมีคำถามที่สมบูรณ์อย่างน้อย 3 ข้อ'); return; }
-    setGameQuestions(valid.slice(0, 15));
+    const sliced = valid.slice(0, 15);
+    setGameQuestions(sliced);
     setCurrentQ(0);
     setSelectedAnswer(null);
     setHiddenOptions([]);
@@ -329,7 +408,11 @@ export default function MillionaireGame() {
     setConfettiActive(false);
     setGamePhase('playing');
     startTimer(timerSeconds);
-  }, [questions, timerSeconds, startTimer]);
+    // Create vote room + push first question
+    const code = await createVoteRoom();
+    setShowQR(true);
+    pushQuestion(sliced[0], 0, code);
+  }, [questions, timerSeconds, startTimer, createVoteRoom, pushQuestion]);
 
   // Solo: select answer
   const selectAnswer = useCallback((key) => {
@@ -341,6 +424,7 @@ export default function MillionaireGame() {
     setTimeout(() => {
       const q = gameQuestions[currentQ];
       setGamePhase('reveal');
+      revealToStudents(q.answer);
       if (key === q.answer) {
         playCorrect(audioRef);
         setTimeout(() => {
@@ -350,8 +434,10 @@ export default function MillionaireGame() {
             setGamePhase('won');
             launchConfetti();
           } else {
-            setCurrentQ(n => n + 1);
+            const nextQ = currentQ + 1;
+            setCurrentQ(nextQ);
             setGamePhase('playing');
+            pushQuestion(gameQuestions[nextQ], nextQ, null);
           }
         }, 1800);
       } else {
@@ -362,15 +448,17 @@ export default function MillionaireGame() {
         }, 1800);
       }
     }, 2600);
-  }, [gamePhase, hiddenOptions, stopTimer, gameQuestions, currentQ]);
+  }, [gamePhase, hiddenOptions, stopTimer, gameQuestions, currentQ, revealToStudents, pushQuestion]);
 
   // Teams: reveal answer
   const revealAnswer = useCallback(() => {
     stopTimer();
+    const q = gameQuestions[currentQ];
     setGamePhase('reveal');
     setAwardPending(true);
     playSelect(audioRef);
-  }, [stopTimer]);
+    if (q) revealToStudents(q.answer);
+  }, [stopTimer, gameQuestions, currentQ, revealToStudents]);
 
   // Teams: award to team
   const awardTeam = useCallback((teamIdx) => {
@@ -396,11 +484,13 @@ export default function MillionaireGame() {
         setGamePhase('won');
         launchConfetti();
       } else {
-        setCurrentQ(n => n + 1);
+        const nextQ = currentQ + 1;
+        setCurrentQ(nextQ);
         setGamePhase('playing');
+        pushQuestion(gameQuestions[nextQ], nextQ, null);
       }
     }, 1200);
-  }, [awardPending, currentQ, gameQuestions.length, teamNames]);
+  }, [awardPending, currentQ, gameQuestions, teamNames, pushQuestion]);
 
   // Walk away
   const walkAway = useCallback(() => {
@@ -486,8 +576,23 @@ export default function MillionaireGame() {
   const acceptAi = () => { if (!aiPreview) return; setQuestions(qs => [...qs, ...aiPreview].slice(0, 15)); setAiPreview(null); toast.success(`เพิ่ม ${aiPreview.length} คำถาม!`); setSetupTab('manual'); };
   const replaceAi = () => { if (!aiPreview) return; setQuestions(aiPreview.slice(0, 15)); setAiPreview(null); toast.success('แทนที่ทั้งหมดแล้ว!'); setSetupTab('manual'); };
 
-  const restartGame = () => { stopTimer(); setCurrentQ(0); setSelectedAnswer(null); setHiddenOptions([]); setLifelines({ fifty: true, audience: true, skip: true }); setTeamScores([0, 0]); setTeamWinner(null); setFinalPrize('0'); setConfettiActive(false); setAwardPending(false); setGamePhase('playing'); };
-  const goToSetup = () => { stopTimer(); setGamePhase('setup'); setCurrentQ(0); setSelectedAnswer(null); setHiddenOptions([]); setLifelines({ fifty: true, audience: true, skip: true }); setTeamScores([0, 0]); setTeamWinner(null); setConfettiActive(false); setAwardPending(false); };
+  const restartGame = async () => {
+    stopTimer();
+    setCurrentQ(0); setSelectedAnswer(null); setHiddenOptions([]);
+    setLifelines({ fifty: true, audience: true, skip: true });
+    setTeamScores([0, 0]); setTeamWinner(null); setFinalPrize('0');
+    setConfettiActive(false); setAwardPending(false);
+    setGamePhase('playing');
+    const code = await createVoteRoom();
+    setShowQR(true);
+    pushQuestion(gameQuestions[0], 0, code);
+  };
+  const goToSetup = () => {
+    stopTimer(); closeVoteRoom();
+    setGamePhase('setup'); setCurrentQ(0); setSelectedAnswer(null); setHiddenOptions([]);
+    setLifelines({ fifty: true, audience: true, skip: true });
+    setTeamScores([0, 0]); setTeamWinner(null); setConfettiActive(false); setAwardPending(false);
+  };
 
   const currentQuestion = gameQuestions[currentQ];
   const currentLevel = currentQ + 1;
@@ -766,18 +871,38 @@ export default function MillionaireGame() {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ color: '#0f172a', fontSize: 22 }}>⚔️</div>
                 <div style={{ color: '#94a3b8', fontSize: 11, fontWeight: 600 }}>ข้อ {currentLevel}/{gameQuestions.length}</div>
+                {voteRoom && (
+                  <button onClick={() => setShowQR(v => !v)} style={{
+                    marginTop: 4, padding: '3px 10px', borderRadius: 6,
+                    background: showQR ? '#e0f2fe' : 'linear-gradient(135deg,#00b4e6,#7c4dff)',
+                    color: showQR ? '#0284c7' : '#fff',
+                    border: 'none', fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
+                  }}>📱 QR</button>
+                )}
               </div>
             </div>
           )}
 
           {/* Solo top bar */}
           {gameMode === 'solo' && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', borderBottom: '1px solid #e2e8f0', background: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(8px)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', gap: 10, flexWrap: 'wrap' }}>
               <div style={{ color: '#d97706', fontWeight: 800, fontSize: 18 }}>🎰 เกมเศรษฐี</div>
               <div style={{ color: '#64748b', fontSize: 13 }}>ข้อ {currentLevel}/{gameQuestions.length} · ฿{prizeEntry?.amount}</div>
-              {gamePhase === 'playing' && (
-                <button onClick={walkAway} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b', cursor: 'pointer', fontSize: 12, fontFamily: FONT }}>🚶 เดินออก</button>
-              )}
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {/* QR toggle */}
+                {voteRoom && (
+                  <button onClick={() => setShowQR(v => !v)} style={{
+                    padding: '5px 12px', borderRadius: 8,
+                    background: showQR ? '#e0f2fe' : 'linear-gradient(135deg,#00b4e6,#7c4dff)',
+                    color: showQR ? '#0284c7' : '#fff',
+                    border: showQR ? '1px solid #7dd3fc' : 'none',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: FONT,
+                  }}>📱 {showQR ? 'ซ่อน QR' : 'QR โหวต'}</button>
+                )}
+                {gamePhase === 'playing' && (
+                  <button onClick={walkAway} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b', cursor: 'pointer', fontSize: 12, fontFamily: FONT }}>🚶 เดินออก</button>
+                )}
+              </div>
             </div>
           )}
 
@@ -847,6 +972,52 @@ export default function MillionaireGame() {
               </div>
 
               {/* States */}
+              {/* ── Vote bars (live) ── */}
+              {voteRoom && voteData.total > 0 && (
+                <div style={{ width: '100%', marginTop: 18, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    👥 โหวตจากนักศึกษา · {voteData.total} คน
+                  </div>
+                  {['A', 'B', 'C', 'D'].filter(k => currentQuestion?.options?.[k]).map(key => {
+                    const count = voteData[key] || 0;
+                    const pct = voteData.total > 0 ? Math.round((count / voteData.total) * 100) : 0;
+                    return (
+                      <div key={key} style={{ marginBottom: 7 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3, fontSize: 12 }}>
+                          <span style={{ color: OPT[key].neon, fontWeight: 700 }}>{key}: {currentQuestion.options[key]}</span>
+                          <span style={{ color: '#64748b' }}>{count} ({pct}%)</span>
+                        </div>
+                        <div style={{ height: 12, background: '#e2e8f0', borderRadius: 99, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${OPT[key].mid}80,${OPT[key].mid})`, borderRadius: 99, transition: 'width 0.8s ease' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* QR popup panel */}
+              {showQR && voteRoom && (
+                <div style={{ width: '100%', marginTop: 14, background: '#fff', border: '2px solid #00b4e6', borderRadius: 16, padding: '16px 20px', boxShadow: '0 4px 20px rgba(0,180,230,0.15)', animation: 'fadeUp 0.25s ease' }}>
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/student/millionaire?room=${voteRoom}` : `/student/millionaire?room=${voteRoom}`)}&color=0b0b24&bgcolor=ffffff&margin=6`}
+                      alt="QR"
+                      width={100} height={100}
+                      style={{ borderRadius: 10, border: '2px solid #e2e8f0', flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 140 }}>
+                      <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>รหัสห้อง</div>
+                      <div style={{ fontSize: 32, fontWeight: 900, color: '#00b4e6', letterSpacing: 4, fontFamily: 'monospace', marginBottom: 6 }}>{voteRoom}</div>
+                      <div style={{ fontSize: 11, color: '#94a3b8' }}>📱 นักศึกษาสแกน QR หรือเปิด</div>
+                      <div style={{ fontSize: 11, color: '#64748b', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                        {typeof window !== 'undefined' ? window.location.origin : ''}/student/millionaire
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {gamePhase === 'locked' && (
                 <div style={{ marginTop: 22, color: '#ffd700', fontSize: 16, fontWeight: 700, animation: 'goldPulse 0.8s ease-in-out infinite' }}>⏳ กำลังตรวจคำตอบ...</div>
               )}
@@ -972,7 +1143,7 @@ export default function MillionaireGame() {
       {gamePhase === 'lost' && (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(to bottom, #fff1f2, #fee2e2)', padding: 32, textAlign: 'center', position: 'relative', zIndex: 1 }}>
           <div style={{ fontSize: 80, marginBottom: 12, animation: 'winBounce 0.6s ease' }}>💔</div>
-          <h1 style={{ fontSize: 44, fontWeight: 900, color: '#ef4444', margin: '0 0 12px' }}>เสียรางวัล!</h1>
+          <h1 style={{ fontSize: 44, fontWeight: 900, color: '#ef4444', margin: '0 0 12px' }}>เสียใจด้วย!</h1>
           {currentQuestion && (
             <div style={{ color: '#64748b', fontSize: 15, marginBottom: 24 }}>
               เฉลยข้อ {currentLevel}: <span style={{ color: '#16a34a', fontWeight: 700 }}>{currentQuestion.answer}: {currentQuestion.options[currentQuestion.answer]}</span>
