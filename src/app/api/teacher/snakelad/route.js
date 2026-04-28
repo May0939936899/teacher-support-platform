@@ -189,12 +189,13 @@ export async function POST(request) {
 
   // ── CREATE ──
   if (action === 'create') {
-    const { theme = 'funpark' } = body;
+    const { theme = 'funpark', maxPlayers = 20 } = body;
     const code = genCode();
     const room = {
       phase:            'waiting',
       theme,
       code,
+      maxPlayers:       Math.max(2, Math.min(50, Number(maxPlayers) || 20)),
       players:          [],
       currentPlayerIdx: 0,
       lastRoll:         null,
@@ -209,7 +210,7 @@ export async function POST(request) {
 
   // ── JOIN ──
   if (action === 'join') {
-    const { code: codeRaw, name } = body;
+    const { code: codeRaw, name, avatar: bodyAvatar, color: bodyColor } = body;
     const code = (codeRaw || '').toUpperCase();
     if (!code || !name?.trim()) return json({ error: 'Missing code or name' }, 400);
 
@@ -221,7 +222,8 @@ export async function POST(request) {
       // check if name already used (idempotent rejoin by name)
       const existing = r.players.find(p => p.name === name.trim().slice(0, 20));
       if (existing) { playerId = existing.id; return false; }
-      if (r.players.length >= 10) { errorMsg = 'Room full (max 10)'; return false; }
+      const limit = r.maxPlayers ?? 10;
+      if (r.players.length >= limit) { errorMsg = `Room full (max ${limit})`; return false; }
 
       playerId = Math.random().toString(36).slice(2) + Date.now().toString(36);
       const idx = r.players.length;
@@ -229,8 +231,8 @@ export async function POST(request) {
         id:       playerId,
         name:     name.trim().slice(0, 20),
         position: 0,
-        color:    PLAYER_COLORS[idx % PLAYER_COLORS.length],
-        avatar:   PLAYER_AVATARS[idx % PLAYER_AVATARS.length],
+        color:    bodyColor || PLAYER_COLORS[idx % PLAYER_COLORS.length],
+        avatar:   bodyAvatar || PLAYER_AVATARS[idx % PLAYER_AVATARS.length],
         skipTurns: 0,
         isOnline: true,
       });

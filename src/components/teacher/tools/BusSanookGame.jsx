@@ -26,19 +26,19 @@ const DEFAULT_Q = () => ({
   time: 20,
 });
 
-const IMPORT_EXAMPLE = `Q:เมืองหลวงของไทยคืออะไร?
-A:เชียงใหม่
-B:กรุงเทพมหานคร
-C:ภูเก็ต
-D:พัทยา
-Ans:B
----
-Q:น้ำ 1 ลิตร มีกี่มิลลิลิตร?
-A:100
-B:500
-C:1000
-D:2000
-Ans:C`;
+const IMPORT_EXAMPLE = `1. เมืองหลวงของไทยคืออะไร?
+A. เชียงใหม่
+B. กรุงเทพมหานคร
+C. ภูเก็ต
+D. พัทยา
+เฉลย: B
+
+2. น้ำ 1 ลิตร มีกี่มิลลิลิตร?
+A. 100
+B. 500
+C. 1000
+D. 2000
+เฉลย: C`;
 
 // Parse spreadsheet format (tab or comma separated: Q, A, B, C, D, Answer)
 function parseSheetText(text) {
@@ -124,25 +124,43 @@ function playFinish(ref) {
 }
 
 // ── Parse import text ─────────────────────────────────────────────────────────
+// Supports:
+//   • Blank line between questions (new default)
+//   • --- separator (legacy, still works)
+//   • Numbered questions: "1. คำถาม" or "Q: คำถาม"
+//   • Choices: "A. ตัวเลือก" or "A: ตัวเลือก" or "A) ตัวเลือก"
+//   • Answer: "เฉลย: B" or "Ans: B" or "ตอบ: B"
 function parseImportText(text) {
-  const blocks = text.split(/---+/).map(b => b.trim()).filter(Boolean);
+  // Split on blank line(s) OR --- separator
+  const blocks = text.split(/\n[ \t]*\n|---+/).map(b => b.trim()).filter(Boolean);
   const questions = [];
-  const ansMap = { A: 0, B: 1, C: 2, D: 3 };
+  const ansMap = { A:0, B:1, C:2, D:3, ก:0, ข:1, ค:2, ง:3, '1':0, '2':1, '3':2, '4':3 };
 
   for (const block of blocks) {
     const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
     let q = '', choices = ['', '', '', ''], answer = 0, time = 20;
+
     for (const line of lines) {
-      if (line.startsWith('Q:'))   q = line.slice(2).trim();
-      else if (line.startsWith('A:'))  choices[0] = line.slice(2).trim();
-      else if (line.startsWith('B:'))  choices[1] = line.slice(2).trim();
-      else if (line.startsWith('C:'))  choices[2] = line.slice(2).trim();
-      else if (line.startsWith('D:'))  choices[3] = line.slice(2).trim();
-      else if (line.startsWith('Ans:')) {
-        const k = line.slice(4).trim().toUpperCase();
+      // ── Question ──────────────────────────────────────────────────────────
+      if (/^Q[:.]\s*/i.test(line)) {
+        q = line.replace(/^Q[:.]\s*/i, '').trim();
+      } else if (/^\d+[.)]\s+/.test(line)) {
+        // "1. คำถาม" or "2) คำถาม"
+        q = line.replace(/^\d+[.)]\s+/, '').trim();
+      }
+      // ── Choices ───────────────────────────────────────────────────────────
+      else if (/^A[:.)\s]/i.test(line)) choices[0] = line.replace(/^A[:.)\s]+/i, '').trim();
+      else if (/^B[:.)\s]/i.test(line)) choices[1] = line.replace(/^B[:.)\s]+/i, '').trim();
+      else if (/^C[:.)\s]/i.test(line)) choices[2] = line.replace(/^C[:.)\s]+/i, '').trim();
+      else if (/^D[:.)\s]/i.test(line)) choices[3] = line.replace(/^D[:.)\s]+/i, '').trim();
+      // ── Answer ────────────────────────────────────────────────────────────
+      else if (/^(Ans|Answer|เฉลย|ตอบ)[:.)\s]/i.test(line)) {
+        const k = line.replace(/^(Ans|Answer|เฉลย|ตอบ)[:.)\s]+/i, '').trim().toUpperCase();
         answer = ansMap[k] ?? 0;
-      } else if (line.startsWith('Time:')) {
-        const t = parseInt(line.slice(5));
+      }
+      // ── Time ──────────────────────────────────────────────────────────────
+      else if (/^Time[:.]\s*/i.test(line)) {
+        const t = parseInt(line.replace(/^Time[:.]\s*/i, ''));
         if ([10, 20, 30].includes(t)) time = t;
       }
     }
@@ -566,7 +584,7 @@ export default function BusSanookGame() {
                 {importTab === 'text' && (
                   <div style={{ marginBottom:12 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                      <span style={{ fontSize:11, color:'#555' }}>รูปแบบ: <code style={{color:'#aaa'}}>Q:</code> → <code style={{color:'#aaa'}}>A: B: C: D:</code> → <code style={{color:'#aaa'}}>Ans:</code> คั่นด้วย <code style={{color:'#aaa'}}>---</code></span>
+                      <span style={{ fontSize:11, color:'#555' }}>รูปแบบ: <code style={{color:'#aaa'}}>1. คำถาม</code> → <code style={{color:'#aaa'}}>A. B. C. D.</code> → <code style={{color:'#aaa'}}>เฉลย: B</code> เว้น 1 บรรทัดระหว่างข้อ</span>
                       <button onClick={() => setImportText(IMPORT_EXAMPLE)} style={{ ...btnStyle('#1a1a3a'), fontSize:11, padding:'3px 10px', color:CYAN }}>📋 ดูตัวอย่าง</button>
                     </div>
                     <textarea value={importText} onChange={e => setImportText(e.target.value)}

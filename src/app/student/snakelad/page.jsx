@@ -1,25 +1,30 @@
 'use client';
-import { useState, useEffect, useRef, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 const FONT = "'Kanit','Noto Sans Thai',sans-serif";
-
-// Board constants (must match route.js)
-const SNAKES  = { 17:7, 54:34, 62:19, 64:60, 87:36, 93:73, 95:56, 99:78 };
-const LADDERS = { 4:23, 9:31, 20:38, 28:84, 40:59, 51:67, 63:81, 71:91 };
-const EVENTS  = { 10:true, 25:true, 45:true, 60:true, 75:true, 88:true };
+const BG   = 'linear-gradient(160deg,#020918,#050f2a,#0a0520)';
 
 const CSS = `
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
   @keyframes popIn   { from{opacity:0;transform:scale(0.8)} to{opacity:1;transform:scale(1)} }
   @keyframes spin    { to{transform:rotate(360deg)} }
-  @keyframes pulse   { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+  @keyframes pulse   { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
   @keyframes slideUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
   @keyframes shake   { 0%,100%{transform:rotate(0deg)} 20%{transform:rotate(-20deg)} 40%{transform:rotate(20deg)} 60%{transform:rotate(-15deg)} 80%{transform:rotate(15deg)} }
   @keyframes bounce  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
   @keyframes dotPulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
+  @keyframes cardSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
+  @keyframes diceGlow { 0%,100%{box-shadow:0 0 32px rgba(99,102,241,0.4)} 50%{box-shadow:0 0 64px rgba(139,92,246,0.8)} }
 `;
+
+// ── Avatars & Colors ──────────────────────────────────────────────────────────
+const AVATARS = ['🐶','🐱','🐻','🦊','🐸','🦁','🐯','🐨','🐼','🦄','🐧','🦋'];
+const COLORS  = [
+  '#FF6B9D','#4ECDC4','#FFE66D','#A8E6CF','#DDA0DD',
+  '#87CEEB','#FFA07A','#98FB98','#F08080','#9370DB',
+];
 
 // ── Dice face ──────────────────────────────────────────────────────────────────
 const DOT_POSITIONS = {
@@ -50,202 +55,103 @@ function DiceFace({ value, size = 80, color = '#6366f1', rolling = false }) {
   );
 }
 
-// ── Mini board (SVG 200×200) ────────────────────────────────────────────────────
-const MINI = 20; // px per cell in mini board
-
-function squareToXYMini(n) {
-  const idx = n - 1;
-  const row = Math.floor(idx / 10);
-  const col = idx % 10;
-  const actualCol = row % 2 === 0 ? col : 9 - col;
-  return { x: actualCol * MINI + MINI / 2, y: (9 - row) * MINI + MINI / 2 };
-}
-
-const THEME_MINI = {
-  funpark: { c1: '#FFF9C4', c2: '#FFCCBC', border: '#FFD93D' },
-  snow:    { c1: '#E3F2FD', c2: '#BBDEFB', border: '#74b9ff' },
-  japan:   { c1: '#FCE4EC', c2: '#F8BBD0', border: '#fd79a8' },
-  forest:  { c1: '#E8F5E9', c2: '#C8E6C9', border: '#00b894' },
-};
-
-function MiniBoard({ players, theme }) {
-  const tc = THEME_MINI[theme] || THEME_MINI.funpark;
-  const size = MINI * 10;
-
-  const cells = [];
-  for (let displayRow = 0; displayRow < 10; displayRow++) {
-    for (let col = 0; col < 10; col++) {
-      const boardRow = 9 - displayRow;
-      const actualCol = boardRow % 2 === 0 ? col : 9 - col;
-      const n = boardRow * 10 + actualCol + 1;
-      const x = col * MINI;
-      const y = displayRow * MINI;
-      const isEven = (boardRow + actualCol) % 2 === 0;
-      let fill = isEven ? tc.c1 : tc.c2;
-      if (SNAKES[n]  !== undefined) fill = 'rgba(239,68,68,0.22)';
-      if (LADDERS[n] !== undefined) fill = 'rgba(34,197,94,0.22)';
-      if (EVENTS[n])               fill = 'rgba(251,191,36,0.22)';
-      cells.push({ n, x, y, fill });
-    }
-  }
-
-  // Player positions
-  const posBySquare = {};
-  (players || []).forEach(p => {
-    if (!posBySquare[p.position]) posBySquare[p.position] = [];
-    posBySquare[p.position].push(p);
-  });
-
-  const tokens = [];
-  Object.entries(posBySquare).forEach(([sq, ps]) => {
-    const n = Number(sq);
-    if (n < 1) return;
-    const center = squareToXYMini(n);
-    ps.forEach((p, i) => {
-      const off = ps.length > 1 ? (i - (ps.length - 1) / 2) * 5 : 0;
-      tokens.push(
-        <circle
-          key={`token-${p.id}`}
-          cx={center.x + off}
-          cy={center.y}
-          r={5}
-          fill={p.color}
-          stroke="#fff"
-          strokeWidth={1}
-          opacity={0.95}
-        />
-      );
-    });
-  });
-
-  // Snake lines
-  const snakeLines = Object.entries(SNAKES).map(([head, tail]) => {
-    const h  = squareToXYMini(Number(head));
-    const t2 = squareToXYMini(Number(tail));
-    return <line key={`sl-${head}`} x1={h.x} y1={h.y} x2={t2.x} y2={t2.y} stroke="#ef4444" strokeWidth={1.5} opacity={0.6} />;
-  });
-
-  // Ladder lines
-  const ladderLines = Object.entries(LADDERS).map(([base, top]) => {
-    const b  = squareToXYMini(Number(base));
-    const tp = squareToXYMini(Number(top));
-    return <line key={`ll-${base}`} x1={b.x} y1={b.y} x2={tp.x} y2={tp.y} stroke="#22c55e" strokeWidth={1.5} opacity={0.6} />;
-  });
-
-  return (
-    <svg
-      width={size} height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      style={{
-        borderRadius: 8,
-        border: `2px solid ${tc.border}`,
-        background: tc.c1,
-        display: 'block',
-      }}
-    >
-      {cells.map(c => (
-        <rect key={c.n} x={c.x} y={c.y} width={MINI} height={MINI} fill={c.fill} stroke="rgba(0,0,0,0.07)" strokeWidth={0.3} />
-      ))}
-      {ladderLines}
-      {snakeLines}
-      {tokens}
-    </svg>
-  );
-}
-
-// ── Player ID persistence ──────────────────────────────────────────────────────
-function getOrCreatePlayerId() {
-  try {
-    let id = localStorage.getItem('snaklad_player_id');
-    if (!id) {
-      id = Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem('snaklad_player_id', id);
-    }
-    return id;
-  } catch {
-    return Math.random().toString(36).slice(2) + Date.now().toString(36);
-  }
-}
-
 // ════════════════════════════════════════════════════════════════════════════
-// Inner component (uses searchParams)
+// Inner component
 // ════════════════════════════════════════════════════════════════════════════
 function StudentSnakeLadderInner() {
   const searchParams = useSearchParams();
   const codeParam    = (searchParams.get('code') || '').toUpperCase();
 
-  // Screens: join | waiting | playing | finished
-  const [screen,     setScreen]     = useState(codeParam ? 'join' : 'join');
-  const [codeInput,  setCodeInput]  = useState(codeParam);
-  const [nameInput,  setNameInput]  = useState('');
-  const [joinError,  setJoinError]  = useState('');
-  const [joining,    setJoining]    = useState(false);
+  // Screens: join | character | waiting | playing | finished
+  const [screen,          setScreen]          = useState('join');
+  const [codeInput,       setCodeInput]       = useState(codeParam);
+  const [nameInput,       setNameInput]       = useState('');
+  const [joinError,       setJoinError]       = useState('');
+  const [joining,         setJoining]         = useState(false);
 
-  const [myCode,     setMyCode]     = useState('');
-  const [myPlayerId, setMyPlayerId] = useState('');
-  const [session,    setSession]    = useState(null);
+  // Character selection
+  const [selectedAvatar,  setSelectedAvatar]  = useState(AVATARS[0]);
+  const [selectedColor,   setSelectedColor]   = useState(COLORS[0]);
 
-  const [rolling,    setRolling]    = useState(false);
-  const [diceAnim,   setDiceAnim]   = useState(1);
-  const [rollResult, setRollResult] = useState(null); // { rolled, event, msg }
-  const [showResult, setShowResult] = useState(false);
+  const [myCode,          setMyCode]          = useState('');
+  const [myPlayerId,      setMyPlayerId]       = useState('');
+  const [session,         setSession]         = useState(null);
+
+  const [rolling,         setRolling]         = useState(false);
+  const [diceAnim,        setDiceAnim]        = useState(1);
+  const [rollResult,      setRollResult]      = useState(null); // { rolled, event, msg, msgColor }
+  const [showCard,        setShowCard]        = useState(false);
 
   const pollRef  = useRef(null);
   const animRef  = useRef(null);
+  const cardTimerRef = useRef(null);
 
   // ── Poll session ─────────────────────────────────────────────────────────────
-  const pollSession = async (code) => {
+  const pollSession = useCallback(async (code) => {
     try {
       const res = await fetch(`/api/teacher/snakelad?code=${code}`);
       if (!res.ok) return;
       const data = await res.json();
       if (data.session) {
         setSession(data.session);
-        if (data.session.phase === 'playing')  setScreen(s => s === 'waiting' ? 'playing' : s === 'playing' ? 'playing' : s);
+        if (data.session.phase === 'playing')  setScreen(s => s === 'waiting' ? 'playing' : s);
         if (data.session.phase === 'finished') { setScreen('finished'); clearInterval(pollRef.current); }
       }
     } catch { /* ignore */ }
-  };
+  }, []);
 
   useEffect(() => {
     return () => {
       clearInterval(pollRef.current);
       clearInterval(animRef.current);
+      clearTimeout(cardTimerRef.current);
     };
   }, []);
 
   // ── Start polling ──────────────────────────────────────────────────────────
-  const startPolling = (code) => {
+  const startPolling = useCallback((code) => {
     clearInterval(pollRef.current);
     pollRef.current = setInterval(() => pollSession(code), 2000);
-  };
+  }, [pollSession]);
 
-  // ── Join ─────────────────────────────────────────────────────────────────────
-  const joinGame = async () => {
+  // Update screen when session phase changes
+  useEffect(() => {
+    if (session?.phase === 'playing' && screen === 'waiting') setScreen('playing');
+    if (session?.phase === 'finished' && screen !== 'finished') {
+      setScreen('finished');
+      clearInterval(pollRef.current);
+    }
+  }, [session, screen]);
+
+  // ── Step 1: validate join inputs, go to character screen ─────────────────────
+  const goToCharacter = () => {
     const code = codeInput.trim().toUpperCase();
     const name = nameInput.trim();
     if (code.length < 4)  { setJoinError('กรุณากรอกรหัสห้อง'); return; }
     if (!name)            { setJoinError('กรุณากรอกชื่อของคุณ'); return; }
+    setJoinError('');
+    setScreen('character');
+  };
+
+  // ── Step 2: actually join with chosen avatar & color ──────────────────────────
+  const joinGame = async (avatar, color) => {
+    const code = codeInput.trim().toUpperCase();
+    const name = nameInput.trim();
     setJoining(true);
     setJoinError('');
-
-    // ensure player ID exists
-    const pid = getOrCreatePlayerId();
-    setMyPlayerId(pid);
 
     try {
       const res = await fetch('/api/teacher/snakelad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'join', code, name }),
+        body: JSON.stringify({ action: 'join', code, name, avatar, color }),
       });
       const data = await res.json();
-      if (!res.ok) { setJoinError(data.error || 'เข้าร่วมไม่ได้'); setJoining(false); return; }
+      if (!res.ok) { setJoinError(data.error || 'เข้าร่วมไม่ได้'); setScreen('join'); setJoining(false); return; }
 
-      // Store actual playerId returned from server
-      const pid2 = data.playerId || pid;
-      setMyPlayerId(pid2);
-      try { localStorage.setItem('snaklad_player_id', pid2); } catch {}
+      const pid = data.playerId;
+      setMyPlayerId(pid);
+      try { localStorage.setItem('snaklad_player_id', pid); } catch {}
 
       setMyCode(code);
       setSession(data.session);
@@ -253,6 +159,7 @@ function StudentSnakeLadderInner() {
       startPolling(code);
     } catch {
       setJoinError('เชื่อมต่อไม่ได้ — ลองใหม่อีกครั้ง');
+      setScreen('join');
     } finally {
       setJoining(false);
     }
@@ -262,10 +169,10 @@ function StudentSnakeLadderInner() {
   const rollDice = async () => {
     if (rolling) return;
     setRolling(true);
-    setShowResult(false);
+    setShowCard(false);
     setRollResult(null);
+    clearTimeout(cardTimerRef.current);
 
-    // Animate dice spinning
     let frame = 0;
     clearInterval(animRef.current);
     animRef.current = setInterval(() => {
@@ -281,29 +188,25 @@ function StudentSnakeLadderInner() {
         body: JSON.stringify({ action: 'roll', code: myCode, playerId: myPlayerId }),
       });
       const data = await res.json();
-
       clearInterval(animRef.current);
 
       if (!res.ok) {
         setDiceAnim(1);
         setRolling(false);
         setRollResult({ error: data.error || 'ลองใหม่' });
-        setShowResult(true);
+        setShowCard(true);
         return;
       }
 
       const { session: newSession, rolled, event } = data;
-
-      // Land on result
       setDiceAnim(rolled);
       setSession(newSession);
 
-      // Build message
-      let msg = `ทอยได้ ${rolled} 🎲`;
+      let msg = `ทอยได้ ${rolled}`;
       let msgColor = '#a5b4fc';
       if (event) {
         msg = event.msg;
-        if (event.type === 'snake')      msgColor = '#ef4444';
+        if (event.type === 'snake')       msgColor = '#ef4444';
         else if (event.type === 'ladder') msgColor = '#22c55e';
         else if (event.type === 'win')    msgColor = '#fbbf24';
         else if (event.type === 'extra_roll') msgColor = '#f59e0b';
@@ -313,7 +216,10 @@ function StudentSnakeLadderInner() {
       }
 
       setRollResult({ rolled, event, msg, msgColor });
-      setShowResult(true);
+      setShowCard(true);
+
+      // Auto-dismiss card after 3s
+      cardTimerRef.current = setTimeout(() => setShowCard(false), 3000);
 
       if (newSession.phase === 'finished') {
         setScreen('finished');
@@ -322,26 +228,36 @@ function StudentSnakeLadderInner() {
     } catch {
       clearInterval(animRef.current);
       setRollResult({ error: 'เชื่อมต่อไม่ได้' });
-      setShowResult(true);
+      setShowCard(true);
     } finally {
       setRolling(false);
     }
   };
 
   // ── Derived state ─────────────────────────────────────────────────────────────
-  const players    = session?.players || [];
-  const curIdx     = session?.currentPlayerIdx ?? 0;
-  const curPlayer  = players[curIdx] || null;
-  const myPlayer   = players.find(p => p.id === myPlayerId);
-  const isMyTurn   = curPlayer?.id === myPlayerId;
-  const gameTheme  = session?.theme || 'funpark';
+  const players   = session?.players || [];
+  const curIdx    = session?.currentPlayerIdx ?? 0;
+  const curPlayer = players[curIdx] || null;
+  const myPlayer  = players.find(p => p.id === myPlayerId);
+  const isMyTurn  = curPlayer?.id === myPlayerId;
 
-  // Update screen when session changes to 'playing' from waiting
-  useEffect(() => {
-    if (session?.phase === 'playing' && screen === 'waiting') {
-      setScreen('playing');
-    }
-  }, [session, screen]);
+  // ── Event card color ──────────────────────────────────────────────────────────
+  const cardBg = () => {
+    if (!rollResult?.event) return 'linear-gradient(135deg,#312e81,#1e1b4b)';
+    const t = rollResult.event.type;
+    if (t === 'snake')    return 'linear-gradient(135deg,#7f1d1d,#450a0a)';
+    if (t === 'ladder')   return 'linear-gradient(135deg,#14532d,#052e16)';
+    if (t === 'win')      return 'linear-gradient(135deg,#78350f,#451a03)';
+    return 'linear-gradient(135deg,#312e81,#1e1b4b)';
+  };
+  const cardBorder = () => {
+    if (!rollResult?.event) return 'rgba(99,102,241,0.5)';
+    const t = rollResult.event.type;
+    if (t === 'snake')  return 'rgba(239,68,68,0.5)';
+    if (t === 'ladder') return 'rgba(34,197,94,0.5)';
+    if (t === 'win')    return 'rgba(251,191,36,0.6)';
+    return 'rgba(99,102,241,0.5)';
+  };
 
   // ════════════════════════════════════════════════════════════════════════════
   // JOIN SCREEN
@@ -349,15 +265,13 @@ function StudentSnakeLadderInner() {
   if (screen === 'join') {
     return (
       <div style={{
-        minHeight: '100dvh', height: '100dvh',
-        background: 'linear-gradient(160deg,#020918,#050f2a,#0a0520)',
+        minHeight: '100dvh', height: '100dvh', background: BG,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         padding: '24px 20px', fontFamily: FONT,
       }}>
         <style>{CSS}</style>
         <div style={{ width: '100%', maxWidth: 380, animation: 'slideUp 0.5s ease' }}>
-          {/* Logo */}
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div style={{ fontSize: 64, marginBottom: 8 }}>🎲</div>
             <h1 style={{ margin: '0 0 4px', fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: 1 }}>
@@ -371,8 +285,7 @@ function StudentSnakeLadderInner() {
           <div style={{
             background: 'rgba(255,255,255,0.06)',
             border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 20,
-            padding: '24px 20px',
+            borderRadius: 20, padding: '24px 20px',
             display: 'flex', flexDirection: 'column', gap: 12,
           }}>
             {/* Code input */}
@@ -383,20 +296,16 @@ function StudentSnakeLadderInner() {
               <input
                 value={codeInput}
                 onChange={e => { setCodeInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')); setJoinError(''); }}
-                onKeyDown={e => e.key === 'Enter' && joinGame()}
+                onKeyDown={e => e.key === 'Enter' && goToCharacter()}
                 placeholder="XXXXXX"
                 maxLength={8}
                 autoFocus
                 style={{
-                  width: '100%', padding: '14px',
-                  borderRadius: 12,
+                  width: '100%', padding: '14px', borderRadius: 12,
                   border: `2px solid ${joinError ? '#f87171' : codeInput.length >= 4 ? '#a5b4fc' : 'rgba(255,255,255,0.12)'}`,
-                  background: 'rgba(0,0,0,0.35)',
-                  color: '#fff',
+                  background: 'rgba(0,0,0,0.35)', color: '#fff',
                   fontSize: 28, fontWeight: 900, textAlign: 'center', letterSpacing: 8,
-                  fontFamily: "'Courier New',monospace",
-                  outline: 'none',
-                  transition: 'border-color 0.2s',
+                  fontFamily: "'Courier New',monospace", outline: 'none', transition: 'border-color 0.2s',
                 }}
               />
             </div>
@@ -409,18 +318,15 @@ function StudentSnakeLadderInner() {
               <input
                 value={nameInput}
                 onChange={e => { setNameInput(e.target.value.slice(0, 20)); setJoinError(''); }}
-                onKeyDown={e => e.key === 'Enter' && joinGame()}
+                onKeyDown={e => e.key === 'Enter' && goToCharacter()}
                 placeholder="ใส่ชื่อของคุณ"
                 maxLength={20}
                 style={{
-                  width: '100%', padding: '14px',
-                  borderRadius: 12,
+                  width: '100%', padding: '14px', borderRadius: 12,
                   border: `2px solid ${nameInput.trim() ? 'rgba(165,180,252,0.5)' : 'rgba(255,255,255,0.12)'}`,
-                  background: 'rgba(0,0,0,0.35)',
-                  color: '#fff',
+                  background: 'rgba(0,0,0,0.35)', color: '#fff',
                   fontSize: 18, fontWeight: 700, textAlign: 'center',
-                  fontFamily: FONT, outline: 'none',
-                  transition: 'border-color 0.2s',
+                  fontFamily: FONT, outline: 'none', transition: 'border-color 0.2s',
                 }}
               />
             </div>
@@ -432,34 +338,20 @@ function StudentSnakeLadderInner() {
             )}
 
             <button
-              onClick={joinGame}
-              disabled={codeInput.length < 4 || !nameInput.trim() || joining}
+              onClick={goToCharacter}
+              disabled={codeInput.length < 4 || !nameInput.trim()}
               style={{
-                width: '100%', padding: '16px',
-                borderRadius: 12, border: 'none',
-                background: (codeInput.length >= 4 && nameInput.trim() && !joining)
+                width: '100%', padding: '16px', borderRadius: 12, border: 'none',
+                background: (codeInput.length >= 4 && nameInput.trim())
                   ? 'linear-gradient(135deg,#6366f1,#8b5cf6)'
                   : 'rgba(255,255,255,0.07)',
-                color: (codeInput.length >= 4 && nameInput.trim() && !joining)
-                  ? '#fff' : 'rgba(255,255,255,0.25)',
+                color: (codeInput.length >= 4 && nameInput.trim()) ? '#fff' : 'rgba(255,255,255,0.25)',
                 fontSize: 18, fontWeight: 900,
-                cursor: (codeInput.length >= 4 && nameInput.trim() && !joining) ? 'pointer' : 'not-allowed',
-                fontFamily: FONT,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                transition: 'all 0.2s',
+                cursor: (codeInput.length >= 4 && nameInput.trim()) ? 'pointer' : 'not-allowed',
+                fontFamily: FONT, transition: 'all 0.2s',
               }}
             >
-              {joining ? (
-                <>
-                  <span style={{
-                    display: 'inline-block', width: 18, height: 18,
-                    border: '2px solid rgba(255,255,255,0.3)',
-                    borderTopColor: '#fff', borderRadius: '50%',
-                    animation: 'spin 0.7s linear infinite',
-                  }} />
-                  กำลังเชื่อมต่อ…
-                </>
-              ) : 'เข้าร่วมเกม →'}
+              ถัดไป →
             </button>
           </div>
 
@@ -472,13 +364,141 @@ function StudentSnakeLadderInner() {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
+  // CHARACTER SCREEN
+  // ════════════════════════════════════════════════════════════════════════════
+  if (screen === 'character') {
+    return (
+      <div style={{
+        minHeight: '100dvh', background: BG,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'flex-start',
+        padding: '28px 20px 32px', fontFamily: FONT, color: '#fff',
+        overflowY: 'auto',
+      }}>
+        <style>{CSS}</style>
+        <div style={{ width: '100%', maxWidth: 400, animation: 'slideUp 0.4s ease' }}>
+          {/* Name display */}
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>สวัสดี!</div>
+            <div style={{ fontSize: 24, fontWeight: 900 }}>{nameInput.trim()}</div>
+            <div style={{ fontSize: 12, color: 'rgba(165,180,252,0.5)', marginTop: 2 }}>เลือกตัวละครของคุณ</div>
+          </div>
+
+          {/* Big selected avatar preview */}
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 96, height: 96, borderRadius: 24,
+              background: `${selectedColor}22`,
+              border: `3px solid ${selectedColor}`,
+              fontSize: 56,
+              boxShadow: `0 0 32px ${selectedColor}44`,
+              animation: 'popIn 0.3s ease',
+            }}>
+              {selectedAvatar}
+            </div>
+          </div>
+
+          {/* Avatar grid — 4 cols × 3 rows */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>เลือกตัวละคร</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {AVATARS.map(av => (
+                <button
+                  key={av}
+                  onClick={() => setSelectedAvatar(av)}
+                  style={{
+                    padding: '12px 0',
+                    borderRadius: 12,
+                    border: `2px solid ${av === selectedAvatar ? selectedColor : 'rgba(255,255,255,0.1)'}`,
+                    background: av === selectedAvatar ? `${selectedColor}22` : 'rgba(255,255,255,0.04)',
+                    fontSize: 28, cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    transform: av === selectedAvatar ? 'scale(1.12)' : 'scale(1)',
+                  }}
+                >
+                  {av}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Color dots — 2 rows of 5 */}
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>เลือกสี</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+              {COLORS.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setSelectedColor(c)}
+                  style={{
+                    width: '100%', aspectRatio: '1', borderRadius: '50%',
+                    border: `3px solid ${c === selectedColor ? '#fff' : 'transparent'}`,
+                    background: c,
+                    cursor: 'pointer',
+                    boxShadow: c === selectedColor ? `0 0 16px ${c}` : 'none',
+                    transform: c === selectedColor ? 'scale(1.18)' : 'scale(1)',
+                    transition: 'all 0.15s',
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {joinError && (
+            <div style={{ color: '#fca5a5', fontSize: 14, textAlign: 'center', fontWeight: 600, marginBottom: 12 }}>
+              ⚠️ {joinError}
+            </div>
+          )}
+
+          <button
+            onClick={() => joinGame(selectedAvatar, selectedColor)}
+            disabled={joining}
+            style={{
+              width: '100%', padding: '18px', borderRadius: 14, border: 'none',
+              background: joining ? 'rgba(255,255,255,0.07)' : `linear-gradient(135deg,${selectedColor},${selectedColor}bb)`,
+              color: '#fff', fontSize: 20, fontWeight: 900,
+              cursor: joining ? 'not-allowed' : 'pointer', fontFamily: FONT,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              boxShadow: joining ? 'none' : `0 0 32px ${selectedColor}44`,
+              transition: 'all 0.2s',
+            }}
+          >
+            {joining ? (
+              <>
+                <span style={{
+                  display: 'inline-block', width: 18, height: 18,
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTopColor: '#fff', borderRadius: '50%',
+                  animation: 'spin 0.7s linear infinite',
+                }} />
+                กำลังเชื่อมต่อ…
+              </>
+            ) : `${selectedAvatar} เข้าร่วมเกม →`}
+          </button>
+
+          <button
+            onClick={() => setScreen('join')}
+            style={{
+              width: '100%', marginTop: 10, padding: '10px', borderRadius: 10,
+              border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
+              color: 'rgba(255,255,255,0.4)', fontSize: 14, cursor: 'pointer', fontFamily: FONT,
+            }}
+          >
+            ← ย้อนกลับ
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
   // WAITING SCREEN
   // ════════════════════════════════════════════════════════════════════════════
   if (screen === 'waiting') {
     return (
       <div style={{
-        minHeight: '100dvh', height: '100dvh',
-        background: 'linear-gradient(160deg,#020918,#050f2a,#0a0520)',
+        minHeight: '100dvh', height: '100dvh', background: BG,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         padding: 24, fontFamily: FONT, textAlign: 'center', color: '#fff',
@@ -489,7 +509,7 @@ function StudentSnakeLadderInner() {
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)',
-            borderRadius: 20, padding: '8px 20px', marginBottom: 28,
+            borderRadius: 20, padding: '8px 20px', marginBottom: 24,
           }}>
             <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>ห้อง</span>
             <span style={{ color: '#a5b4fc', fontFamily: 'monospace', letterSpacing: 5, fontWeight: 900, fontSize: 20 }}>
@@ -497,30 +517,38 @@ function StudentSnakeLadderInner() {
             </span>
           </div>
 
-          {/* Animated waiting indicator */}
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 52, animation: 'bounce 2s ease infinite' }}>🎲</div>
-          </div>
-
-          <h2 style={{ color: '#f1f5f9', fontSize: 22, fontWeight: 900, margin: '0 0 6px' }}>
-            เข้าร่วมแล้ว!
-          </h2>
-
+          {/* Big character display */}
           {myPlayer && (
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: `${myPlayer.color}22`,
-              border: `1px solid ${myPlayer.color}60`,
-              borderRadius: 14, padding: '6px 16px', marginBottom: 12,
-            }}>
-              <span style={{ fontSize: 18 }}>{myPlayer.avatar}</span>
-              <span style={{ color: myPlayer.color, fontWeight: 800, fontSize: 15 }}>{myPlayer.name}</span>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 80, height: 80, borderRadius: 20,
+                background: `${myPlayer.color}22`,
+                border: `3px solid ${myPlayer.color}`,
+                fontSize: 44,
+                boxShadow: `0 0 24px ${myPlayer.color}44`,
+                marginBottom: 10,
+              }}>
+                {myPlayer.avatar}
+              </div>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: `${myPlayer.color}22`,
+                border: `1px solid ${myPlayer.color}60`,
+                borderRadius: 14, padding: '6px 16px',
+                display: 'block',
+              }}>
+                <span style={{ color: myPlayer.color, fontWeight: 900, fontSize: 18 }}>{myPlayer.name}</span>
+              </div>
             </div>
           )}
 
+          <h2 style={{ color: '#f1f5f9', fontSize: 20, fontWeight: 900, margin: '0 0 4px' }}>
+            เข้าร่วมแล้ว!
+          </h2>
           <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14, margin: '0 0 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
             รอ host เริ่มเกม
-            <span style={{ display: 'inline-flex', gap: 3 }}>
+            <span style={{ display: 'inline-flex', gap: 3, marginLeft: 4 }}>
               {[0, 1, 2].map(i => (
                 <span key={i} style={{
                   width: 5, height: 5, borderRadius: '50%', background: 'rgba(165,180,252,0.6)',
@@ -536,18 +564,15 @@ function StudentSnakeLadderInner() {
             <div style={{
               background: 'rgba(255,255,255,0.04)',
               border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 16,
-              padding: '16px',
-              textAlign: 'left',
+              borderRadius: 16, padding: '16px', textAlign: 'left',
             }}>
               <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 10 }}>
-                ผู้เล่ม ({players.length})
+                ผู้เล่น ({players.length})
               </div>
               {players.map(p => (
                 <div key={p.id} style={{
                   display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 0',
-                  borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
                 }}>
                   <span style={{ fontSize: 18 }}>{p.avatar}</span>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
@@ -582,10 +607,11 @@ function StudentSnakeLadderInner() {
         minHeight: '100dvh', height: '100dvh',
         background: iWon
           ? 'linear-gradient(160deg,#0a1f14,#0d2b1a)'
-          : 'linear-gradient(160deg,#020918,#050f2a,#0a0520)',
+          : BG,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         padding: 24, fontFamily: FONT, textAlign: 'center', color: '#fff',
+        overflowY: 'auto',
       }}>
         <style>{CSS}</style>
 
@@ -593,10 +619,7 @@ function StudentSnakeLadderInner() {
           <div style={{ fontSize: 88, animation: iWon ? 'bounce 1s ease infinite' : 'fadeIn 0.5s ease', marginBottom: 12 }}>
             {iWon ? '🏆' : '🎮'}
           </div>
-          <h2 style={{
-            margin: '0 0 10px', fontSize: 30, fontWeight: 900,
-            color: iWon ? '#34d399' : '#f1f5f9',
-          }}>
+          <h2 style={{ margin: '0 0 10px', fontSize: 30, fontWeight: 900, color: iWon ? '#34d399' : '#f1f5f9' }}>
             {iWon ? 'คุณชนะ! 🎉' : 'เกมจบแล้ว'}
           </h2>
 
@@ -614,14 +637,10 @@ function StudentSnakeLadderInner() {
             </p>
           )}
 
-          {/* Final standings */}
           <div style={{
             background: 'rgba(255,255,255,0.05)',
             border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: 16,
-            padding: '16px',
-            textAlign: 'left',
-            marginBottom: 24,
+            borderRadius: 16, padding: '16px', textAlign: 'left', marginBottom: 24,
           }}>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.35)', marginBottom: 10 }}>อันดับสุดท้าย</div>
             {[...players].sort((a, b) => b.position - a.position).map((p, i) => (
@@ -631,7 +650,7 @@ function StudentSnakeLadderInner() {
                 borderBottom: i < players.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
               }}>
                 <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', width: 22, textAlign: 'center' }}>
-                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`}
+                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}
                 </span>
                 <span style={{ fontSize: 18 }}>{p.avatar}</span>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
@@ -640,8 +659,9 @@ function StudentSnakeLadderInner() {
                   color: p.name === winnerName ? p.color : 'rgba(255,255,255,0.7)',
                   fontWeight: p.name === winnerName ? 900 : 500,
                 }}>
-                  {p.name} {p.id === myPlayerId && (
-                    <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.5)' }}>(คุณ)</span>
+                  {p.name}
+                  {p.id === myPlayerId && (
+                    <span style={{ fontSize: 11, color: 'rgba(165,180,252,0.5)', marginLeft: 4 }}>(คุณ)</span>
                   )}
                   {p.name === winnerName && ' 🏆'}
                 </span>
@@ -656,13 +676,14 @@ function StudentSnakeLadderInner() {
               setMyCode('');
               setSession(null);
               setRollResult(null);
-              setShowResult(false);
+              setShowCard(false);
               setCodeInput(codeParam);
               setNameInput('');
+              setSelectedAvatar(AVATARS[0]);
+              setSelectedColor(COLORS[0]);
             }}
             style={{
-              width: '100%', padding: '16px',
-              borderRadius: 12, border: 'none',
+              width: '100%', padding: '16px', borderRadius: 12, border: 'none',
               background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
               color: '#fff', fontSize: 18, fontWeight: 900,
               cursor: 'pointer', fontFamily: FONT,
@@ -676,251 +697,186 @@ function StudentSnakeLadderInner() {
   }
 
   // ════════════════════════════════════════════════════════════════════════════
-  // PLAYING SCREEN
+  // PLAYING SCREEN — simplified, no mini board
   // ════════════════════════════════════════════════════════════════════════════
   return (
     <div style={{
-      minHeight: '100dvh', height: '100dvh',
-      background: 'linear-gradient(160deg,#020918,#050f2a,#0a0520)',
+      minHeight: '100dvh', height: '100dvh', background: BG,
       display: 'flex', flexDirection: 'column',
-      alignItems: 'stretch',
-      fontFamily: FONT, color: '#fff',
-      overflow: 'hidden',
+      alignItems: 'stretch', fontFamily: FONT, color: '#fff',
+      overflow: 'hidden', position: 'relative',
     }}>
       <style>{CSS}</style>
 
-      {/* Top strip: room code + my position */}
+      {/* Players strip — horizontal chips */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '10px 16px',
-        background: 'rgba(0,0,0,0.3)',
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '10px 14px',
+        background: 'rgba(0,0,0,0.35)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         flexShrink: 0,
+        overflowX: 'auto',
       }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)',
-          borderRadius: 14, padding: '5px 14px',
-        }}>
-          <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>ห้อง</span>
-          <span style={{ color: '#a5b4fc', fontFamily: 'monospace', letterSpacing: 3, fontWeight: 900, fontSize: 14 }}>
-            {myCode}
-          </span>
+        {players.map((p, i) => (
+          <div key={p.id} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            background: i === curIdx ? `${p.color}25` : 'rgba(255,255,255,0.05)',
+            border: `1.5px solid ${i === curIdx ? p.color : 'rgba(255,255,255,0.1)'}`,
+            borderRadius: 20, padding: '5px 10px',
+            flexShrink: 0,
+            transition: 'all 0.3s',
+          }}>
+            <span style={{ fontSize: 14 }}>{p.avatar}</span>
+            <span style={{
+              fontSize: 12, fontWeight: i === curIdx ? 900 : 600,
+              color: i === curIdx ? '#fff' : 'rgba(255,255,255,0.55)',
+              maxWidth: 64, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            }}>{p.name}</span>
+            <span style={{
+              fontSize: 10, color: i === curIdx ? p.color : 'rgba(255,255,255,0.35)',
+              fontWeight: 700,
+            }}>
+              {p.position === 0 ? 'START' : p.position}
+            </span>
+            {i === curIdx && <span style={{ fontSize: 9, color: p.color }}>▶</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* Main content */}
+      <div style={{
+        flex: 1, display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '20px 24px', gap: 20,
+      }}>
+
+        {/* Turn indicator */}
+        <div style={{ textAlign: 'center' }}>
+          {isMyTurn ? (
+            <div style={{ fontSize: 22, fontWeight: 900, color: '#a5b4fc', animation: 'pulse 2s ease infinite' }}>
+              ถึงตาคุณ! 🎲
+            </div>
+          ) : curPlayer ? (
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'rgba(255,255,255,0.6)' }}>
+              รอ {curPlayer.name} {curPlayer.avatar} ทอย…
+            </div>
+          ) : null}
         </div>
 
+        {/* BIG DICE BUTTON */}
+        <button
+          onClick={isMyTurn && !rolling ? rollDice : undefined}
+          style={{
+            width: 120, height: 120,
+            borderRadius: 28,
+            border: 'none',
+            background: isMyTurn
+              ? (rolling ? 'rgba(255,255,255,0.06)' : 'linear-gradient(135deg,#6366f1,#8b5cf6)')
+              : 'rgba(255,255,255,0.04)',
+            cursor: isMyTurn && !rolling ? 'pointer' : 'default',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 12,
+            animation: isMyTurn && !rolling ? 'diceGlow 2s ease infinite' : 'none',
+            opacity: isMyTurn ? 1 : 0.4,
+            transition: 'opacity 0.3s',
+          }}
+        >
+          <DiceFace
+            value={rolling ? diceAnim : (rollResult?.rolled || diceAnim)}
+            size={96}
+            color={rolling ? '#4338ca' : '#6366f1'}
+            rolling={rolling}
+          />
+        </button>
+
+        {/* Hint under dice */}
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.45)', textAlign: 'center' }}>
+          {isMyTurn
+            ? (rolling ? 'กำลังทอย…' : 'แตะเพื่อทอยลูกเต๋า!')
+            : 'รอผู้เล่นอื่น…'}
+        </div>
+
+        {/* My position badge */}
         {myPlayer && (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: `${myPlayer.color}22`,
-            border: `1px solid ${myPlayer.color}60`,
-            borderRadius: 14, padding: '5px 14px',
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: `${myPlayer.color}18`,
+            border: `1px solid ${myPlayer.color}50`,
+            borderRadius: 14, padding: '8px 18px',
           }}>
-            <span style={{ fontSize: 16 }}>{myPlayer.avatar}</span>
-            <span style={{ color: myPlayer.color, fontWeight: 800, fontSize: 13 }}>{myPlayer.name}</span>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, fontWeight: 700 }}>
-              ช่อง {myPlayer.position}
+            <span style={{ fontSize: 18 }}>{myPlayer.avatar}</span>
+            <span style={{ color: myPlayer.color, fontWeight: 900, fontSize: 15 }}>{myPlayer.name}</span>
+            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14 }}>
+              ตำแหน่ง: ช่อง {myPlayer.position === 0 ? 'START' : myPlayer.position}
             </span>
           </div>
         )}
       </div>
 
-      {/* Main content */}
-      <div style={{
-        flex: 1,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px',
-        overflow: 'hidden',
-        gap: 12,
-      }}>
-
-        {/* Mini board — always shown */}
-        <div style={{ flexShrink: 0 }}>
-          <MiniBoard players={players} theme={gameTheme} />
-        </div>
-
-        {isMyTurn ? (
-          /* ── MY TURN ── */
+      {/* EVENT CARD — slide-up modal overlay */}
+      {showCard && rollResult && (
+        <div
+          onClick={() => { setShowCard(false); clearTimeout(cardTimerRef.current); }}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            zIndex: 50, padding: '0 16px 40px',
+          }}
+        >
           <div style={{
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            flex: 1, width: '100%', maxWidth: 340,
-            gap: 12,
+            width: '100%', maxWidth: 380,
+            background: rollResult.error ? 'linear-gradient(135deg,#450a0a,#7f1d1d)' : cardBg(),
+            border: `2px solid ${rollResult.error ? 'rgba(239,68,68,0.5)' : cardBorder()}`,
+            borderRadius: 24, padding: '28px 24px',
+            textAlign: 'center',
+            animation: 'cardSlideUp 0.35s ease',
           }}>
-            {/* "Your turn" label */}
-            <div style={{
-              fontSize: 18, fontWeight: 900, color: '#a5b4fc',
-              textAlign: 'center',
-              animation: 'pulse 2s ease infinite',
-            }}>
-              ถึงตาคุณแล้ว! 🎯
-            </div>
-
-            {/* Dice button — big rounded square */}
-            <button
-              onClick={rollDice}
-              disabled={rolling}
-              style={{
-                width: 140, height: 140,
-                borderRadius: 32,
-                border: 'none',
-                background: rolling
-                  ? 'rgba(255,255,255,0.06)'
-                  : 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                cursor: rolling ? 'not-allowed' : 'pointer',
-                boxShadow: rolling ? 'none' : '0 0 48px rgba(99,102,241,0.5)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: 16,
-                transition: 'box-shadow 0.2s',
-              }}
-            >
-              <DiceFace
-                value={rolling ? diceAnim : (rollResult?.rolled || diceAnim)}
-                size={108}
-                color={rolling ? '#4338ca' : '#6366f1'}
-                rolling={rolling}
-              />
-            </button>
-
-            <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.5)', textAlign: 'center' }}>
-              {rolling ? 'กำลังทอย…' : 'แตะเพื่อทอยลูกเต๋า!'}
-            </div>
-
-            {/* Roll result card */}
-            {showResult && rollResult && (
-              <div style={{
-                background: rollResult.error ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.07)',
-                border: `1px solid ${rollResult.error ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.15)'}`,
-                borderRadius: 16,
-                padding: '14px 24px',
-                textAlign: 'center',
-                animation: 'popIn 0.3s ease',
-                width: '100%',
-              }}>
-                {rollResult.error ? (
-                  <div style={{ color: '#f87171', fontSize: 14, fontWeight: 700 }}>
-                    ⚠️ {rollResult.error}
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 28, fontWeight: 900, color: rollResult.msgColor || '#a5b4fc', marginBottom: 4 }}>
-                      {rollResult.event?.type === 'snake'  && '🐍'}
-                      {rollResult.event?.type === 'ladder' && '🪜'}
-                      {rollResult.event?.type === 'win'    && '🏆'}
-                      {rollResult.event?.type === 'extra_roll' && '🎲'}
-                      {rollResult.event?.type === 'forward'    && '⭐'}
-                      {rollResult.event?.type === 'backward'   && '😱'}
-                      {rollResult.event?.type === 'skip'       && '😴'}
-                      {!rollResult.event && '🎲'}
-                      {' '}{rollResult.msg}
-                    </div>
-                    {rollResult.event?.from !== undefined && rollResult.event?.to !== undefined && (
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-                        {rollResult.event.from} → {rollResult.event.to}
-                      </div>
-                    )}
-                    {myPlayer && (
-                      <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 4 }}>
-                        ตำแหน่งปัจจุบัน: ช่อง {myPlayer.position}
-                      </div>
-                    )}
-                  </>
-                )}
+            {rollResult.error ? (
+              <div style={{ color: '#f87171', fontSize: 18, fontWeight: 700 }}>
+                ⚠️ {rollResult.error}
               </div>
-            )}
-          </div>
-        ) : (
-          /* ── OTHER'S TURN ── */
-          <div style={{
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            flex: 1, width: '100%', maxWidth: 340,
-            gap: 12,
-          }}>
-            {/* Whose turn */}
-            {curPlayer && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 6 }}>ถึงตา</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 24 }}>{curPlayer.avatar}</span>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: curPlayer.color }}>{curPlayer.name}</span>
+            ) : (
+              <>
+                {/* Dice label */}
+                <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.5)', marginBottom: 12 }}>
+                  🎲 ทอยได้ {rollResult.rolled}
                 </div>
-              </div>
-            )}
-
-            {/* Waiting spinner */}
-            <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 12,
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 40, padding: '14px 24px',
-            }}>
-              <div style={{
-                width: 20, height: 20, borderRadius: '50%',
-                border: '3px solid rgba(165,180,252,0.3)',
-                borderTopColor: '#a5b4fc',
-                animation: 'spin 1s linear infinite',
-              }} />
-              <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, fontWeight: 700 }}>
-                รอผู้เล่นอื่น…
-              </span>
-            </div>
-
-            {/* Player standings */}
-            <div style={{
-              width: '100%',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.07)',
-              borderRadius: 14,
-              padding: '12px 14px',
-            }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>
-                ผู้เล่ม ({players.length})
-              </div>
-              {players.map((p, i) => (
-                <div key={p.id} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '6px 0',
-                  borderBottom: i < players.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                {/* Big dice face */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+                  <DiceFace value={rollResult.rolled} size={90} color={rollResult.msgColor || '#6366f1'} />
+                </div>
+                {/* Event message */}
+                <div style={{
+                  fontSize: 22, fontWeight: 900,
+                  color: rollResult.msgColor || '#a5b4fc',
+                  marginBottom: 10,
                 }}>
-                  <span style={{ fontSize: 14 }}>{p.avatar}</span>
-                  <div style={{ width: 9, height: 9, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-                  <span style={{
-                    flex: 1, fontSize: 13,
-                    color: i === curIdx ? '#fff' : 'rgba(255,255,255,0.55)',
-                    fontWeight: i === curIdx ? 800 : 500,
-                  }}>
-                    {p.name}
-                    {p.id === myPlayerId && (
-                      <span style={{ fontSize: 10, color: 'rgba(165,180,252,0.5)', marginLeft: 4 }}>(คุณ)</span>
-                    )}
-                  </span>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
-                    {p.position === 0 ? 'START' : `ช่อง ${p.position}`}
-                  </span>
-                  {i === curIdx && (
-                    <span style={{ fontSize: 10, color: p.color }}>▶</span>
-                  )}
+                  {rollResult.msg}
                 </div>
-              ))}
-            </div>
-
-            {/* Last event from session */}
-            {session?.lastEvent?.msg && (
-              <div style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 12,
-                padding: '10px 18px',
-                fontSize: 14, fontWeight: 700, textAlign: 'center',
-                color: 'rgba(255,255,255,0.6)',
-              }}>
-                ผลล่าสุด: {session.lastEvent.msg}
-              </div>
+                {/* Position change */}
+                {rollResult.event?.from !== undefined && rollResult.event?.to !== undefined && (
+                  <div style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>
+                    ช่อง {rollResult.event.from} → ช่อง {rollResult.event.to}
+                  </div>
+                )}
+                {myPlayer && (
+                  <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)' }}>
+                    ตำแหน่งของคุณ: ช่อง {myPlayer.position}
+                  </div>
+                )}
+                {/* Dismiss hint */}
+                <div style={{
+                  marginTop: 20, fontSize: 12, color: 'rgba(255,255,255,0.3)',
+                  animation: 'dotPulse 1.5s ease infinite',
+                }}>
+                  แตะเพื่อปิด
+                </div>
+              </>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

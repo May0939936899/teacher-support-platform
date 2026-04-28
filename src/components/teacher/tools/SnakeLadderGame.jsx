@@ -260,6 +260,7 @@ export default function SnakeLadderGame() {
   const [lang,          setLang]          = useState('th');
   const [phase,         setPhase]         = useState('theme');  // theme | lobby | playing | finished
   const [theme,         setTheme]         = useState(null);
+  const [maxPlayers,    setMaxPlayers]    = useState(20);
   const [roomCode,      setRoomCode]      = useState('');
   const [session,       setSession]       = useState(null);
   const [creating,      setCreating]      = useState(false);
@@ -343,7 +344,7 @@ export default function SnakeLadderGame() {
       const res = await fetch('/api/teacher/snakelad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create', theme }),
+        body: JSON.stringify({ action: 'create', theme, maxPlayers }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
@@ -467,6 +468,35 @@ export default function SnakeLadderGame() {
                 {th.label}
               </button>
             ))}
+          </div>
+
+          {/* Max players counter */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
+            marginBottom: 28,
+          }}>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: 700 }}>
+              ผู้เล่มสูงสุด
+            </span>
+            <button
+              onClick={() => setMaxPlayers(n => Math.max(2, n - 1))}
+              style={{
+                width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(255,255,255,0.07)', color: '#fff', fontSize: 20, fontWeight: 900,
+                cursor: 'pointer', fontFamily: FONT, lineHeight: 1,
+              }}
+            >−</button>
+            <span style={{ fontSize: 28, fontWeight: 900, color: '#a5b4fc', minWidth: 40, textAlign: 'center' }}>
+              {maxPlayers}
+            </span>
+            <button
+              onClick={() => setMaxPlayers(n => Math.min(50, n + 1))}
+              style={{
+                width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)',
+                background: 'rgba(255,255,255,0.07)', color: '#fff', fontSize: 20, fontWeight: 900,
+                cursor: 'pointer', fontFamily: FONT, lineHeight: 1,
+              }}
+            >+</button>
           </div>
 
           {error && (
