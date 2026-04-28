@@ -1,20 +1,20 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase-server';
 
-// ── In-memory fallback ──────────────────────────────────────────────────────
-const memRooms = globalThis.__snakladRooms || (globalThis.__snakladRooms = new Map());
+// ── In-memory fallback (shared across invocations in same Lambda, NOT across instances) ──
+const memRooms = globalThis.__snakladRooms2 || (globalThis.__snakladRooms2 = new Map());
 let sbOk = null;
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 function json(data, status = 200) {
   return NextResponse.json(data, { status, headers: cors });
 }
 
-// ── Supabase availability check ─────────────────────────────────────────────
+// ── Supabase check ─────────────────────────────────────────────────────────────
 async function checkSb() {
   if (sbOk !== null) return sbOk;
   try {
@@ -29,17 +29,22 @@ async function checkSb() {
 const PREFIX = 'SL_';
 const TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
-// ── Board constants ──────────────────────────────────────────────────────────
-const SNAKES  = { 99:78, 95:56, 87:24, 64:60, 62:19, 54:34, 17:7 };
-const LADDERS = { 4:14, 9:31, 20:38, 28:84, 40:59, 51:67, 63:81 };
+// ── Board constants (per spec) ────────────────────────────────────────────────
+const SNAKES  = { 17:7, 54:34, 62:19, 64:60, 87:36, 93:73, 95:56, 99:78 };
+const LADDERS = { 4:23, 9:31, 20:38, 28:84, 40:59, 51:67, 63:81, 71:91 };
+const EVENTS  = {
+  10: { type: 'extra_roll', msg: '🎲 ทอยอีกครั้ง!' },
+  25: { type: 'backward',   amount: 3,  msg: '😱 ถอยหลัง 3 ช่อง' },
+  45: { type: 'forward',    amount: 3,  msg: '⭐ เดินหน้า 3 ช่อง' },
+  60: { type: 'skip',                   msg: '😴 หยุดพัก 1 ตา' },
+  75: { type: 'forward',    amount: 5,  msg: '🎁 รางวัลพิเศษ! เดินหน้า 5' },
+  88: { type: 'backward',   amount: 5,  msg: '💀 ถอยหลัง 5 ช่อง' },
+};
 
-const PLAYER_COLORS = [
-  '#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6',
-  '#ec4899','#06b6d4','#84cc16','#f97316','#6366f1',
-];
+const PLAYER_COLORS  = ['#FF6B9D','#4ECDC4','#FFE66D','#A8E6CF','#DDA0DD','#87CEEB','#FFA07A','#98FB98','#F0E68C','#E6A8D7'];
+const PLAYER_AVATARS = ['🐶','🐱','🐻','🦊','🐸','🦁','🐯','🐺','🦝','🐨'];
 
-// ── Serialize / deserialize ──────────────────────────────────────────────────
-// Room state is plain JSON — no Map/Set needed.
+// ── Serialize / deserialize ───────────────────────────────────────────────────
 function serRoom(r) {
   return JSON.stringify(r);
 }
@@ -47,35 +52,36 @@ function serRoom(r) {
 function deserRoom(s) {
   if (!s) return null;
   try {
-    const parsed = typeof s === 'string' ? JSON.parse(s) : s;
-    return parsed;
+    return typeof s === 'string' ? JSON.parse(s) : s;
   } catch { return null; }
 }
 
-// ── CRUD helpers ─────────────────────────────────────────────────────────────
-async function getRoom(roomCode) {
+// ── CRUD helpers (table: scoreboard_sessions, columns: id, teams, active, expires_at) ──
+async function getRoom(code) {
+  const key = PREFIX + code;
   if (await checkSb()) {
     const sb = createAdminClient();
     const { data } = await sb
       .from('scoreboard_sessions')
       .select('teams, active, expires_at')
-      .eq('id', PREFIX + roomCode)
+      .eq('id', key)
       .single();
     if (!data || !data.active) return null;
     if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
     return deserRoom(data.teams);
   }
-  const r = memRooms.get(roomCode);
+  const r = memRooms.get(code);
   if (!r) return null;
-  if (Date.now() - r.createdAt > TTL_MS) { memRooms.delete(roomCode); return null; }
+  if (Date.now() - r.createdAt > TTL_MS) { memRooms.delete(code); return null; }
   return r;
 }
 
-async function createRoom(roomCode, room) {
+async function saveRoom(code, room) {
+  const key = PREFIX + code;
   if (await checkSb()) {
     const sb = createAdminClient();
     await sb.from('scoreboard_sessions').upsert({
-      id:         PREFIX + roomCode,
+      id:         key,
       teams:      serRoom(room),
       active:     true,
       created_at: new Date().toISOString(),
@@ -83,163 +89,276 @@ async function createRoom(roomCode, room) {
     });
     return;
   }
-  memRooms.set(roomCode, room);
+  memRooms.set(code, room);
 }
 
-async function mutateRoom(roomCode, mutator) {
+async function mutateRoom(code, mutator) {
+  const key = PREFIX + code;
   if (await checkSb()) {
     const sb = createAdminClient();
     const { data } = await sb
       .from('scoreboard_sessions')
       .select('teams, active, expires_at')
-      .eq('id', PREFIX + roomCode)
+      .eq('id', key)
       .single();
     if (!data || !data.active) return null;
     const room = deserRoom(data.teams);
     if (!room) return null;
-    mutator(room);
+    const result = mutator(room);
+    if (result === false) return room; // mutator signalled early exit but room is still valid
     await sb
       .from('scoreboard_sessions')
       .update({ teams: serRoom(room) })
-      .eq('id', PREFIX + roomCode);
+      .eq('id', key);
     return room;
   }
-  const r = memRooms.get(roomCode);
+  const r = memRooms.get(code);
   if (!r) return null;
-  mutator(r);
+  const result = mutator(r);
+  if (result === false) return r;
   return r;
 }
 
-async function deleteRoom(roomCode) {
-  if (await checkSb()) {
-    const sb = createAdminClient();
-    await sb.from('scoreboard_sessions').delete().eq('id', PREFIX + roomCode);
-  }
-  memRooms.delete(roomCode);
+// ── Code generator ─────────────────────────────────────────────────────────────
+function genCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-// ── Route handlers ───────────────────────────────────────────────────────────
+// ── Move logic ────────────────────────────────────────────────────────────────
+function applyMove(room, player, roll) {
+  let pos = player.position + roll;
+  if (pos > 100) pos = player.position; // bounce back from > 100
+
+  let event = null;
+
+  // Check snake
+  if (SNAKES[pos] !== undefined) {
+    const to = SNAKES[pos];
+    event = { type: 'snake', from: pos, to, msg: `🐍 งูกัด! ${pos} → ${to}` };
+    pos = to;
+  }
+  // Check ladder
+  else if (LADDERS[pos] !== undefined) {
+    const to = LADDERS[pos];
+    event = { type: 'ladder', from: pos, to, msg: `🪜 ขึ้นบันได! ${pos} → ${to}` };
+    pos = to;
+  }
+  // Check special events
+  else if (EVENTS[pos] !== undefined) {
+    const ev = EVENTS[pos];
+    event = { type: ev.type, msg: ev.msg };
+    if (ev.type === 'forward') {
+      const to = Math.min(100, pos + ev.amount);
+      event.from = pos; event.to = to;
+      pos = to;
+    } else if (ev.type === 'backward') {
+      const to = Math.max(1, pos - ev.amount);
+      event.from = pos; event.to = to;
+      pos = to;
+    } else if (ev.type === 'skip') {
+      player.skipTurns = (player.skipTurns || 0) + 1;
+    }
+    // extra_roll handled in roll logic
+  }
+
+  player.position = pos;
+  return { pos, event };
+}
+
+function advanceTurn(room) {
+  const total = room.players.length;
+  let next = (room.currentPlayerIdx + 1) % total;
+  // skip players who have skipTurns > 0
+  let attempts = 0;
+  while (room.players[next].skipTurns > 0 && attempts < total) {
+    room.players[next].skipTurns = Math.max(0, room.players[next].skipTurns - 1);
+    next = (next + 1) % total;
+    attempts++;
+  }
+  room.currentPlayerIdx = next;
+}
+
+// ── OPTIONS ───────────────────────────────────────────────────────────────────
 export async function OPTIONS() {
   return new Response(null, { status: 204, headers: cors });
 }
 
+// ── GET ?code=XXX ─────────────────────────────────────────────────────────────
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const roomCode = (searchParams.get('room') || '').toUpperCase();
-  const action   = searchParams.get('action');
-  if (!roomCode) return json({ error: 'Missing room' }, 400);
+  const code = (searchParams.get('code') || '').toUpperCase();
+  if (!code) return json({ error: 'Missing code' }, 400);
 
-  const r = await getRoom(roomCode);
-  if (!r) return json({ error: 'Room not found' }, 404);
-
-  if (action === 'get_state') {
-    return json(r);
-  }
-
-  return json({ error: 'Unknown action' }, 400);
+  const room = await getRoom(code);
+  if (!room) return json({ error: 'Game not found' }, 404);
+  return json({ session: room, code });
 }
 
+// ── POST ──────────────────────────────────────────────────────────────────────
 export async function POST(request) {
   let body;
   try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
-  const { action, room: roomRaw } = body;
-  const room = (roomRaw || '').toUpperCase();
+
+  const { action } = body;
 
   // ── CREATE ──
   if (action === 'create') {
-    const newRoom = {
-      status:      'waiting',
-      players:     [],
-      currentTurn: 0,
-      diceResult:  null,
-      lastEvent:   null,
-      lastFrom:    null,
-      lastTo:      null,
-      winner:      null,
-      createdAt:   Date.now(),
+    const { theme = 'funpark' } = body;
+    const code = genCode();
+    const room = {
+      phase:            'waiting',
+      theme,
+      code,
+      players:          [],
+      currentPlayerIdx: 0,
+      lastRoll:         null,
+      lastEvent:        null,
+      winner:           null,
+      log:              [],
+      createdAt:        Date.now(),
     };
-    await createRoom(room, newRoom);
-    return json({ success: true });
+    await saveRoom(code, room);
+    return json({ code, session: room });
   }
 
   // ── JOIN ──
   if (action === 'join') {
-    const { voterId, name } = body;
-    if (!voterId || !name?.trim()) return json({ error: 'Missing voterId or name' }, 400);
+    const { code: codeRaw, name } = body;
+    const code = (codeRaw || '').toUpperCase();
+    if (!code || !name?.trim()) return json({ error: 'Missing code or name' }, 400);
 
+    let playerId = null;
     let errorMsg = null;
-    const updated = await mutateRoom(room, r => {
-      if (r.status !== 'waiting') { errorMsg = 'Game already started'; return; }
-      const already = r.players.find(p => p.id === voterId);
-      if (already) return; // already in, skip
-      if (r.players.length >= 10) { errorMsg = 'Room full'; return; }
-      const color = PLAYER_COLORS[r.players.length % PLAYER_COLORS.length];
-      r.players.push({ id: voterId, name: name.trim().slice(0, 20), position: 0, color });
+
+    const updated = await mutateRoom(code, r => {
+      if (r.phase !== 'waiting') { errorMsg = 'Game already started'; return false; }
+      // check if name already used (idempotent rejoin by name)
+      const existing = r.players.find(p => p.name === name.trim().slice(0, 20));
+      if (existing) { playerId = existing.id; return false; }
+      if (r.players.length >= 10) { errorMsg = 'Room full (max 10)'; return false; }
+
+      playerId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      const idx = r.players.length;
+      r.players.push({
+        id:       playerId,
+        name:     name.trim().slice(0, 20),
+        position: 0,
+        color:    PLAYER_COLORS[idx % PLAYER_COLORS.length],
+        avatar:   PLAYER_AVATARS[idx % PLAYER_AVATARS.length],
+        skipTurns: 0,
+        isOnline: true,
+      });
     });
-    if (!updated) return json({ error: 'Room not found' }, 404);
+
+    if (!updated) {
+      if (errorMsg) return json({ error: errorMsg }, 400);
+      // could be rejoin case
+      const room = await getRoom(code);
+      if (!room) return json({ error: 'Game not found' }, 404);
+      const p = room.players.find(pl => pl.name === name.trim().slice(0, 20));
+      if (p) return json({ playerId: p.id, session: room });
+      return json({ error: 'Game not found' }, 404);
+    }
     if (errorMsg) return json({ error: errorMsg }, 400);
-    return json({ success: true, players: updated.players });
+    return json({ playerId, session: updated });
   }
 
   // ── START ──
   if (action === 'start') {
+    const { code: codeRaw } = body;
+    const code = (codeRaw || '').toUpperCase();
+    if (!code) return json({ error: 'Missing code' }, 400);
+
     let errorMsg = null;
-    const updated = await mutateRoom(room, r => {
-      if (r.players.length < 2) { errorMsg = 'Need at least 2 players'; return; }
-      r.status      = 'playing';
-      r.currentTurn = 0;
+    const updated = await mutateRoom(code, r => {
+      if (r.players.length < 2) { errorMsg = 'Need at least 2 players'; return false; }
+      if (r.phase === 'playing') return false; // already started, ok
+      r.phase = 'playing';
+      r.currentPlayerIdx = 0;
+      r.log = [];
     });
-    if (!updated) return json({ error: 'Room not found' }, 404);
+    if (!updated) return json({ error: errorMsg || 'Game not found' }, 404);
     if (errorMsg) return json({ error: errorMsg }, 400);
-    return json({ success: true });
+    return json({ session: updated });
   }
 
   // ── ROLL ──
   if (action === 'roll') {
-    const { voterId } = body;
-    if (!voterId) return json({ error: 'Missing voterId' }, 400);
+    const { code: codeRaw, playerId } = body;
+    const code = (codeRaw || '').toUpperCase();
+    if (!code || !playerId) return json({ error: 'Missing code or playerId' }, 400);
 
+    let rolled = null;
+    let eventResult = null;
     let errorMsg = null;
-    const updated = await mutateRoom(room, r => {
-      if (r.status !== 'playing') { errorMsg = 'Game not playing'; return; }
-      const player = r.players[r.currentTurn];
-      if (!player || player.id !== voterId) { errorMsg = 'Not your turn'; return; }
 
-      const roll = Math.floor(Math.random() * 6) + 1;
-      r.diceResult = roll;
-      let newPos = player.position + roll;
-      if (newPos > 100) newPos = player.position; // bounce
-      r.lastFrom = newPos;
-      if (LADDERS[newPos]) {
-        newPos = LADDERS[newPos];
-        r.lastEvent = 'ladder';
-      } else if (SNAKES[newPos]) {
-        newPos = SNAKES[newPos];
-        r.lastEvent = 'snake';
-      } else {
-        r.lastEvent = 'normal';
+    const updated = await mutateRoom(code, r => {
+      if (r.phase !== 'playing') { errorMsg = 'Game not in playing phase'; return false; }
+      const currentPlayer = r.players[r.currentPlayerIdx];
+      if (!currentPlayer || currentPlayer.id !== playerId) {
+        errorMsg = 'Not your turn';
+        return false;
       }
-      player.position = newPos;
-      r.lastTo = newPos;
-      if (newPos === 100) {
-        r.status    = 'finished';
-        r.winner    = player.id;
-        r.lastEvent = 'win';
-      } else {
-        r.currentTurn = (r.currentTurn + 1) % r.players.length;
+
+      rolled = Math.floor(Math.random() * 6) + 1;
+      r.lastRoll = rolled;
+
+      const { pos, event } = applyMove(r, currentPlayer, rolled);
+      eventResult = event;
+      r.lastEvent = event;
+
+      // Log entry
+      const logEntry = {
+        player:    currentPlayer.name,
+        roll:      rolled,
+        fromPos:   currentPlayer.position === pos ? pos - rolled : pos, // approximation
+        toPos:     pos,
+        event:     event ? event.msg : null,
+        timestamp: Date.now(),
+      };
+      r.log = [logEntry, ...r.log].slice(0, 50); // keep last 50
+
+      // Check win
+      if (pos === 100) {
+        r.phase  = 'finished';
+        r.winner = currentPlayer.name;
+        r.lastEvent = { type: 'win', msg: `🏆 ${currentPlayer.name} ชนะ!` };
+        return;
       }
+
+      // Extra roll: same player goes again
+      if (event?.type === 'extra_roll') {
+        // currentPlayerIdx stays the same
+        return;
+      }
+
+      // Advance turn
+      advanceTurn(r);
     });
-    if (!updated) return json({ error: 'Room not found' }, 404);
+
+    if (!updated) return json({ error: errorMsg || 'Game not found' }, errorMsg ? 400 : 404);
     if (errorMsg) return json({ error: errorMsg }, 400);
-    return json(updated);
+    return json({ session: updated, rolled, event: eventResult });
+  }
+
+  // ── RESET ──
+  if (action === 'reset') {
+    const { code: codeRaw } = body;
+    const code = (codeRaw || '').toUpperCase();
+    if (!code) return json({ error: 'Missing code' }, 400);
+
+    const updated = await mutateRoom(code, r => {
+      r.phase = 'waiting';
+      r.players.forEach(p => { p.position = 0; p.skipTurns = 0; });
+      r.currentPlayerIdx = 0;
+      r.lastRoll  = null;
+      r.lastEvent = null;
+      r.winner    = null;
+      r.log       = [];
+    });
+    if (!updated) return json({ error: 'Game not found' }, 404);
+    return json({ session: updated });
   }
 
   return json({ error: 'Unknown action' }, 400);
-}
-
-export async function DELETE(request) {
-  const { searchParams } = new URL(request.url);
-  const room = (searchParams.get('room') || '').toUpperCase();
-  if (room) await deleteRoom(room);
-  return json({ success: true });
 }

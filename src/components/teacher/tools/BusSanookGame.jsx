@@ -40,6 +40,27 @@ C:1000
 D:2000
 Ans:C`;
 
+// Parse spreadsheet format (tab or comma separated: Q, A, B, C, D, Answer)
+function parseSheetText(text) {
+  const lines = text.trim().split('\n').filter(Boolean);
+  const questions = [];
+  const ansMap = { A:0, B:1, C:2, D:3, a:0, b:1, c:2, d:3, '1':0, '2':1, '3':2, '4':3 };
+  for (const line of lines) {
+    const sep = line.includes('\t') ? '\t' : ',';
+    const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
+    if (cols.length < 5) continue;
+    const [q, a, b, c, d, ans] = cols;
+    if (!q || !a || !b || !c || !d) continue;
+    const answer = ansMap[ans?.trim()] ?? 0;
+    questions.push({ q, choices:[a,b,c,d], answer, time:20 });
+  }
+  return questions;
+}
+
+const SHEET_EXAMPLE = `คำถาม\tA\tB\tC\tD\tเฉลย
+เมืองหลวงของไทยคืออะไร?\tเชียงใหม่\tกรุงเทพมหานคร\tภูเก็ต\tพัทยา\tB
+น้ำ 1 ลิตร มีกี่มิลลิลิตร?\t100\t500\t1000\t2000\tC`;
+
 // ── Audio ─────────────────────────────────────────────────────────────────────
 function getCtx(ref) {
   if (!ref.current) {
@@ -149,6 +170,10 @@ const GLOBAL_CSS = `
     100% { transform: translateY(100vh) rotate(720deg); opacity:0; }
   }
   @keyframes buss-podium-rise { from{transform:scaleY(0);opacity:0} to{transform:scaleY(1);opacity:1} }
+  @keyframes buss-bar-grow    { from{height:0;opacity:0} to{opacity:1} }
+  @keyframes buss-count-pop   { 0%{transform:scale(0)} 70%{transform:scale(1.25)} 100%{transform:scale(1)} }
+  @keyframes buss-star-spin   { 0%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(180deg) scale(1.3)} 100%{transform:rotate(360deg) scale(1)} }
+  @keyframes buss-bounce-in   { 0%{transform:translateY(40px);opacity:0} 60%{transform:translateY(-8px)} 100%{transform:translateY(0);opacity:1} }
 `;
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -161,6 +186,8 @@ export default function BusSanookGame() {
   const [importing,  setImporting]  = useState(false);
   const [importText, setImportText] = useState('');
   const [importErr,  setImportErr]  = useState('');
+  const [importTab,  setImportTab]  = useState('text'); // 'text' | 'sheet'
+  const [barsVisible, setBarsVisible] = useState(false);
   const [globalTime, setGlobalTime] = useState(20);
   const [maxPlayers, setMaxPlayers] = useState(50);
 
@@ -269,6 +296,26 @@ export default function BusSanookGame() {
   // Reset auto-reveal flag on new question
   useEffect(() => {
     if (phase === 'question') setAutoRevealScheduled(false);
+  }, [phase, gameState?.currentQ]);
+
+  // Auto-reveal when ALL players have answered
+  const autoRevealAllRef = useRef(null);
+  useEffect(() => {
+    if (phase === 'question' && allAnswered && playerCount > 0 && !autoRevealScheduled) {
+      if (autoRevealAllRef.current) clearTimeout(autoRevealAllRef.current);
+      autoRevealAllRef.current = setTimeout(() => { handleReveal(); }, 800);
+    }
+    return () => { if (autoRevealAllRef.current) clearTimeout(autoRevealAllRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, allAnswered, playerCount, autoRevealScheduled]);
+
+  // Animate bars on reveal
+  useEffect(() => {
+    if (phase === 'reveal') {
+      setBarsVisible(false);
+      const t = setTimeout(() => setBarsVisible(true), 150);
+      return () => clearTimeout(t);
+    }
   }, [phase, gameState?.currentQ]);
 
   // ── Cleanup on unmount ───────────────────────────────────────────────────
@@ -391,8 +438,10 @@ export default function BusSanookGame() {
   }
   function handleImport() {
     setImportErr('');
-    const parsed = parseImportText(importText);
-    if (parsed.length === 0) { setImportErr('ไม่พบคำถามที่ถูกรูปแบบ กรุณาตรวจสอบรูปแบบอีกครั้ง'); return; }
+    const parsed = importTab === 'sheet'
+      ? parseSheetText(importText)
+      : parseImportText(importText);
+    if (parsed.length === 0) { setImportErr('ไม่พบคำถามที่ถูกรูปแบบ — ตรวจสอบตัวอย่างแล้วลองใหม่'); return; }
     setQuestions(parsed);
     setEditingIdx(0);
     setImporting(false);
@@ -455,20 +504,76 @@ export default function BusSanookGame() {
 
         {/* Import Modal */}
         {importing && (
-          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.75)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <div style={{ background:SURFACE2, borderRadius:16, padding:28, width:'min(600px,95vw)', border:`1px solid ${CYAN}` }}>
-              <div style={{ fontWeight:700, fontSize:18, marginBottom:12, color:CYAN }}>📥 นำเข้าคำถาม</div>
-              <div style={{ fontSize:13, color:'#aaa', marginBottom:8 }}>รูปแบบ: แยกแต่ละข้อด้วย --- (ดูตัวอย่างด้านล่าง)</div>
-              <textarea
-                value={importText}
-                onChange={e => setImportText(e.target.value)}
-                placeholder={IMPORT_EXAMPLE}
-                style={{ width:'100%', height:200, background:'#0d0d2b', color:'#fff', border:`1px solid #444`, borderRadius:8, padding:10, fontFamily:FONT, fontSize:13, resize:'vertical' }}
-              />
-              {importErr && <div style={{ color:'#ff6b6b', fontSize:13, marginTop:6 }}>{importErr}</div>}
-              <div style={{ display:'flex', gap:8, marginTop:12, justifyContent:'flex-end' }}>
-                <button onClick={() => { setImporting(false); setImportErr(''); }} style={btnStyle('#555')}>ยกเลิก</button>
-                <button onClick={handleImport} style={btnStyle(CYAN, '#000')}>นำเข้า</button>
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center' }}
+            onClick={e => { if(e.target===e.currentTarget){setImporting(false);setImportErr('');} }}>
+            <div style={{ background:SURFACE2, borderRadius:20, padding:28, width:'min(640px,95vw)', border:`1px solid ${CYAN}33`, boxShadow:`0 0 40px ${CYAN}22` }}>
+              <div style={{ fontWeight:800, fontSize:20, marginBottom:4, color:CYAN }}>📥 นำเข้าคำถาม</div>
+              <div style={{ fontSize:13, color:'#888', marginBottom:16 }}>เลือกวิธีนำเข้าที่ถนัด</div>
+
+              {/* Tabs */}
+              <div style={{ display:'flex', gap:4, background:'#0d0d2b', borderRadius:10, padding:4, marginBottom:16 }}>
+                {[
+                  { id:'text',  label:'📝 แบบข้อความ', desc:'พิมพ์หรือวางข้อความ' },
+                  { id:'sheet', label:'📊 แบบสเปรดชีต', desc:'copy จาก Excel/Google Sheets' },
+                ].map(tab => (
+                  <button key={tab.id} onClick={() => { setImportTab(tab.id); setImportErr(''); setImportText(''); }}
+                    style={{ flex:1, padding:'8px 12px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:FONT, textAlign:'left',
+                      background: importTab===tab.id ? `${CYAN}22` : 'transparent',
+                      borderBottom: importTab===tab.id ? `2px solid ${CYAN}` : '2px solid transparent',
+                    }}>
+                    <div style={{ fontSize:13, fontWeight:700, color: importTab===tab.id ? CYAN : '#aaa' }}>{tab.label}</div>
+                    <div style={{ fontSize:11, color:'#666', marginTop:1 }}>{tab.desc}</div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Text format */}
+              {importTab === 'text' && (
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                    <span style={{ fontSize:12, color:'#888' }}>รูปแบบ: Q: → A: B: C: D: → Ans: → คั่นด้วย ---</span>
+                    <button onClick={() => setImportText(IMPORT_EXAMPLE)} style={{ ...btnStyle('#333'), fontSize:11, padding:'3px 10px' }}>📋 ใส่ตัวอย่าง</button>
+                  </div>
+                  <textarea value={importText} onChange={e => setImportText(e.target.value)}
+                    placeholder={IMPORT_EXAMPLE} rows={9}
+                    style={{ width:'100%', background:'#080820', color:'#eee', border:`1px solid #333`, borderRadius:10, padding:12, fontFamily:'monospace', fontSize:13, resize:'vertical', boxSizing:'border-box' }}
+                  />
+                </div>
+              )}
+
+              {/* Sheet format */}
+              {importTab === 'sheet' && (
+                <div>
+                  <div style={{ background:'#080820', borderRadius:10, padding:12, marginBottom:10, fontSize:12, color:'#aaa', lineHeight:1.8 }}>
+                    <strong style={{ color:CYAN }}>วิธีใช้:</strong><br/>
+                    1. เปิด Google Sheets หรือ Excel<br/>
+                    2. สร้างคอลัมน์: <strong style={{color:'#fff'}}>คำถาม | A | B | C | D | เฉลย</strong><br/>
+                    3. กรอกข้อมูล (เฉลยใส่ A/B/C/D)<br/>
+                    4. เลือก copy ทั้งหมด → วางที่นี่
+                  </div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                    <span style={{ fontSize:12, color:'#888' }}>วางข้อมูลจาก Spreadsheet:</span>
+                    <button onClick={() => setImportText(SHEET_EXAMPLE)} style={{ ...btnStyle('#333'), fontSize:11, padding:'3px 10px' }}>📋 ใส่ตัวอย่าง</button>
+                  </div>
+                  <textarea value={importText} onChange={e => setImportText(e.target.value)}
+                    placeholder={SHEET_EXAMPLE} rows={6}
+                    style={{ width:'100%', background:'#080820', color:'#eee', border:`1px solid #333`, borderRadius:10, padding:12, fontFamily:'monospace', fontSize:13, resize:'vertical', boxSizing:'border-box' }}
+                  />
+                </div>
+              )}
+
+              {importErr && (
+                <div style={{ background:'#3a0a0a', color:'#ff8080', borderRadius:8, padding:'8px 12px', marginTop:8, fontSize:13, border:'1px solid #ff4444' }}>
+                  ⚠️ {importErr}
+                </div>
+              )}
+
+              <div style={{ display:'flex', gap:8, marginTop:14, justifyContent:'flex-end' }}>
+                <button onClick={() => { setImporting(false); setImportErr(''); setImportText(''); }} style={btnStyle('#444')}>ยกเลิก</button>
+                <button onClick={handleImport} disabled={!importText.trim()}
+                  style={{ ...btnStyle(CYAN, '#000'), opacity: importText.trim() ? 1 : 0.4 }}>
+                  ✅ นำเข้า {importText.trim() ? '' : '(วางข้อมูลก่อน)'}
+                </button>
               </div>
             </div>
           </div>
@@ -766,79 +871,182 @@ export default function BusSanookGame() {
   if (phase === 'reveal' && currentQData) {
     const correctIdx = currentQData.answer;
     const isLast = currentQIdx + 1 >= totalQ;
+    const maxCount = Math.max(...distribution.map(d => d.count), 1);
+    const BAR_MAX_H = 200;
 
     return (
       <div style={{ display:'flex', flexDirection:'column', height:'100%', background:BG, fontFamily:FONT, color:'#fff', overflow:'hidden' }}>
         {/* Header */}
         <div style={{ background:SURFACE, padding:'10px 20px', display:'flex', alignItems:'center', gap:12, borderBottom:`1px solid #333`, flexShrink:0 }}>
-          <span style={{ color:GOLD, fontWeight:700, fontSize:15 }}>🔍 เฉลย — ข้อ {currentQIdx + 1}/{totalQ}</span>
+          <span style={{ color:GOLD, fontWeight:800, fontSize:16 }}>✨ เฉลย — ข้อ {currentQIdx + 1}/{totalQ}</span>
+          <span style={{ marginLeft:'auto', color:'#aaa', fontSize:13 }}>{answerCount}/{playerCount} คนตอบ</span>
         </div>
 
-        <div style={{ flex:1, overflow:'auto', padding:20, display:'flex', flexDirection:'column', gap:16 }}>
+        <div style={{ flex:1, overflow:'auto', padding:'16px 20px', display:'flex', flexDirection:'column', gap:14, alignItems:'center' }}>
 
           {/* Question */}
-          <div style={{ textAlign:'center', fontSize:'clamp(16px,2.5vw,26px)', fontWeight:700, color:'#fff', animation:'buss-fadeIn 0.5s' }}>
+          <div style={{
+            textAlign:'center', fontSize:'clamp(15px,2.2vw,24px)', fontWeight:800, color:'#fff',
+            background: `linear-gradient(135deg, ${SURFACE}, #1a1a3e)`,
+            padding:'14px 24px', borderRadius:14, maxWidth:700, width:'100%',
+            border:'1px solid #333', animation:'buss-bounce-in 0.5s ease',
+          }}>
             {currentQData.q}
           </div>
 
-          {/* Answer tiles with distribution */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, maxWidth:700, margin:'0 auto', width:'100%' }}>
-            {[0,1,2,3].map(ci => {
-              const cfg = ANSWER_CFG[ci];
-              const isCorrect = ci === correctIdx;
-              const dist = distribution[ci];
-              return (
-                <div key={ci} style={{
-                  borderRadius:14, overflow:'hidden', position:'relative',
-                  border: `3px solid ${isCorrect ? '#fff' : 'transparent'}`,
-                  opacity: isCorrect ? 1 : 0.45,
-                  boxShadow: isCorrect ? `0 0 28px ${cfg.color}` : 'none',
-                  animation: isCorrect ? 'buss-popIn 0.5s ease' : 'none',
-                }}>
-                  <div style={{ background: cfg.color, padding:'10px 14px', display:'flex', alignItems:'center', gap:10 }}>
-                    <span style={{ fontSize:20 }}>{cfg.icon}</span>
-                    <span style={{ fontWeight:700, fontSize:14, flex:1, overflow:'hidden', whiteSpace:'nowrap', textOverflow:'ellipsis' }}>
-                      {currentQData.choices[ci]}
-                    </span>
-                    {isCorrect && <span style={{ fontSize:20 }}>✓</span>}
-                    <span style={{ fontSize:13, fontWeight:700 }}>{dist?.count || 0}</span>
+          {/* ── CUTE BAR CHART ── */}
+          <div style={{
+            background:`linear-gradient(135deg, ${SURFACE}, #12122e)`,
+            borderRadius:20, padding:'24px 16px 16px', maxWidth:700, width:'100%',
+            border:'1px solid #2a2a5a', boxShadow:'0 8px 32px rgba(0,0,0,0.4)',
+          }}>
+            {/* Bars container */}
+            <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'center', gap:12, height:BAR_MAX_H + 40, paddingBottom:0 }}>
+              {[0,1,2,3].map((ci, barIdx) => {
+                const cfg = ANSWER_CFG[ci];
+                const isCorrect = ci === correctIdx;
+                const dist = distribution[ci];
+                const targetH = barsVisible ? Math.max((dist.count / maxCount) * BAR_MAX_H, 8) : 0;
+                const DELAY = `${barIdx * 0.1}s`;
+
+                return (
+                  <div key={ci} style={{ flex:1, maxWidth:130, display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
+
+                    {/* Count bubble — bounces in */}
+                    <div style={{
+                      fontSize:26, fontWeight:900,
+                      color: isCorrect ? cfg.light : '#666',
+                      marginBottom:6,
+                      animation: barsVisible ? `buss-count-pop 0.5s ${DELAY} both` : 'none',
+                      minHeight:36, display:'flex', alignItems:'center', justifyContent:'center',
+                    }}>
+                      {dist.count}
+                      {isCorrect && dist.count > 0 && (
+                        <span style={{ fontSize:16, marginLeft:2, animation:`buss-star-spin 1.5s ${DELAY} infinite` }}>⭐</span>
+                      )}
+                    </div>
+
+                    {/* The bar */}
+                    <div style={{
+                      width:'100%',
+                      height: targetH,
+                      minHeight: isCorrect ? 8 : 0,
+                      background: isCorrect
+                        ? `linear-gradient(180deg, ${cfg.light} 0%, ${cfg.color} 100%)`
+                        : `linear-gradient(180deg, ${cfg.color}55 0%, ${cfg.color}22 100%)`,
+                      borderRadius:'14px 14px 6px 6px',
+                      border: isCorrect ? `2px solid ${cfg.color}` : `2px solid ${cfg.color}33`,
+                      boxShadow: isCorrect ? `0 0 20px ${cfg.color}66, 0 4px 16px ${cfg.color}44` : 'none',
+                      transition: `height 0.7s cubic-bezier(0.34,1.56,0.64,1) ${DELAY}`,
+                      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'flex-start',
+                      paddingTop: targetH > 28 ? 8 : 0,
+                      position:'relative', overflow:'visible',
+                    }}>
+                      {isCorrect && targetH > 24 && (
+                        <span style={{ fontSize:18, animation:'buss-popIn 0.4s 0.5s both' }}>✓</span>
+                      )}
+                      {/* Shimmer line on correct */}
+                      {isCorrect && (
+                        <div style={{
+                          position:'absolute', top:0, left:0, right:0, height:3,
+                          background:`linear-gradient(90deg, transparent, ${cfg.light}, transparent)`,
+                          borderRadius:'14px 14px 0 0',
+                          animation:'buss-pulse 1.5s infinite',
+                        }} />
+                      )}
+                    </div>
+
+                    {/* % badge */}
+                    <div style={{
+                      fontSize:13, fontWeight:800, marginTop:6,
+                      color: isCorrect ? '#fff' : '#555',
+                      background: isCorrect ? cfg.color : '#ffffff11',
+                      padding:'2px 10px', borderRadius:20,
+                      animation: barsVisible ? `buss-fadeIn 0.4s ${DELAY} both` : 'none',
+                    }}>
+                      {dist.pct}%
+                    </div>
+
+                    {/* Answer button */}
+                    <div style={{
+                      marginTop:8, width:'100%',
+                      background: isCorrect
+                        ? `linear-gradient(135deg, ${cfg.color}, ${cfg.light})`
+                        : `${cfg.color}33`,
+                      border: `2px solid ${isCorrect ? cfg.color : cfg.color+'44'}`,
+                      borderRadius:12, padding:'8px 6px',
+                      display:'flex', flexDirection:'column', alignItems:'center', gap:3,
+                      opacity: isCorrect ? 1 : 0.45,
+                      boxShadow: isCorrect ? `0 4px 12px ${cfg.color}55` : 'none',
+                      transform: isCorrect ? 'scale(1.04)' : 'scale(1)',
+                      transition:'transform 0.3s',
+                    }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                        <span style={{ fontSize:14 }}>{cfg.icon}</span>
+                        <span style={{ fontWeight:900, fontSize:14 }}>{cfg.label}</span>
+                        {isCorrect && <span style={{ fontSize:12 }}>✓</span>}
+                      </div>
+                      <div style={{
+                        fontSize:11, color: isCorrect ? 'rgba(255,255,255,0.9)' : '#aaa',
+                        textAlign:'center', lineHeight:1.3,
+                        overflow:'hidden', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical',
+                      }}>
+                        {currentQData.choices[ci] || '-'}
+                      </div>
+                    </div>
                   </div>
-                  <div style={{ background:'#1a1a3a', height:8 }}>
-                    <div style={{ height:'100%', background:cfg.color, width:`${dist?.pct || 0}%`, transition:'width 0.8s ease' }} />
-                  </div>
-                  <div style={{ background:'#11112a', padding:'2px 14px', fontSize:11, color:'#aaa' }}>
-                    {dist?.pct || 0}%
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
 
-          {/* Top 3 this round */}
+          {/* Top scorers this round */}
           {roundToppers.length > 0 && (
-            <div style={{ background:SURFACE, borderRadius:14, padding:'14px 18px', maxWidth:700, margin:'0 auto', width:'100%' }}>
-              <div style={{ fontWeight:700, color:GOLD, marginBottom:10, fontSize:15 }}>🏆 คนได้คะแนนสูงสุดรอบนี้</div>
-              {roundToppers.map((p, i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
-                  <span style={{ fontSize:20 }}>{['🥇','🥈','🥉'][i]}</span>
-                  <span style={{ fontWeight:700 }}>{p.name}</span>
-                  <span style={{ marginLeft:'auto', color:GOLD, fontWeight:700 }}>+{p.points}</span>
-                </div>
-              ))}
+            <div style={{
+              background:`linear-gradient(135deg, #1a1400, #2a2000)`,
+              borderRadius:14, padding:'12px 18px', maxWidth:700, width:'100%',
+              border:`1px solid ${GOLD}44`, animation:'buss-bounce-in 0.5s 0.3s both',
+            }}>
+              <div style={{ fontWeight:700, color:GOLD, marginBottom:8, fontSize:14 }}>🏆 คนได้คะแนนสูงสุดรอบนี้</div>
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                {roundToppers.map((p, i) => (
+                  <div key={i} style={{
+                    display:'flex', alignItems:'center', gap:6, padding:'5px 12px',
+                    background:`${GOLD}18`, borderRadius:20, border:`1px solid ${GOLD}44`,
+                  }}>
+                    <span style={{ fontSize:16 }}>{['🥇','🥈','🥉'][i]}</span>
+                    <span style={{ fontWeight:700, fontSize:13 }}>{p.name}</span>
+                    <span style={{ color:GOLD, fontWeight:900, fontSize:13 }}>+{p.points}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Scoreboard preview */}
+          {/* Scoreboard Top 5 */}
           {sortedPlayers.length > 0 && (
-            <div style={{ background:SURFACE, borderRadius:14, padding:'14px 18px', maxWidth:700, margin:'0 auto', width:'100%' }}>
-              <div style={{ fontWeight:700, color:CYAN, marginBottom:10, fontSize:15 }}>📊 คะแนนรวม (Top 5)</div>
-              {sortedPlayers.slice(0, 5).map((p, i) => (
-                <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
-                  <span style={{ minWidth:24, color: i === 0 ? GOLD : '#888', fontWeight:700 }}>#{i + 1}</span>
-                  <span style={{ flex:1 }}>{p.name}</span>
-                  <span style={{ fontWeight:700, color:CYAN }}>{p.score}</span>
-                </div>
-              ))}
+            <div style={{
+              background:SURFACE, borderRadius:14, padding:'12px 18px', maxWidth:700, width:'100%',
+              border:'1px solid #2a2a5a', animation:'buss-bounce-in 0.5s 0.4s both',
+            }}>
+              <div style={{ fontWeight:700, color:CYAN, marginBottom:8, fontSize:14 }}>📊 คะแนนรวม (Top 5)</div>
+              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                {sortedPlayers.slice(0, 5).map((p, i) => (
+                  <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <span style={{ minWidth:26, color: i === 0 ? GOLD : '#777', fontWeight:700, fontSize:14 }}>#{i+1}</span>
+                    <div style={{ flex:1, background:'#ffffff0a', borderRadius:8, overflow:'hidden', height:22, position:'relative' }}>
+                      <div style={{
+                        position:'absolute', left:0, top:0, bottom:0,
+                        width: sortedPlayers[0]?.score > 0 ? `${(p.score/sortedPlayers[0].score)*100}%` : '0%',
+                        background: i === 0 ? `${GOLD}44` : `${CYAN}22`,
+                        transition:'width 1s ease',
+                      }} />
+                      <span style={{ position:'relative', padding:'0 8px', fontSize:13, lineHeight:'22px' }}>{p.name}</span>
+                    </div>
+                    <span style={{ fontWeight:800, color: i===0 ? GOLD : CYAN, fontSize:14, minWidth:40, textAlign:'right' }}>{p.score}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -848,7 +1056,7 @@ export default function BusSanookGame() {
           <button
             onClick={handleNext}
             disabled={nexting}
-            style={{ ...btnStyle(CYAN, '#000'), fontSize:16, padding:'10px 32px', fontWeight:900 }}
+            style={{ ...btnStyle(CYAN, '#000'), fontSize:16, padding:'10px 32px', fontWeight:900, boxShadow:`0 0 16px ${CYAN}44` }}
           >
             {nexting ? '⏳...' : isLast ? '🏆 ดูผลสุดท้าย' : 'ถัดไป →'}
           </button>
