@@ -187,6 +187,7 @@ export default function BusSanookGame() {
   const [importText, setImportText] = useState('');
   const [importErr,  setImportErr]  = useState('');
   const [importTab,  setImportTab]  = useState('text'); // 'text' | 'sheet'
+  const [parsedPreview, setParsedPreview] = useState([]);
   const [barsVisible, setBarsVisible] = useState(false);
   const [globalTime, setGlobalTime] = useState(20);
   const [maxPlayers, setMaxPlayers] = useState(50);
@@ -318,6 +319,16 @@ export default function BusSanookGame() {
     }
   }, [phase, gameState?.currentQ]);
 
+  // Auto-parse import text → live preview cards
+  useEffect(() => {
+    if (!importing) { setParsedPreview([]); return; }
+    if (!importText.trim()) { setParsedPreview([]); setImportErr(''); return; }
+    const parsed = importTab === 'sheet' ? parseSheetText(importText) : parseImportText(importText);
+    setParsedPreview(parsed);
+    setImportErr('');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importText, importTab, importing]);
+
   // ── Cleanup on unmount ───────────────────────────────────────────────────
   useEffect(() => {
     return () => {
@@ -437,15 +448,27 @@ export default function BusSanookGame() {
     setEditingIdx(prev => Math.min(prev, questions.length - 2));
   }
   function handleImport() {
-    setImportErr('');
-    const parsed = importTab === 'sheet'
-      ? parseSheetText(importText)
-      : parseImportText(importText);
-    if (parsed.length === 0) { setImportErr('ไม่พบคำถามที่ถูกรูปแบบ — ตรวจสอบตัวอย่างแล้วลองใหม่'); return; }
-    setQuestions(parsed);
+    if (parsedPreview.length === 0) { setImportErr('ไม่พบคำถามที่ถูกรูปแบบ — ตรวจสอบตัวอย่างแล้วลองใหม่'); return; }
+    setQuestions(parsedPreview);
     setEditingIdx(0);
     setImporting(false);
     setImportText('');
+    setParsedPreview([]);
+    setImportErr('');
+  }
+  // ── Preview helpers (import modal live editing) ───────────────────────────
+  function updatePreviewQ(idx, field, val) {
+    setParsedPreview(prev => prev.map((q, i) => i === idx ? { ...q, [field]: val } : q));
+  }
+  function updatePreviewChoice(idx, ci, val) {
+    setParsedPreview(prev => prev.map((q, i) => {
+      if (i !== idx) return q;
+      const choices = [...q.choices]; choices[ci] = val;
+      return { ...q, choices };
+    }));
+  }
+  function removePreviewQ(idx) {
+    setParsedPreview(prev => prev.filter((_, i) => i !== idx));
   }
 
   // ── Timer color ──────────────────────────────────────────────────────────
@@ -502,77 +525,170 @@ export default function BusSanookGame() {
           </div>
         </div>
 
-        {/* Import Modal */}
+        {/* Import Modal — visual quiz-creator style */}
         {importing && (
-          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center' }}
-            onClick={e => { if(e.target===e.currentTarget){setImporting(false);setImportErr('');} }}>
-            <div style={{ background:SURFACE2, borderRadius:20, padding:28, width:'min(640px,95vw)', border:`1px solid ${CYAN}33`, boxShadow:`0 0 40px ${CYAN}22` }}>
-              <div style={{ fontWeight:800, fontSize:20, marginBottom:4, color:CYAN }}>📥 นำเข้าคำถาม</div>
-              <div style={{ fontSize:13, color:'#888', marginBottom:16 }}>เลือกวิธีนำเข้าที่ถนัด</div>
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.88)', zIndex:999, display:'flex', alignItems:'center', justifyContent:'center', padding:12 }}
+            onClick={e => { if(e.target===e.currentTarget){ setImporting(false); setImportErr(''); setImportText(''); setParsedPreview([]); } }}>
+            <div style={{ background:SURFACE2, borderRadius:20, width:'min(740px,97vw)', maxHeight:'94vh', display:'flex', flexDirection:'column', border:`1px solid ${CYAN}33`, boxShadow:`0 0 60px ${CYAN}22`, overflow:'hidden' }}>
 
-              {/* Tabs */}
-              <div style={{ display:'flex', gap:4, background:'#0d0d2b', borderRadius:10, padding:4, marginBottom:16 }}>
-                {[
-                  { id:'text',  label:'📝 แบบข้อความ', desc:'พิมพ์หรือวางข้อความ' },
-                  { id:'sheet', label:'📊 แบบสเปรดชีต', desc:'copy จาก Excel/Google Sheets' },
-                ].map(tab => (
-                  <button key={tab.id} onClick={() => { setImportTab(tab.id); setImportErr(''); setImportText(''); }}
-                    style={{ flex:1, padding:'8px 12px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:FONT, textAlign:'left',
-                      background: importTab===tab.id ? `${CYAN}22` : 'transparent',
-                      borderBottom: importTab===tab.id ? `2px solid ${CYAN}` : '2px solid transparent',
-                    }}>
-                    <div style={{ fontSize:13, fontWeight:700, color: importTab===tab.id ? CYAN : '#aaa' }}>{tab.label}</div>
-                    <div style={{ fontSize:11, color:'#666', marginTop:1 }}>{tab.desc}</div>
-                  </button>
-                ))}
+              {/* Modal header */}
+              <div style={{ padding:'16px 22px 12px', borderBottom:`1px solid #252550`, flexShrink:0 }}>
+                <div style={{ fontWeight:900, fontSize:19, color:CYAN }}>📥 นำเข้าคำถาม</div>
+                <div style={{ fontSize:12, color:'#555', marginTop:2 }}>วางข้อมูล → ระบบแปลงเป็นคำถามทันที → ตรวจสอบแล้วกด นำเข้า</div>
               </div>
 
-              {/* Text format */}
-              {importTab === 'text' && (
-                <div>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                    <span style={{ fontSize:12, color:'#888' }}>รูปแบบ: Q: → A: B: C: D: → Ans: → คั่นด้วย ---</span>
-                    <button onClick={() => setImportText(IMPORT_EXAMPLE)} style={{ ...btnStyle('#333'), fontSize:11, padding:'3px 10px' }}>📋 ใส่ตัวอย่าง</button>
-                  </div>
-                  <textarea value={importText} onChange={e => setImportText(e.target.value)}
-                    placeholder={IMPORT_EXAMPLE} rows={9}
-                    style={{ width:'100%', background:'#080820', color:'#eee', border:`1px solid #333`, borderRadius:10, padding:12, fontFamily:'monospace', fontSize:13, resize:'vertical', boxSizing:'border-box' }}
-                  />
-                </div>
-              )}
+              {/* Scrollable body */}
+              <div style={{ flex:1, overflowY:'auto', padding:'14px 22px' }}>
 
-              {/* Sheet format */}
-              {importTab === 'sheet' && (
-                <div>
-                  <div style={{ background:'#080820', borderRadius:10, padding:12, marginBottom:10, fontSize:12, color:'#aaa', lineHeight:1.8 }}>
-                    <strong style={{ color:CYAN }}>วิธีใช้:</strong><br/>
-                    1. เปิด Google Sheets หรือ Excel<br/>
-                    2. สร้างคอลัมน์: <strong style={{color:'#fff'}}>คำถาม | A | B | C | D | เฉลย</strong><br/>
-                    3. กรอกข้อมูล (เฉลยใส่ A/B/C/D)<br/>
-                    4. เลือก copy ทั้งหมด → วางที่นี่
-                  </div>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                    <span style={{ fontSize:12, color:'#888' }}>วางข้อมูลจาก Spreadsheet:</span>
-                    <button onClick={() => setImportText(SHEET_EXAMPLE)} style={{ ...btnStyle('#333'), fontSize:11, padding:'3px 10px' }}>📋 ใส่ตัวอย่าง</button>
-                  </div>
-                  <textarea value={importText} onChange={e => setImportText(e.target.value)}
-                    placeholder={SHEET_EXAMPLE} rows={6}
-                    style={{ width:'100%', background:'#080820', color:'#eee', border:`1px solid #333`, borderRadius:10, padding:12, fontFamily:'monospace', fontSize:13, resize:'vertical', boxSizing:'border-box' }}
-                  />
+                {/* Tabs */}
+                <div style={{ display:'flex', gap:4, background:'#080820', borderRadius:10, padding:4, marginBottom:12 }}>
+                  {[
+                    { id:'text',  label:'📝 แบบข้อความ' },
+                    { id:'sheet', label:'📊 Excel / Google Sheets' },
+                  ].map(tab => (
+                    <button key={tab.id}
+                      onClick={() => { setImportTab(tab.id); setImportErr(''); setImportText(''); setParsedPreview([]); }}
+                      style={{ flex:1, padding:'8px 10px', borderRadius:8, border:'none', cursor:'pointer', fontFamily:FONT, fontWeight:700, fontSize:13,
+                        background: importTab===tab.id ? `${CYAN}22` : 'transparent',
+                        borderBottom: importTab===tab.id ? `2px solid ${CYAN}` : '2px solid transparent',
+                        color: importTab===tab.id ? CYAN : '#666',
+                      }}>
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
-              )}
 
-              {importErr && (
-                <div style={{ background:'#3a0a0a', color:'#ff8080', borderRadius:8, padding:'8px 12px', marginTop:8, fontSize:13, border:'1px solid #ff4444' }}>
-                  ⚠️ {importErr}
-                </div>
-              )}
+                {/* ─── Text tab ─── */}
+                {importTab === 'text' && (
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                      <span style={{ fontSize:11, color:'#555' }}>รูปแบบ: <code style={{color:'#aaa'}}>Q:</code> → <code style={{color:'#aaa'}}>A: B: C: D:</code> → <code style={{color:'#aaa'}}>Ans:</code> คั่นด้วย <code style={{color:'#aaa'}}>---</code></span>
+                      <button onClick={() => setImportText(IMPORT_EXAMPLE)} style={{ ...btnStyle('#1a1a3a'), fontSize:11, padding:'3px 10px', color:CYAN }}>📋 ดูตัวอย่าง</button>
+                    </div>
+                    <textarea value={importText} onChange={e => setImportText(e.target.value)}
+                      placeholder="วางข้อความที่นี่..."
+                      rows={6}
+                      style={{ width:'100%', background:'#080820', color:'#ddd', border:`1px solid #2a2a5a`, borderRadius:10, padding:12, fontFamily:'monospace', fontSize:12, resize:'vertical', boxSizing:'border-box', outline:'none' }}
+                    />
+                  </div>
+                )}
 
-              <div style={{ display:'flex', gap:8, marginTop:14, justifyContent:'flex-end' }}>
-                <button onClick={() => { setImporting(false); setImportErr(''); setImportText(''); }} style={btnStyle('#444')}>ยกเลิก</button>
-                <button onClick={handleImport} disabled={!importText.trim()}
-                  style={{ ...btnStyle(CYAN, '#000'), opacity: importText.trim() ? 1 : 0.4 }}>
-                  ✅ นำเข้า {importText.trim() ? '' : '(วางข้อมูลก่อน)'}
+                {/* ─── Sheet tab ─── */}
+                {importTab === 'sheet' && (
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{ background:'#08081e', borderRadius:10, padding:'10px 14px', marginBottom:8, fontSize:12, color:'#777', lineHeight:1.8 }}>
+                      คอลัมน์: <strong style={{color:'#ccc'}}>คำถาม</strong> · <strong style={{color:ANSWER_CFG[0].light}}>A</strong> · <strong style={{color:ANSWER_CFG[1].light}}>B</strong> · <strong style={{color:ANSWER_CFG[2].light}}>C</strong> · <strong style={{color:ANSWER_CFG[3].light}}>D</strong> · <strong style={{color:GOLD}}>เฉลย (A/B/C/D)</strong>
+                      <br/>เปิด Excel / Google Sheets → เลือกทุก row → Copy → วางด้านล่าง
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:6 }}>
+                      <button onClick={() => setImportText(SHEET_EXAMPLE)} style={{ ...btnStyle('#1a1a3a'), fontSize:11, padding:'3px 10px', color:CYAN }}>📋 ดูตัวอย่าง</button>
+                    </div>
+                    <textarea value={importText} onChange={e => setImportText(e.target.value)}
+                      placeholder="วางข้อมูลจาก Excel / Google Sheets ที่นี่..."
+                      rows={5}
+                      style={{ width:'100%', background:'#080820', color:'#ddd', border:`1px solid #2a2a5a`, borderRadius:10, padding:12, fontFamily:'monospace', fontSize:12, resize:'vertical', boxSizing:'border-box', outline:'none' }}
+                    />
+                  </div>
+                )}
+
+                {/* ─── Live preview cards ─── */}
+                {parsedPreview.length > 0 && (
+                  <div>
+                    {/* Divider */}
+                    <div style={{ display:'flex', alignItems:'center', gap:10, margin:'4px 0 14px' }}>
+                      <div style={{ flex:1, height:1, background:'linear-gradient(90deg,transparent,#3a3a6a)' }} />
+                      <span style={{ fontSize:12, fontWeight:700, color:CYAN, padding:'4px 14px', background:`${CYAN}18`, borderRadius:20, border:`1px solid ${CYAN}33`, whiteSpace:'nowrap' }}>
+                        ✅ พบ {parsedPreview.length} ข้อ — แก้ไขได้ก่อนนำเข้า
+                      </span>
+                      <div style={{ flex:1, height:1, background:'linear-gradient(90deg,#3a3a6a,transparent)' }} />
+                    </div>
+
+                    {/* Question cards */}
+                    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+                      {parsedPreview.map((q, idx) => (
+                        <div key={idx} style={{ background:'#0e0e28', borderRadius:14, padding:'14px 16px', border:`1px solid ${CYAN}22`, animation:'buss-slideUp 0.25s ease' }}>
+                          {/* Card top row */}
+                          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                            <span style={{ background:`${CYAN}22`, color:CYAN, borderRadius:6, padding:'2px 10px', fontSize:11, fontWeight:800 }}>ข้อ {idx+1}</span>
+                            <span style={{ fontSize:11, color:'#444', marginLeft:4 }}>เวลา:</span>
+                            {[10,20,30].map(t => (
+                              <button key={t} onClick={() => updatePreviewQ(idx,'time',t)}
+                                style={{ padding:'2px 8px', borderRadius:6, border:`1px solid ${q.time===t ? CYAN : '#333'}`,
+                                  background: q.time===t ? `${CYAN}22` : 'transparent',
+                                  color: q.time===t ? CYAN : '#555', cursor:'pointer', fontFamily:FONT, fontSize:11 }}>
+                                {t}s
+                              </button>
+                            ))}
+                            <button onClick={() => removePreviewQ(idx)}
+                              style={{ marginLeft:'auto', background:'#2a0808', color:'#ff6b6b', border:'1px solid #ff222222', borderRadius:6, padding:'2px 8px', cursor:'pointer', fontFamily:FONT, fontSize:11 }}>
+                              🗑️ ลบ
+                            </button>
+                          </div>
+
+                          {/* Question textarea */}
+                          <textarea
+                            value={q.q}
+                            onChange={e => updatePreviewQ(idx,'q',e.target.value)}
+                            rows={2}
+                            placeholder="คำถาม..."
+                            style={{ ...inputStyle, width:'100%', fontSize:14, fontWeight:600, resize:'none', marginBottom:10, boxSizing:'border-box' }}
+                          />
+
+                          {/* Answer choices grid */}
+                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                            {[0,1,2,3].map(ci => {
+                              const cfg = ANSWER_CFG[ci];
+                              const isCor = q.answer === ci;
+                              return (
+                                <div key={ci}
+                                  onClick={() => updatePreviewQ(idx,'answer',ci)}
+                                  style={{ display:'flex', alignItems:'center', gap:7,
+                                    background: isCor ? `${cfg.color}33` : `${cfg.color}0d`,
+                                    border:`2px solid ${isCor ? cfg.color : cfg.color+'33'}`,
+                                    borderRadius:10, padding:'7px 10px', cursor:'pointer', transition:'all 0.15s',
+                                  }}>
+                                  <span style={{ fontSize:13, color: isCor ? cfg.light : cfg.color+'88', fontWeight:700, flexShrink:0 }}>{cfg.icon}</span>
+                                  <input
+                                    type="text"
+                                    value={q.choices[ci] || ''}
+                                    onChange={e => { e.stopPropagation(); updatePreviewChoice(idx,ci,e.target.value); }}
+                                    onClick={e => e.stopPropagation()}
+                                    placeholder={`ตัวเลือก ${['A','B','C','D'][ci]}`}
+                                    style={{ background:'transparent', border:'none', outline:'none', color: isCor ? '#fff' : '#999', fontFamily:FONT, fontSize:13, flex:1, minWidth:0 }}
+                                  />
+                                  {isCor && <span style={{ fontSize:13, color:cfg.light, flexShrink:0 }}>✓</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div style={{ marginTop:6, fontSize:11, color:'#3a3a6a' }}>
+                            คลิกที่ตัวเลือกเพื่อเปลี่ยนเฉลย · เฉลย: <span style={{ color:ANSWER_CFG[q.answer].light, fontWeight:700 }}>{['A','B','C','D'][q.answer]}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* No match warning */}
+                {importText.trim() && parsedPreview.length === 0 && (
+                  <div style={{ background:'#180808', color:'#ff8080', borderRadius:10, padding:'12px 16px', fontSize:13, border:'1px solid #ff333322', textAlign:'center', marginTop:8 }}>
+                    ⚠️ ไม่พบคำถามที่ถูกรูปแบบ — ลองกด "ดูตัวอย่าง" แล้ว copy รูปแบบนั้น
+                  </div>
+                )}
+              </div>
+
+              {/* Modal footer */}
+              <div style={{ padding:'12px 22px', borderTop:`1px solid #252550`, display:'flex', gap:10, alignItems:'center', justifyContent:'flex-end', flexShrink:0, background:'#14143200' }}>
+                {parsedPreview.length > 0 && (
+                  <span style={{ fontSize:12, color:'#555', marginRight:'auto' }}>พบ {parsedPreview.length} ข้อ · แก้ไขได้ก่อนกด นำเข้า</span>
+                )}
+                <button onClick={() => { setImporting(false); setImportErr(''); setImportText(''); setParsedPreview([]); }} style={btnStyle('#383850')}>
+                  ยกเลิก
+                </button>
+                <button onClick={handleImport} disabled={parsedPreview.length === 0}
+                  style={{ ...btnStyle(parsedPreview.length > 0 ? CYAN : '#333', parsedPreview.length > 0 ? '#000' : '#555'), opacity: parsedPreview.length > 0 ? 1 : 0.45, fontWeight:900 }}>
+                  ✅ นำเข้า {parsedPreview.length > 0 ? `${parsedPreview.length} ข้อ` : '(วางข้อมูลก่อน)'}
                 </button>
               </div>
             </div>

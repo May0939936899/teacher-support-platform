@@ -270,7 +270,7 @@ export default function SnakeLadderGame() {
 
   const T = {
     th: {
-      title:        'งูและบันได',
+      title:        'บันไดงู',
       subtitle:     'Snake & Ladder Multiplayer',
       pickTheme:    'เลือกธีมเกม',
       createRoom:   'สร้างห้องเกม',
