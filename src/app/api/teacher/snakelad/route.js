@@ -32,13 +32,28 @@ const TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 // ── Board constants (per spec) ────────────────────────────────────────────────
 const SNAKES  = { 17:7, 54:34, 62:19, 64:60, 87:36, 93:73, 95:56, 99:78 };
 const LADDERS = { 4:23, 9:31, 20:38, 28:84, 40:59, 51:67, 63:81, 71:91 };
+// 20 event card types across 18 squares (some squares share type variety)
 const EVENTS  = {
-  10: { type: 'extra_roll', msg: '🎲 ทอยอีกครั้ง!' },
-  25: { type: 'backward',   amount: 3,  msg: '😱 ถอยหลัง 3 ช่อง' },
-  45: { type: 'forward',    amount: 3,  msg: '⭐ เดินหน้า 3 ช่อง' },
-  60: { type: 'skip',                   msg: '😴 หยุดพัก 1 ตา' },
-  75: { type: 'forward',    amount: 5,  msg: '🎁 รางวัลพิเศษ! เดินหน้า 5' },
-  88: { type: 'backward',   amount: 5,  msg: '💀 ถอยหลัง 5 ช่อง' },
+   3: { type: 'forward',    amount: 3,  msg: '⭐ โชคดีเดินหน้า 3 ช่อง!' },
+  10: { type: 'extra_roll',            msg: '🎲 ทอยลูกเต๋าอีกครั้ง!' },
+  15: { type: 'backward',   amount: 2,  msg: '😬 สะดุด! ถอยหลัง 2 ช่อง' },
+  22: { type: 'forward',    amount: 5,  msg: '🚀 บินได้! เดินหน้า 5 ช่อง!' },
+  25: { type: 'backward',   amount: 3,  msg: '😱 เหนื่อย… ถอยหลัง 3 ช่อง' },
+  30: { type: 'skip',                   msg: '😴 หยุดพักผ่อน 1 ตา' },
+  35: { type: 'forward',    amount: 7,  msg: '🎁 รางวัลใหญ่! เดินหน้า 7 ช่อง!' },
+  42: { type: 'backward',   amount: 4,  msg: '💨 ลมแรง! ถอยหลัง 4 ช่อง' },
+  45: { type: 'forward',    amount: 3,  msg: '🌟 ดาว! เดินหน้า 3 ช่อง' },
+  50: { type: 'extra_roll',            msg: '🎰 แจ็คพ็อต! ทอยอีกครั้ง!' },
+  55: { type: 'backward',   amount: 5,  msg: '⚡ ฟ้าผ่า! ถอยหลัง 5 ช่อง' },
+  58: { type: 'forward',    amount: 4,  msg: '🏃 วิ่งเร็ว! เดินหน้า 4 ช่อง' },
+  60: { type: 'skip',                   msg: '🛌 หลับแล้ว! หยุดพัก 1 ตา' },
+  65: { type: 'backward',   amount: 3,  msg: '🌀 วนเวียน! ถอยหลัง 3 ช่อง' },
+  70: { type: 'forward',    amount: 6,  msg: '🎪 ไปเลย! เดินหน้า 6 ช่อง!' },
+  75: { type: 'forward',    amount: 5,  msg: '💎 เพชร! เดินหน้า 5 ช่อง!' },
+  80: { type: 'extra_roll',            msg: '🍀 โชคสามครั้ง! ทอยอีกครั้ง!' },
+  82: { type: 'backward',   amount: 6,  msg: '💣 ระเบิด! ถอยหลัง 6 ช่อง' },
+  88: { type: 'backward',   amount: 5,  msg: '💀 โดนหลอก! ถอยหลัง 5 ช่อง' },
+  92: { type: 'skip',                   msg: '🕸️ ติดใยแมงมุม! หยุด 1 ตา' },
 };
 
 const PLAYER_COLORS  = ['#FF6B9D','#4ECDC4','#FFE66D','#A8E6CF','#DDA0DD','#87CEEB','#FFA07A','#98FB98','#F0E68C','#E6A8D7'];

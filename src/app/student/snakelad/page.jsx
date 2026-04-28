@@ -31,7 +31,11 @@ const CSS = `
   @keyframes playerGlow { 0%,100%{filter:drop-shadow(0 0 4px currentColor)} 50%{filter:drop-shadow(0 0 12px currentColor)} }
   @keyframes trackIn    { from{opacity:0;transform:scaleX(0)} to{opacity:1;transform:scaleX(1)} }
   @keyframes myTurnFlash { 0%,100%{background:rgba(99,102,241,0.15)} 50%{background:rgba(99,102,241,0.35)} }
-  @keyframes avatarPick { 0%{transform:scale(1)} 50%{transform:scale(1.35)} 100%{transform:scale(1.12)} }
+  @keyframes avatarPick  { 0%{transform:scale(1)} 50%{transform:scale(1.35)} 100%{transform:scale(1.12)} }
+  @keyframes cardFlipIn  { 0%{transform:perspective(700px) rotateY(-90deg);opacity:0} 100%{transform:perspective(700px) rotateY(0deg);opacity:1} }
+  @keyframes cardMystery { 0%{transform:scale(0.8) translateY(60px);opacity:0} 60%{transform:scale(1.06) translateY(-4px)} 100%{transform:scale(1) translateY(0);opacity:1} }
+  @keyframes questionPulse { 0%,100%{transform:scale(1);text-shadow:0 0 20px rgba(165,180,252,0.5)} 50%{transform:scale(1.12);text-shadow:0 0 40px rgba(165,180,252,1)} }
+  @keyframes musicNote   { 0%{transform:translateY(0) rotate(-10deg);opacity:1} 100%{transform:translateY(-24px) rotate(15deg);opacity:0} }
 `;
 
 // ── Web Audio Sounds (no external deps) ──────────────────────────────────────
@@ -84,9 +88,61 @@ function playSound(type) {
       [440, 880].forEach((f, i) => tone(f, i * 0.12, 0.15, 'triangle', 0.16));
     } else if (type === 'join') {
       [392, 523, 659].forEach((f, i) => tone(f, i * 0.12, 0.2, 'sine', 0.15));
+    } else if (type === 'flip') {
+      // Card flip whoosh
+      sweep(200, 600, 0, 0.12, 'sine', 0.12);
+      tone(800, 0.1, 0.1, 'sine', 0.08);
+    } else if (type === 'mystery') {
+      // Mystery card appear
+      tone(440, 0, 0.15, 'triangle', 0.1);
+      tone(554, 0.08, 0.12, 'triangle', 0.08);
     }
     setTimeout(() => { try { ac.close(); } catch {} }, 3500);
   } catch { /* Web Audio not supported */ }
+}
+
+// ── Background music (Web Audio API looping melody) ──────────────────────────
+function createBgMusic(theme) {
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    let stopped = false;
+    const MELODIES = {
+      funpark: { notes:[523,659,784,880,784,659,523,440], tempo:0.32, vol:0.07, wave:'triangle' },
+      snow:    { notes:[440,494,523,494,440,415,370,415], tempo:0.58, vol:0.06, wave:'sine' },
+      japan:   { notes:[330,370,415,494,415,370,330,294], tempo:0.48, vol:0.065, wave:'triangle' },
+      forest:  { notes:[220,247,294,247,220,196,220,247], tempo:0.65, vol:0.055, wave:'sine' },
+    };
+    const m = MELODIES[theme] || MELODIES.funpark;
+    let idx = 0;
+
+    const playNote = () => {
+      if (stopped) return;
+      const freq = m.notes[idx % m.notes.length];
+      const o = ac.createOscillator();
+      const g = ac.createGain();
+      const o2 = ac.createOscillator(); // harmonic
+      const g2 = ac.createGain();
+      o.type  = m.wave;
+      o2.type = 'sine';
+      o.frequency.setValueAtTime(freq, ac.currentTime);
+      o2.frequency.setValueAtTime(freq * 2, ac.currentTime); // octave up, very soft
+      g.gain.setValueAtTime(m.vol, ac.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + m.tempo * 0.85);
+      g2.gain.setValueAtTime(m.vol * 0.3, ac.currentTime);
+      g2.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + m.tempo * 0.5);
+      o.connect(g);   g.connect(ac.destination);
+      o2.connect(g2); g2.connect(ac.destination);
+      o.start(ac.currentTime);  o.stop(ac.currentTime + m.tempo);
+      o2.start(ac.currentTime); o2.stop(ac.currentTime + m.tempo * 0.5);
+      idx++;
+      setTimeout(playNote, m.tempo * 1000);
+    };
+
+    playNote();
+    return { stop: () => { stopped = true; try { ac.close(); } catch {} } };
+  } catch {
+    return { stop: () => {} };
+  }
 }
 
 // ── Haptic feedback ──────────────────────────────────────────────────────────
@@ -158,10 +214,15 @@ function StudentSnakeLadderInner() {
   const [landed,         setLanded]         = useState(false);
   const [rollResult,     setRollResult]     = useState(null);
   const [showCard,       setShowCard]       = useState(false);
+  const [cardRevealed,   setCardRevealed]   = useState(false);
+  const [musicOn,        setMusicOn]        = useState(false);
+  const [showMusicNote,  setShowMusicNote]  = useState(false);
 
-  const pollRef      = useRef(null);
-  const animRef      = useRef(null);
-  const cardTimerRef = useRef(null);
+  const pollRef        = useRef(null);
+  const animRef        = useRef(null);
+  const cardTimerRef   = useRef(null);
+  const revealTimerRef = useRef(null);
+  const bgMusicRef     = useRef(null);
 
   // ── Poll ─────────────────────────────────────────────────────────────────
   const pollSession = useCallback(async (code) => {
@@ -195,8 +256,36 @@ function StudentSnakeLadderInner() {
       clearInterval(pollRef.current);
       clearInterval(animRef.current);
       clearTimeout(cardTimerRef.current);
+      clearTimeout(revealTimerRef.current);
+      if (bgMusicRef.current) { bgMusicRef.current.stop(); bgMusicRef.current = null; }
     };
   }, []);
+
+  // ── Card reveal timer: show ? card first, then flip ──────────────────────
+  useEffect(() => {
+    if (showCard && rollResult && !rollResult.error) {
+      setCardRevealed(false);
+      playSound('mystery');
+      clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = setTimeout(() => {
+        setCardRevealed(true);
+        playSound('flip');
+      }, 700);
+    } else {
+      setCardRevealed(false);
+    }
+    return () => clearTimeout(revealTimerRef.current);
+  }, [showCard]); // eslint-disable-line
+
+  // ── Background music toggle ───────────────────────────────────────────────
+  useEffect(() => {
+    const theme = session?.theme || 'funpark';
+    if (musicOn && screen === 'playing') {
+      if (!bgMusicRef.current) bgMusicRef.current = createBgMusic(theme);
+    } else {
+      if (bgMusicRef.current) { bgMusicRef.current.stop(); bgMusicRef.current = null; }
+    }
+  }, [musicOn, screen, session?.theme]);
 
   const startPolling = useCallback((code) => {
     clearInterval(pollRef.current);
@@ -830,13 +919,42 @@ function StudentSnakeLadderInner() {
             fontFamily:'monospace', letterSpacing:4, fontSize:16, fontWeight:900, color:'#a5b4fc',
           }}>{myCode}</div>
         </div>
-        {myPlayer && (
-          <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-            <span style={{ fontSize:18 }}>{myPlayer.avatar}</span>
-            <div style={{ width:9, height:9, borderRadius:'50%', background:myPlayer.color }} />
-            <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.7)' }}>{myPlayer.name}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          {/* Music toggle */}
+          <div style={{ position:'relative' }}>
+            <button
+              onClick={() => {
+                const next = !musicOn;
+                setMusicOn(next);
+                if (next) { setShowMusicNote(true); setTimeout(() => setShowMusicNote(false), 1200); }
+                vibrate([10]);
+              }}
+              style={{
+                width:36, height:36, borderRadius:'50%',
+                border:`1px solid ${musicOn ? 'rgba(165,180,252,0.6)' : 'rgba(255,255,255,0.15)'}`,
+                background: musicOn ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.07)',
+                color: musicOn ? '#c4b5fd' : 'rgba(255,255,255,0.4)',
+                fontSize:16, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center',
+                transition:'all 0.2s',
+              }}
+            >
+              {musicOn ? '🎵' : '🔇'}
+            </button>
+            {showMusicNote && (
+              <div style={{
+                position:'absolute', top:-18, left:'50%', transform:'translateX(-50%)',
+                fontSize:14, animation:'musicNote 1.2s ease forwards', pointerEvents:'none',
+              }}>🎵</div>
+            )}
           </div>
-        )}
+          {myPlayer && (
+            <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+              <span style={{ fontSize:18 }}>{myPlayer.avatar}</span>
+              <div style={{ width:9, height:9, borderRadius:'50%', background:myPlayer.color }} />
+              <span style={{ fontSize:13, fontWeight:700, color:'rgba(255,255,255,0.7)' }}>{myPlayer.name}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Race Track ── */}
@@ -1030,23 +1148,63 @@ function StudentSnakeLadderInner() {
       {/* ── EVENT CARD OVERLAY ── */}
       {showCard && rollResult && (
         <div
-          onClick={() => { setShowCard(false); clearTimeout(cardTimerRef.current); }}
+          onClick={() => { setShowCard(false); clearTimeout(cardTimerRef.current); clearTimeout(revealTimerRef.current); }}
           style={{
             position:'fixed', inset:0,
-            background:'rgba(0,0,0,0.65)',
+            background:'rgba(0,0,0,0.7)',
             display:'flex', alignItems:'flex-end', justifyContent:'center',
             zIndex:50, padding:'0 16px 44px',
           }}
         >
-          <div style={{
-            width:'100%', maxWidth:400,
-            background: rollResult.error ? 'linear-gradient(160deg,#450a0a,#7f1d1d)' : cardBg(),
-            border:`2.5px solid ${rollResult.error ? 'rgba(239,68,68,0.55)' : cardBorder()}`,
-            borderRadius:28, padding:'28px 24px 24px',
-            textAlign:'center',
-            animation:'slideUpBig 0.38s cubic-bezier(0.34,1.56,0.64,1)',
-            boxShadow:`0 -8px 60px ${rollResult.error ? 'rgba(239,68,68,0.4)' : 'rgba(0,0,0,0.6)'}`,
-          }}>
+          {/* ── MYSTERY CARD (? face — before reveal) ── */}
+          {!cardRevealed && !rollResult.error && (
+            <div style={{
+              width:'100%', maxWidth:400,
+              background:'linear-gradient(160deg,#1e1b4b,#312e81)',
+              border:'2.5px solid rgba(165,180,252,0.55)',
+              borderRadius:28, padding:'36px 24px',
+              textAlign:'center',
+              animation:'cardMystery 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+              boxShadow:'0 -8px 60px rgba(99,102,241,0.5)',
+            }}>
+              {/* Card back pattern */}
+              <div style={{
+                width:80, height:80, borderRadius:20,
+                background:'linear-gradient(135deg,rgba(165,180,252,0.2),rgba(99,102,241,0.4))',
+                border:'2px solid rgba(165,180,252,0.3)',
+                margin:'0 auto 20px',
+                display:'flex', alignItems:'center', justifyContent:'center',
+              }}>
+                <div style={{
+                  fontSize:48, fontWeight:900, color:'rgba(165,180,252,0.9)',
+                  animation:'questionPulse 0.8s ease infinite',
+                }}>?</div>
+              </div>
+              <div style={{ fontSize:16, fontWeight:900, color:'rgba(165,180,252,0.7)' }}>
+                🎴 กำลังเปิดการ์ด...
+              </div>
+              <div style={{ display:'flex', justifyContent:'center', gap:5, marginTop:10 }}>
+                {[0,1,2].map(i => (
+                  <span key={i} style={{
+                    width:6, height:6, borderRadius:'50%', background:'rgba(165,180,252,0.5)',
+                    display:'inline-block', animation:`dotPulse 0.9s ${i*0.15}s ease infinite`,
+                  }} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── REVEALED CARD ── */}
+          {(cardRevealed || rollResult.error) && (
+            <div style={{
+              width:'100%', maxWidth:400,
+              background: rollResult.error ? 'linear-gradient(160deg,#450a0a,#7f1d1d)' : cardBg(),
+              border:`2.5px solid ${rollResult.error ? 'rgba(239,68,68,0.55)' : cardBorder()}`,
+              borderRadius:28, padding:'28px 24px 24px',
+              textAlign:'center',
+              animation: rollResult.error ? 'slideUpBig 0.38s ease' : 'cardFlipIn 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+              boxShadow:`0 -8px 60px ${rollResult.error ? 'rgba(239,68,68,0.4)' : 'rgba(0,0,0,0.6)'}`,
+            }}>
             {rollResult.error ? (
               <div>
                 <div style={{ fontSize:42, marginBottom:10 }}>⚠️</div>
@@ -1057,8 +1215,8 @@ function StudentSnakeLadderInner() {
                 {/* Card icon */}
                 {cardIcon() && (
                   <div style={{
-                    fontSize:56, marginBottom:8,
-                    filter:`drop-shadow(0 0 16px ${rollResult.msgColor}88)`,
+                    fontSize:60, marginBottom:10,
+                    filter:`drop-shadow(0 0 20px ${rollResult.msgColor}aa)`,
                     animation:'bounce2 1s ease infinite',
                   }}>
                     {cardIcon()}
@@ -1071,49 +1229,56 @@ function StudentSnakeLadderInner() {
                   <DiceFace value={rollResult.rolled} size={76} color={rollResult.msgColor || '#6366f1'} />
                   <div style={{ textAlign:'left' }}>
                     <div style={{ fontSize:13, color:'rgba(255,255,255,0.4)', marginBottom:4 }}>ทอยได้</div>
-                    <div style={{ fontSize:44, fontWeight:900, color:rollResult.msgColor||'#a5b4fc', lineHeight:1 }}>
+                    <div style={{ fontSize:48, fontWeight:900, color:rollResult.msgColor||'#a5b4fc', lineHeight:1 }}>
                       {rollResult.rolled}
                     </div>
                   </div>
                 </div>
                 {/* Event message */}
                 <div style={{
-                  fontSize:20, fontWeight:900, color:rollResult.msgColor||'#a5b4fc',
-                  marginBottom:10, textShadow:`0 0 20px ${rollResult.msgColor}55`,
+                  fontSize:22, fontWeight:900, color:rollResult.msgColor||'#a5b4fc',
+                  marginBottom:10, textShadow:`0 0 24px ${rollResult.msgColor}66`,
+                  lineHeight:1.3,
                 }}>
                   {rollResult.msg}
                 </div>
-                {/* Position change */}
+                {/* Position change arrow */}
                 {rollResult.event?.from !== undefined && rollResult.event?.to !== undefined && (
                   <div style={{
-                    fontSize:15, color:'rgba(255,255,255,0.55)', marginBottom:10,
-                    background:'rgba(0,0,0,0.25)', borderRadius:10, padding:'6px 12px', display:'inline-block',
+                    fontSize:16, color:'rgba(255,255,255,0.65)', marginBottom:10,
+                    background:'rgba(0,0,0,0.3)', borderRadius:12, padding:'8px 16px', display:'inline-flex',
+                    alignItems:'center', gap:8,
                   }}>
-                    ช่อง {rollResult.event.from} → ช่อง {rollResult.event.to}
+                    <span>ช่อง {rollResult.event.from}</span>
+                    <span style={{ fontSize:20 }}>→</span>
+                    <span style={{ fontWeight:900, color:'#fff', fontSize:18 }}>ช่อง {rollResult.event.to}</span>
                   </div>
                 )}
                 {myPlayer && (
                   <div style={{ fontSize:14, color:'rgba(255,255,255,0.4)', marginBottom:4 }}>
-                    ตำแหน่งของคุณ: ช่อง <strong style={{ color:'#fff' }}>{myPlayer.position}</strong> / 100
+                    ตำแหน่งปัจจุบัน: ช่อง <strong style={{ color:'#fff', fontSize:16 }}>{myPlayer.position}</strong>
+                    <span style={{ color:'rgba(255,255,255,0.3)' }}> / 100</span>
                   </div>
                 )}
                 {/* Auto-dismiss timer bar */}
                 <div style={{
-                  height:3, borderRadius:2, background:'rgba(255,255,255,0.12)',
-                  marginTop:18, overflow:'hidden',
+                  height:4, borderRadius:2, background:'rgba(255,255,255,0.1)',
+                  marginTop:20, overflow:'hidden',
                 }}>
                   <div style={{
                     height:'100%', borderRadius:2,
-                    background: rollResult.msgColor || '#a5b4fc',
+                    background: `linear-gradient(to right,${rollResult.msgColor||'#a5b4fc'},${rollResult.msgColor||'#a5b4fc'}88)`,
                     animation:'timerBar 3.5s linear forwards',
+                    boxShadow:`0 0 8px ${rollResult.msgColor}66`,
                   }} />
                 </div>
                 <div style={{ fontSize:11, color:'rgba(255,255,255,0.25)', marginTop:8 }}>
-                  แตะเพื่อปิด
+                  แตะที่ไหนก็ได้เพื่อปิด
                 </div>
               </>
             )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

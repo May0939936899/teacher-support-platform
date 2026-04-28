@@ -7,7 +7,7 @@ const BG   = 'linear-gradient(160deg,#020918,#050f2a,#0a0520)';
 // Board constants (must match route.js)
 const SNAKES  = { 17:7, 54:34, 62:19, 64:60, 87:36, 93:73, 95:56, 99:78 };
 const LADDERS = { 4:23, 9:31, 20:38, 28:84, 40:59, 51:67, 63:81, 71:91 };
-const EVENTS  = { 10:true, 25:true, 45:true, 60:true, 75:true, 88:true };
+const EVENTS  = { 3:true, 10:true, 15:true, 22:true, 25:true, 30:true, 35:true, 42:true, 45:true, 50:true, 55:true, 58:true, 60:true, 65:true, 70:true, 75:true, 80:true, 82:true, 88:true, 92:true };
 
 // ── Theme Configuration ──────────────────────────────────────────────────────
 const THEMES = {
