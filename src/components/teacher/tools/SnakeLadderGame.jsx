@@ -1,174 +1,330 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
-const FONT  = "'Kanit','Noto Sans Thai',sans-serif";
-const BG    = 'linear-gradient(160deg,#020918,#050f2a,#0a0520)';
+const FONT = "'Kanit','Noto Sans Thai',sans-serif";
+const BG   = 'linear-gradient(160deg,#020918,#050f2a,#0a0520)';
 
 // Board constants (must match route.js)
 const SNAKES  = { 17:7, 54:34, 62:19, 64:60, 87:36, 93:73, 95:56, 99:78 };
 const LADDERS = { 4:23, 9:31, 20:38, 28:84, 40:59, 51:67, 63:81, 71:91 };
 const EVENTS  = { 10:true, 25:true, 45:true, 60:true, 75:true, 88:true };
 
+// ── Theme Configuration ──────────────────────────────────────────────────────
 const THEMES = {
   funpark: {
-    label:  '🎡 สวนสนุก',
-    key:    'funpark',
-    grad:   'linear-gradient(135deg,#FFD93D,#FF6B9D)',
-    cell1:  '#FFF9C4',
-    cell2:  '#FFCCBC',
-    border: '#FFD93D',
+    label: '🎡 สวนสนุก', key: 'funpark',
+    grad:   'linear-gradient(145deg,#ff6a00 0%,#ee0979 45%,#ffd700 100%)',
+    overlayGrad: 'radial-gradient(ellipse at 30% 30%,rgba(255,215,0,0.35) 0%,transparent 60%)',
+    cell1: '#fff8e1', cell2: '#ffe0b2',
+    border: '#ff6a00', snakeColor: '#e53e3e', ladderColor: '#f59e0b',
+    boardBg: 'linear-gradient(160deg,#fff8e1,#fff3cd)',
+    particles: [
+      {e:'⭐',x:12,y:10,s:22,d:0,  dr:2.5,a:'fpBounce'},
+      {e:'🎈',x:72,y:7, s:24,d:0.5,dr:3,  a:'fpBounce'},
+      {e:'✨',x:44,y:5, s:16,d:1,  dr:2.8,a:'sparkle'},
+      {e:'🎠',x:7, y:55,s:22,d:0.8,dr:3.5,a:'fpBounce'},
+      {e:'🎪',x:83,y:48,s:18,d:0.3,dr:2.2,a:'sway'},
+      {e:'⭐',x:57,y:58,s:14,d:1.2,dr:2,  a:'sparkle'},
+      {e:'🎢',x:32,y:30,s:30,d:0,  dr:0,  a:'none'},
+    ],
+    description: 'สีสันสดใส เกมสนุกเหมือนสวนสนุก',
   },
   snow: {
-    label:  '❄️ เมืองหิมะ',
-    key:    'snow',
-    grad:   'linear-gradient(135deg,#74b9ff,#dfe6e9)',
-    cell1:  '#E3F2FD',
-    cell2:  '#BBDEFB',
-    border: '#74b9ff',
+    label: '❄️ เมืองหิมะ', key: 'snow',
+    grad:   'linear-gradient(160deg,#1a5fa8 0%,#2e86de 45%,#a8d8f0 100%)',
+    overlayGrad: 'radial-gradient(ellipse at 70% 20%,rgba(255,255,255,0.4) 0%,transparent 55%)',
+    cell1: '#e3f2fd', cell2: '#bbdefb',
+    border: '#2e86de', snakeColor: '#1d4ed8', ladderColor: '#38bdf8',
+    boardBg: 'linear-gradient(160deg,#e3f2fd,#dbeafe)',
+    particles: [
+      {e:'❄️',x:18,y:4, s:22,d:0,  dr:3,  a:'snowFall'},
+      {e:'❄️',x:46,y:8, s:16,d:0.7,dr:3.5,a:'snowFall'},
+      {e:'❄️',x:78,y:3, s:24,d:1.2,dr:2.8,a:'snowFall'},
+      {e:'❄️',x:33,y:44,s:14,d:0.4,dr:4,  a:'snowFall'},
+      {e:'❄️',x:66,y:50,s:20,d:1.8,dr:3.2,a:'snowFall'},
+      {e:'⛄',x:54,y:54,s:28,d:0,  dr:0,  a:'none'},
+    ],
+    description: 'บรรยากาศหิมะ สีฟ้าสดชื่น',
   },
   japan: {
-    label:  '🏯 เมืองญี่ปุ่น',
-    key:    'japan',
-    grad:   'linear-gradient(135deg,#fd79a8,#e17055)',
-    cell1:  '#FCE4EC',
-    cell2:  '#F8BBD0',
-    border: '#fd79a8',
+    label: '🏯 เมืองญี่ปุ่น', key: 'japan',
+    grad:   'linear-gradient(145deg,#9d0059 0%,#e91e8c 45%,#ffd6ef 100%)',
+    overlayGrad: 'radial-gradient(ellipse at 55% 25%,rgba(255,200,220,0.4) 0%,transparent 60%)',
+    cell1: '#fce4ec', cell2: '#f8bbd0',
+    border: '#e91e8c', snakeColor: '#be185d', ladderColor: '#f472b6',
+    boardBg: 'linear-gradient(160deg,#fce4ec,#fbcfe8)',
+    particles: [
+      {e:'🌸',x:8, y:8, s:22,d:0,  dr:3,  a:'petalFall'},
+      {e:'🌸',x:36,y:4, s:16,d:0.8,dr:3.8,a:'petalFall'},
+      {e:'🌸',x:68,y:12,s:24,d:0.3,dr:2.8,a:'petalFall'},
+      {e:'🌸',x:22,y:48,s:14,d:1.5,dr:4,  a:'petalFall'},
+      {e:'🌸',x:85,y:45,s:20,d:0.6,dr:3.2,a:'petalFall'},
+      {e:'⛩️',x:42,y:28,s:30,d:0,  dr:0,  a:'none'},
+    ],
+    description: 'ซากุระบาน บรรยากาศญี่ปุ่น',
   },
   forest: {
-    label:  '🌲 ป่าลึกลับ',
-    key:    'forest',
-    grad:   'linear-gradient(135deg,#00b894,#1e3c2f)',
-    cell1:  '#E8F5E9',
-    cell2:  '#C8E6C9',
-    border: '#00b894',
+    label: '🌲 ป่าลึกลับ', key: 'forest',
+    grad:   'linear-gradient(160deg,#071e14 0%,#1a5c3a 50%,#2d8a58 100%)',
+    overlayGrad: 'radial-gradient(ellipse at 25% 70%,rgba(34,197,94,0.25) 0%,transparent 55%)',
+    cell1: '#e8f5e9', cell2: '#c8e6c9',
+    border: '#16a34a', snakeColor: '#166534', ladderColor: '#22c55e',
+    boardBg: 'linear-gradient(160deg,#e8f5e9,#dcfce7)',
+    particles: [
+      {e:'✨',x:14,y:14,s:14,d:0,  dr:2,  a:'firefly'},
+      {e:'✨',x:54,y:9, s:18,d:0.5,dr:2.5,a:'firefly'},
+      {e:'✨',x:80,y:32,s:12,d:1,  dr:1.8,a:'firefly'},
+      {e:'✨',x:28,y:52,s:14,d:0.8,dr:3,  a:'firefly'},
+      {e:'✨',x:66,y:54,s:20,d:1.4,dr:2.2,a:'firefly'},
+      {e:'🌙',x:76,y:7, s:24,d:0,  dr:5,  a:'moonSway'},
+      {e:'🍄',x:14,y:58,s:22,d:0,  dr:0,  a:'none'},
+    ],
+    description: 'ป่ามนต์สเน่ห์ แสงหิ่งห้อย',
   },
 };
 
+const GLOBAL_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@400;700;900&display=swap');
+  * { box-sizing:border-box; }
+  @keyframes fpBounce { 0%,100%{transform:translateY(0)scale(1)} 50%{transform:translateY(-16px)scale(1.18)} }
+  @keyframes sparkle  { 0%,100%{opacity:0.2;transform:scale(0.6)rotate(0deg)} 50%{opacity:1;transform:scale(1.5)rotate(200deg)} }
+  @keyframes sway     { 0%,100%{transform:translateX(0)rotate(-5deg)} 50%{transform:translateX(10px)rotate(8deg)} }
+  @keyframes snowFall { 0%{transform:translateY(-20px)rotate(0deg);opacity:1} 100%{transform:translateY(100px)rotate(380deg);opacity:0.15} }
+  @keyframes petalFall{ 0%{transform:translateY(-12px)translateX(0)rotate(0deg);opacity:1} 100%{transform:translateY(90px)translateX(16px)rotate(210deg);opacity:0.25} }
+  @keyframes firefly  { 0%,100%{opacity:0.08;transform:scale(0.4)translateY(0)} 50%{opacity:1;transform:scale(1.7)translateY(-6px)} }
+  @keyframes moonSway { 0%,100%{transform:rotate(-10deg)scale(1)} 50%{transform:rotate(10deg)scale(1.08)} }
+  @keyframes confetti { 0%{transform:translateY(-30px)rotate(0deg);opacity:1} 100%{transform:translateY(110vh)rotate(800deg);opacity:0} }
+  @keyframes cardBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-20px)} }
+  @keyframes themeCardIn { from{opacity:0;transform:scale(0.85) translateY(20px)} to{opacity:1;transform:scale(1) translateY(0)} }
+  @keyframes glow { 0%,100%{box-shadow:0 0 12px currentColor} 50%{box-shadow:0 0 28px currentColor, 0 0 56px currentColor} }
+  @keyframes selectPop { 0%{transform:scale(1)} 40%{transform:scale(1.12)} 100%{transform:scale(1.04)} }
+  @keyframes playerIn  { from{opacity:0;transform:translateX(-20px)} to{opacity:1;transform:translateX(0)} }
+  @keyframes pulse2    { 0%,100%{transform:scale(1);opacity:0.6} 50%{transform:scale(1.15);opacity:1} }
+  @keyframes diceAppear { from{opacity:0;transform:scale(0.6)rotate(-20deg)} to{opacity:1;transform:scale(1)rotate(0)} }
+`;
+
 // ── Board helpers ─────────────────────────────────────────────────────────────
-const CELL = 56; // px per cell
+const CELL = 54;
 
 function squareToXY(n) {
-  const idx  = n - 1;
-  const row  = Math.floor(idx / 10);
-  const col  = idx % 10;
+  const idx = n - 1;
+  const row = Math.floor(idx / 10);
+  const col = idx % 10;
   const actualCol = row % 2 === 0 ? col : 9 - col;
   return { x: actualCol * CELL + CELL / 2, y: (9 - row) * CELL + CELL / 2 };
 }
 
-// ── SVG Board ─────────────────────────────────────────────────────────────────
-function SnakeAndLadderBoard({ players, theme }) {
-  const t = THEMES[theme] || THEMES.funpark;
-  const size = CELL * 10; // 560
+// ── Dice face ─────────────────────────────────────────────────────────────────
+const DOT_POS = {
+  1: [[50,50]],
+  2: [[28,28],[72,72]],
+  3: [[28,28],[50,50],[72,72]],
+  4: [[28,28],[72,28],[28,72],[72,72]],
+  5: [[28,28],[72,28],[50,50],[28,72],[72,72]],
+  6: [[28,28],[72,28],[28,50],[72,50],[28,72],[72,72]],
+};
 
-  // Build grid cells (row top-to-bottom, col left-to-right)
+function DiceFace({ value, size = 60, color = '#6366f1' }) {
+  const dots = DOT_POS[value] || DOT_POS[1];
+  const dr = size * 0.09;
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ display:'block' }}>
+      <defs>
+        <linearGradient id={`dg-${value}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#fff" stopOpacity="0.18" />
+          <stop offset="100%" stopColor="#000" stopOpacity="0.18" />
+        </linearGradient>
+      </defs>
+      <rect x={2} y={2} width={96} height={96} rx={22} fill={color} />
+      <rect x={2} y={2} width={96} height={96} rx={22} fill={`url(#dg-${value})`} />
+      <rect x={6} y={6} width={50} height={42} rx={12} fill="rgba(255,255,255,0.12)" />
+      <rect x={2} y={2} width={96} height={96} rx={22} fill="none"
+        stroke="rgba(255,255,255,0.25)" strokeWidth={1.5} />
+      {dots.map(([cx, cy], i) => (
+        <g key={i}>
+          <circle cx={cx+1} cy={cy+1} r={dr*100/size*0.88} fill="rgba(0,0,0,0.25)" />
+          <circle cx={cx} cy={cy} r={dr*100/size*0.88} fill="#fff" opacity={0.96} />
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+// ── SVG Board ─────────────────────────────────────────────────────────────────
+function SnakeAndLadderBoard({ players, theme, currentPlayerIdx = 0 }) {
+  const t = THEMES[theme] || THEMES.funpark;
+  const size = CELL * 10;
+
+  // Build cells
   const cells = [];
-  for (let displayRow = 0; displayRow < 10; displayRow++) {
+  for (let dRow = 0; dRow < 10; dRow++) {
     for (let col = 0; col < 10; col++) {
-      // displayRow 0 = top row visually = boardRow 9
-      const boardRow = 9 - displayRow;
+      const boardRow = 9 - dRow;
       const actualCol = boardRow % 2 === 0 ? col : 9 - col;
       const n = boardRow * 10 + actualCol + 1;
-      const x = col * CELL;
-      const y = displayRow * CELL;
-      const isEven = (boardRow + actualCol) % 2 === 0;
-      const isSnakeHead  = SNAKES[n]  !== undefined;
-      const isLadderBase = LADDERS[n] !== undefined;
-      const isEvent      = EVENTS[n]  !== undefined;
-      const isStart      = n === 1;
-      const isEnd        = n === 100;
+      const x = col * CELL, y = dRow * CELL;
+      const isEven      = (boardRow + actualCol) % 2 === 0;
+      const isSnakeHead = SNAKES[n]  !== undefined;
+      const isLadderBot = LADDERS[n] !== undefined;
+      const isEvent     = EVENTS[n]  !== undefined;
+      const isStart     = n === 1;
+      const isEnd       = n === 100;
 
       let fill = isEven ? t.cell1 : t.cell2;
-      if (isSnakeHead)  fill = 'rgba(239,68,68,0.25)';
-      if (isLadderBase) fill = 'rgba(34,197,94,0.25)';
-      if (isEvent)      fill = 'rgba(251,191,36,0.30)';
-      if (isStart)      fill = 'rgba(99,102,241,0.20)';
-      if (isEnd)        fill = 'rgba(251,191,36,0.35)';
+      if (isSnakeHead)  fill = 'rgba(239,68,68,0.22)';
+      if (isLadderBot)  fill = 'rgba(34,197,94,0.22)';
+      if (isEvent)      fill = 'rgba(251,191,36,0.25)';
+      if (isStart)      fill = 'rgba(99,102,241,0.18)';
+      if (isEnd)        fill = 'rgba(251,191,36,0.32)';
 
-      cells.push({ n, x, y, fill, isSnakeHead, isLadderBase, isEvent, isStart, isEnd });
+      cells.push({ n, x, y, fill, isSnakeHead, isLadderBot, isEvent, isStart, isEnd });
     }
   }
 
-  // Snake curves (quadratic bezier from head to tail)
+  // Snake elements — S-curve with gradient & snake head
   const snakeElems = Object.entries(SNAKES).map(([head, tail]) => {
-    const h = squareToXY(Number(head));
-    const t2 = squareToXY(Number(tail));
-    const mx = (h.x + t2.x) / 2 + 28;
-    const my = (h.y + t2.y) / 2;
+    const hN = Number(head), tN = Number(tail);
+    const h = squareToXY(hN), ta = squareToXY(tN);
+    const dx = ta.x - h.x, dy = ta.y - h.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const px = -dy / len * 22, py = dx / len * 22;
+    const cx1 = h.x + dx * 0.28 + px, cy1 = h.y + dy * 0.28 + py;
+    const cx2 = h.x + dx * 0.72 - px, cy2 = h.y + dy * 0.72 - py;
+    const d = `M ${h.x} ${h.y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${ta.x} ${ta.y}`;
+    const gId = `sg${hN}`;
+    // Head direction for eyes (angle from h toward cx1)
+    const hAngle = Math.atan2(cy1 - h.y, cx1 - h.x);
+    const ex = Math.cos(hAngle + Math.PI) * 5;
+    const ey = Math.sin(hAngle + Math.PI) * 5;
+    const perp = hAngle + Math.PI / 2;
+    const e1x = h.x + ex + Math.cos(perp) * 4;
+    const e1y = h.y + ey + Math.sin(perp) * 4;
+    const e2x = h.x + ex - Math.cos(perp) * 4;
+    const e2y = h.y + ey - Math.sin(perp) * 4;
+    const tongueDir = hAngle - Math.PI;
+    const tx1 = h.x + Math.cos(tongueDir) * 10;
+    const ty1 = h.y + Math.sin(tongueDir) * 10;
+    const tk1x = tx1 + Math.cos(tongueDir + 0.5) * 6;
+    const tk1y = ty1 + Math.sin(tongueDir + 0.5) * 6;
+    const tk2x = tx1 + Math.cos(tongueDir - 0.5) * 6;
+    const tk2y = ty1 + Math.sin(tongueDir - 0.5) * 6;
     return (
-      <g key={`snake-${head}`}>
-        <path
-          d={`M ${h.x} ${h.y} Q ${mx} ${my} ${t2.x} ${t2.y}`}
-          stroke="#ef4444"
-          strokeWidth={5}
-          fill="none"
-          strokeLinecap="round"
-          opacity={0.75}
-        />
-        {/* head circle */}
-        <circle cx={h.x} cy={h.y} r={7} fill="#ef4444" opacity={0.9} />
-        <text x={h.x} y={h.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize={9} fill="#fff">🐍</text>
+      <g key={`s${hN}`}>
+        <defs>
+          <linearGradient id={gId} gradientUnits="userSpaceOnUse"
+            x1={h.x} y1={h.y} x2={ta.x} y2={ta.y}>
+            <stop offset="0%"   stopColor={t.snakeColor} />
+            <stop offset="100%" stopColor={t.snakeColor} stopOpacity="0.42" />
+          </linearGradient>
+        </defs>
+        {/* Shadow */}
+        <path d={d} stroke="rgba(0,0,0,0.22)" strokeWidth={14} fill="none"
+          strokeLinecap="round" transform="translate(2,2)" />
+        {/* Body */}
+        <path d={d} stroke={`url(#${gId})`} strokeWidth={11} fill="none" strokeLinecap="round" />
+        {/* Scale texture */}
+        <path d={d} stroke="rgba(255,255,255,0.18)" strokeWidth={11} fill="none"
+          strokeLinecap="round" strokeDasharray="3,9" />
+        {/* Tongue */}
+        <line x1={h.x} y1={h.y} x2={tx1} y2={ty1} stroke="#f87171" strokeWidth={1.8} />
+        <line x1={tx1} y1={ty1} x2={tk1x} y2={tk1y} stroke="#f87171" strokeWidth={1.5} strokeLinecap="round" />
+        <line x1={tx1} y1={ty1} x2={tk2x} y2={tk2y} stroke="#f87171" strokeWidth={1.5} strokeLinecap="round" />
+        {/* Head */}
+        <ellipse cx={h.x} cy={h.y} rx={10} ry={8} fill={t.snakeColor}
+          stroke="rgba(255,255,255,0.3)" strokeWidth={1} />
+        {/* Eyes */}
+        <circle cx={e1x} cy={e1y} r={2.6} fill="#fff" />
+        <circle cx={e2x} cy={e2y} r={2.6} fill="#fff" />
+        <circle cx={e1x} cy={e1y} r={1.4} fill="#1a1a1a" />
+        <circle cx={e2x} cy={e2y} r={1.4} fill="#1a1a1a" />
+        <circle cx={e1x+0.5} cy={e1y-0.5} r={0.5} fill="#fff" />
+        <circle cx={e2x+0.5} cy={e2y-0.5} r={0.5} fill="#fff" />
       </g>
     );
   });
 
-  // Ladder lines (green thick from base to top)
+  // Ladder elements — warm gold rails + rungs
   const ladderElems = Object.entries(LADDERS).map(([base, top]) => {
-    const b = squareToXY(Number(base));
-    const tp = squareToXY(Number(top));
-    const dx = (tp.x - b.x);
-    const dy = (tp.y - b.y);
-    const len = Math.sqrt(dx * dx + dy * dy);
-    const nx = -dy / len * 5;
-    const ny = dx / len * 5;
-    // Two rails + rungs
-    const railCount = Math.max(3, Math.round(len / 20));
-    const rungs = [];
-    for (let i = 1; i < railCount; i++) {
-      const t3 = i / railCount;
-      const rx = b.x + dx * t3;
-      const ry = b.y + dy * t3;
-      rungs.push(
-        <line
-          key={i}
-          x1={rx + nx} y1={ry + ny}
-          x2={rx - nx} y2={ry - ny}
-          stroke="#22c55e" strokeWidth={2} opacity={0.8}
-        />
-      );
-    }
+    const bN = Number(base), tpN = Number(top);
+    const b = squareToXY(bN), tp = squareToXY(tpN);
+    const dx = tp.x - b.x, dy = tp.y - b.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len * 5.5, ny = dx / len * 5.5;
+    const rungCount = Math.max(4, Math.round(len / 16));
+    const lgId = `lg${bN}`;
     return (
-      <g key={`ladder-${base}`}>
-        <line x1={b.x + nx} y1={b.y + ny} x2={tp.x + nx} y2={tp.y + ny} stroke="#22c55e" strokeWidth={3} opacity={0.8} />
-        <line x1={b.x - nx} y1={b.y - ny} x2={tp.x - nx} y2={tp.y - ny} stroke="#22c55e" strokeWidth={3} opacity={0.8} />
-        {rungs}
-        <circle cx={tp.x} cy={tp.y} r={6} fill="#22c55e" opacity={0.9} />
-        <text x={tp.x} y={tp.y + 1} textAnchor="middle" dominantBaseline="middle" fontSize={8} fill="#fff">🪜</text>
+      <g key={`l${bN}`}>
+        <defs>
+          <linearGradient id={lgId} gradientUnits="userSpaceOnUse"
+            x1={b.x} y1={b.y} x2={tp.x} y2={tp.y}>
+            <stop offset="0%"   stopColor={t.ladderColor} stopOpacity="0.7" />
+            <stop offset="100%" stopColor={t.ladderColor} />
+          </linearGradient>
+        </defs>
+        {/* Rail shadows */}
+        <line x1={b.x+nx+1} y1={b.y+ny+1} x2={tp.x+nx+1} y2={tp.y+ny+1}
+          stroke="rgba(0,0,0,0.2)" strokeWidth={5} strokeLinecap="round" />
+        <line x1={b.x-nx+1} y1={b.y-ny+1} x2={tp.x-nx+1} y2={tp.y-ny+1}
+          stroke="rgba(0,0,0,0.2)" strokeWidth={5} strokeLinecap="round" />
+        {/* Rails */}
+        <line x1={b.x+nx} y1={b.y+ny} x2={tp.x+nx} y2={tp.y+ny}
+          stroke={`url(#${lgId})`} strokeWidth={4.5} strokeLinecap="round" />
+        <line x1={b.x-nx} y1={b.y-ny} x2={tp.x-nx} y2={tp.y-ny}
+          stroke={`url(#${lgId})`} strokeWidth={4.5} strokeLinecap="round" />
+        {/* Rungs */}
+        {Array.from({ length: rungCount - 1 }).map((_, i) => {
+          const frac = (i + 1) / rungCount;
+          const rx = b.x + dx * frac, ry = b.y + dy * frac;
+          return (
+            <line key={i}
+              x1={rx+nx} y1={ry+ny} x2={rx-nx} y2={ry-ny}
+              stroke={t.ladderColor} strokeWidth={3} strokeLinecap="round"
+              opacity={0.85}
+            />
+          );
+        })}
+        {/* Top cap */}
+        <circle cx={tp.x} cy={tp.y} r={7.5} fill={t.ladderColor}
+          stroke="rgba(255,255,255,0.4)" strokeWidth={1} />
+        <text x={tp.x} y={tp.y+1} textAnchor="middle" dominantBaseline="middle" fontSize={9}>🪜</text>
       </g>
     );
   });
 
-  // Player tokens (offset if multiple on same square)
+  // Player tokens
   const posBySquare = {};
   (players || []).forEach(p => {
     if (!posBySquare[p.position]) posBySquare[p.position] = [];
     posBySquare[p.position].push(p);
   });
 
-  const playerTokens = [];
+  const tokens = [];
   Object.entries(posBySquare).forEach(([sq, ps]) => {
     const n = Number(sq);
     if (n < 1) return;
     const center = squareToXY(n);
-    const count = ps.length;
     ps.forEach((p, i) => {
-      const offsetX = count > 1 ? (i - (count - 1) / 2) * 12 : 0;
-      const offsetY = count > 1 ? (i % 2 === 0 ? -6 : 6) : 0;
-      const cx = center.x + offsetX;
-      const cy = center.y + offsetY;
-      playerTokens.push(
-        <g key={`player-${p.id}`}>
-          <circle cx={cx} cy={cy} r={10} fill={p.color} stroke="#fff" strokeWidth={1.5} opacity={0.95} />
-          <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" fontSize={11}>{p.avatar}</text>
+      const count = ps.length;
+      const angle = (i / count) * Math.PI * 2;
+      const offR = count > 1 ? 9 : 0;
+      const cx = center.x + Math.cos(angle) * offR;
+      const cy = center.y + Math.sin(angle) * offR;
+      const isCurrent = players.indexOf(p) === currentPlayerIdx;
+      tokens.push(
+        <g key={`tk-${p.id}`}>
+          {isCurrent && (
+            <>
+              <circle cx={cx} cy={cy} r={18} fill="none" stroke={p.color} strokeWidth={2} opacity={0.35}>
+                <animate attributeName="r" values="16;22;16" dur="1.6s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.5;0.08;0.5" dur="1.6s" repeatCount="indefinite" />
+              </circle>
+            </>
+          )}
+          <circle cx={cx} cy={cy} r={12} fill={p.color}
+            stroke="#fff" strokeWidth={isCurrent ? 2 : 1.5} opacity={0.95} />
+          <text x={cx} y={cy+1} textAnchor="middle" dominantBaseline="middle" fontSize={13}>
+            {p.avatar}
+          </text>
         </g>
       );
     });
@@ -176,149 +332,167 @@ function SnakeAndLadderBoard({ players, theme }) {
 
   return (
     <svg
-      width={size}
-      height={size}
+      width={size} height={size}
       viewBox={`0 0 ${size} ${size}`}
       style={{
-        borderRadius: 12,
-        border: `3px solid ${t.border}`,
-        boxShadow: `0 0 32px ${t.border}55`,
-        background: t.cell1,
-        maxWidth: '100%',
-        display: 'block',
+        borderRadius: 14, border: `2.5px solid ${t.border}`,
+        boxShadow: `0 0 40px ${t.border}44, inset 0 0 0 1px rgba(255,255,255,0.1)`,
+        background: t.boardBg,
+        maxWidth: '100%', display: 'block',
       }}
     >
-      {/* Grid cells */}
+      {/* Grid */}
       {cells.map(cell => (
         <g key={cell.n}>
-          <rect
-            x={cell.x} y={cell.y}
-            width={CELL} height={CELL}
-            fill={cell.fill}
-            stroke="rgba(0,0,0,0.12)"
-            strokeWidth={0.5}
-          />
-          {/* Square number */}
-          <text
-            x={cell.x + 3}
-            y={cell.y + 10}
-            fontSize={8}
-            fill="rgba(0,0,0,0.4)"
-            fontFamily={FONT}
-            fontWeight={600}
-          >
-            {cell.n}
-          </text>
-          {/* Special labels */}
+          <rect x={cell.x} y={cell.y} width={CELL} height={CELL}
+            fill={cell.fill} stroke="rgba(0,0,0,0.1)" strokeWidth={0.5} />
+          <text x={cell.x+3} y={cell.y+10} fontSize={7.5} fill="rgba(0,0,0,0.35)"
+            fontFamily={FONT} fontWeight={700}>{cell.n}</text>
           {cell.isStart && (
-            <text x={cell.x + CELL / 2} y={cell.y + CELL / 2 + 8} textAnchor="middle" fontSize={14}>🏁</text>
+            <text x={cell.x+CELL/2} y={cell.y+CELL/2+8} textAnchor="middle" fontSize={16}>🏁</text>
           )}
           {cell.isEnd && (
-            <text x={cell.x + CELL / 2} y={cell.y + CELL / 2 + 8} textAnchor="middle" fontSize={14}>🏆</text>
+            <text x={cell.x+CELL/2} y={cell.y+CELL/2+8} textAnchor="middle" fontSize={16}>🏆</text>
+          )}
+          {cell.isEvent && !cell.isStart && !cell.isEnd && (
+            <text x={cell.x+CELL/2} y={cell.y+CELL/2+8} textAnchor="middle" fontSize={11} opacity={0.4}>🎯</text>
           )}
         </g>
       ))}
-
-      {/* Ladders (draw before snakes so snakes appear on top) */}
       {ladderElems}
-
-      {/* Snakes */}
       {snakeElems}
-
-      {/* Player tokens (on top) */}
-      {playerTokens}
+      {tokens}
     </svg>
   );
 }
 
-// ── Dice face ─────────────────────────────────────────────────────────────────
-const DOT_POSITIONS = {
-  1: [[50, 50]],
-  2: [[25, 25], [75, 75]],
-  3: [[25, 25], [50, 50], [75, 75]],
-  4: [[25, 25], [75, 25], [25, 75], [75, 75]],
-  5: [[25, 25], [75, 25], [50, 50], [25, 75], [75, 75]],
-  6: [[25, 25], [75, 25], [25, 50], [75, 50], [25, 75], [75, 75]],
-};
-
-function DiceFace({ value, size = 60, color = '#6366f1' }) {
-  const dots = DOT_POSITIONS[value] || [];
-  const r = size * 0.09;
+// ── Animated Theme Card ───────────────────────────────────────────────────────
+function ThemeCard({ th, isSelected, onClick, animDelay = 0 }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100">
-      <rect x={2} y={2} width={96} height={96} rx={18} fill={color} />
-      <rect x={5} y={5} width={90} height={90} rx={15} fill="rgba(255,255,255,0.07)" />
-      {dots.map(([cx, cy], i) => (
-        <circle key={i} cx={cx} cy={cy} r={r * 100 / size * 0.7} fill="#fff" opacity={0.95} />
+    <div
+      onClick={onClick}
+      style={{
+        position: 'relative', borderRadius: 22, overflow: 'hidden',
+        cursor: 'pointer', height: 144,
+        border: `2.5px solid ${isSelected ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.1)'}`,
+        transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+        transition: 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
+        boxShadow: isSelected
+          ? `0 12px 48px ${th.border}99, 0 0 0 4px ${th.border}33`
+          : '0 6px 28px rgba(0,0,0,0.45)',
+        animation: `themeCardIn 0.5s ${animDelay}s ease both`,
+      }}
+    >
+      {/* Gradient background */}
+      <div style={{ position:'absolute', inset:0, background: th.grad }} />
+      {/* Radial overlay for depth */}
+      <div style={{ position:'absolute', inset:0, background: th.overlayGrad }} />
+
+      {/* Particles */}
+      {th.particles.map((p, i) => (
+        <div key={i} style={{
+          position: 'absolute', left: `${p.x}%`, top: `${p.y}%`,
+          fontSize: p.s, lineHeight: 1, pointerEvents: 'none', zIndex: 1,
+          animation: p.a === 'none' ? 'none' : `${p.a} ${p.dr}s ${p.d}s ease-in-out infinite`,
+          filter: p.a === 'firefly' ? 'brightness(2) saturate(1.5)' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))',
+        }}>
+          {p.e}
+        </div>
       ))}
-    </svg>
+
+      {/* Shine effect on hover */}
+      {isSelected && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 2,
+          background: 'linear-gradient(135deg,rgba(255,255,255,0.18) 0%,transparent 50%)',
+          borderRadius: 20,
+        }} />
+      )}
+
+      {/* Bottom gradient for text */}
+      <div style={{
+        position: 'absolute', bottom:0, left:0, right:0, height:'65%',
+        background: 'linear-gradient(to top,rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.3) 60%,transparent 100%)',
+        zIndex: 3,
+      }} />
+
+      {/* Selected check */}
+      {isSelected && (
+        <div style={{
+          position:'absolute', top:12, right:12, zIndex:5,
+          background:'#fff', borderRadius:'50%',
+          width:26, height:26,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          fontSize:14, fontWeight:900, color:'#16a34a',
+          boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
+          animation:'selectPop 0.35s ease',
+        }}>✓</div>
+      )}
+
+      {/* Label + description */}
+      <div style={{ position:'absolute', bottom:12, left:14, right:14, zIndex:4 }}>
+        <div style={{
+          fontSize:19, fontWeight:900, color:'#fff',
+          fontFamily:FONT, textShadow:'0 2px 10px rgba(0,0,0,0.6)',
+          lineHeight:1.2, marginBottom:3,
+        }}>
+          {th.label}
+        </div>
+        <div style={{ fontSize:11, color:'rgba(255,255,255,0.7)', fontFamily:FONT }}>
+          {th.description}
+        </div>
+      </div>
+    </div>
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function SnakeLadderGame() {
-  const [lang,          setLang]          = useState('th');
-  const [phase,         setPhase]         = useState('theme');  // theme | lobby | playing | finished
-  const [theme,         setTheme]         = useState(null);
-  const [maxPlayers,    setMaxPlayers]    = useState(20);
-  const [roomCode,      setRoomCode]      = useState('');
-  const [session,       setSession]       = useState(null);
-  const [creating,      setCreating]      = useState(false);
-  const [starting,      setStarting]      = useState(false);
-  const [error,         setError]         = useState('');
-
+  const [lang,       setLang]       = useState('th');
+  const [phase,      setPhase]      = useState('theme');
+  const [theme,      setTheme]      = useState(null);
+  const [maxPlayers, setMaxPlayers] = useState(20);
+  const [roomCode,   setRoomCode]   = useState('');
+  const [session,    setSession]    = useState(null);
+  const [creating,   setCreating]   = useState(false);
+  const [starting,   setStarting]   = useState(false);
+  const [error,      setError]      = useState('');
   const pollRef = useRef(null);
 
   const T = {
     th: {
-      title:        'บันไดงู',
-      subtitle:     'Snake & Ladder Multiplayer',
-      pickTheme:    'เลือกธีมเกม',
-      createRoom:   'สร้างห้องเกม',
-      creating:     'กำลังสร้าง…',
-      startGame:    'เริ่มเกม',
-      starting:     'กำลังเริ่ม…',
-      waitPlayers:  (n) => `รอผู้เล่น (${n}/2 ขึ้นไป)`,
-      players:      'ผู้เล่ม',
-      scanQR:       'สแกน QR เพื่อเข้าเกม',
-      waitingFor:   'รอผู้เล่มเข้าร่วม…',
-      currentTurn:  'ถึงตา',
-      position:     'ตำแหน่ง',
-      lastResult:   'ผลล่าสุด',
-      winner:       'ผู้ชนะ!',
-      newGame:      'เกมใหม่',
-      endGame:      'จบเกม',
-      legend:       ['🐍 งู = ตกลง', '🪜 บันได = ขึ้น', '🎯 ถึง 100 = ชนะ'],
-      log:          'บันทึกเกม',
+      title: 'บันไดงู', subtitle: 'Snake & Ladder Multiplayer',
+      pickTheme: 'เลือกธีมโลกเกม', createRoom: 'สร้างห้องเกม',
+      creating: 'กำลังสร้าง…', startGame: 'เริ่มเกม',
+      starting: 'กำลังเริ่ม…',
+      waitPlayers: (n) => `รอผู้เล่ม (${n}/2 ขึ้นไป)`,
+      players: 'ผู้เล่ม', scanQR: 'สแกน QR เพื่อเข้าเกม',
+      waitingFor: 'รอผู้เล่มเข้าร่วม…',
+      currentTurn: 'ถึงตา', position: 'ตำแหน่ง', lastResult: 'ผลล่าสุด',
+      winner: 'ผู้ชนะ!', newGame: 'เกมใหม่', endGame: 'จบเกม',
+      legend: ['🐍 งู = ตกลง','🪜 บันได = ขึ้น','🎯 ถึง 100 = ชนะ'],
+      log: 'บันทึกเกม', maxPlayersLabel: 'ผู้เล่มสูงสุด',
     },
     en: {
-      title:        'Snake & Ladder',
-      subtitle:     'Multiplayer Board Game',
-      pickTheme:    'Pick a Theme',
-      createRoom:   'Create Room',
-      creating:     'Creating…',
-      startGame:    'Start Game',
-      starting:     'Starting…',
-      waitPlayers:  (n) => `Waiting for players (${n}/2+)`,
-      players:      'Players',
-      scanQR:       'Scan QR to join',
-      waitingFor:   'Waiting for players to join…',
-      currentTurn:  "It's turn:",
-      position:     'Position',
-      lastResult:   'Last Result',
-      winner:       'Winner!',
-      newGame:      'New Game',
-      endGame:      'End Game',
-      legend:       ['🐍 Snake = slide down', '🪜 Ladder = climb up', '🎯 Reach 100 = win'],
-      log:          'Game Log',
+      title: 'Snake & Ladder', subtitle: 'Multiplayer Board Game',
+      pickTheme: 'Choose Game Theme', createRoom: 'Create Room',
+      creating: 'Creating…', startGame: 'Start Game',
+      starting: 'Starting…',
+      waitPlayers: (n) => `Waiting (${n}/2+)`,
+      players: 'Players', scanQR: 'Scan QR to join',
+      waitingFor: 'Waiting for players…',
+      currentTurn: "Turn:", position: 'Position', lastResult: 'Last Roll',
+      winner: 'Winner!', newGame: 'New Game', endGame: 'End Game',
+      legend: ['🐍 Snake = slide down','🪜 Ladder = climb up','🎯 100 = win'],
+      log: 'Game Log', maxPlayersLabel: 'Max players',
     },
   };
   const tx = T[lang];
 
-  // ── Poll ─────────────────────────────────────────────────────────────────────
+  // ── Poll ──────────────────────────────────────────────────────────────────
   const poll = useCallback(async (code) => {
     try {
-      const res = await fetch(`/api/teacher/snakelad?code=${code}`);
+      const res  = await fetch(`/api/teacher/snakelad?code=${code}`);
       if (!res.ok) return;
       const data = await res.json();
       if (data.session) {
@@ -335,191 +509,171 @@ export default function SnakeLadderGame() {
     return () => clearInterval(pollRef.current);
   }, [roomCode, poll]);
 
-  // ── Create room ───────────────────────────────────────────────────────────────
+  // ── Create room ───────────────────────────────────────────────────────────
   const createRoom = async () => {
     if (!theme) return;
-    setCreating(true);
-    setError('');
+    setCreating(true); setError('');
     try {
-      const res = await fetch('/api/teacher/snakelad', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res  = await fetch('/api/teacher/snakelad', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'create', theme, maxPlayers }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
-      setRoomCode(data.code);
-      setSession(data.session);
-      setPhase('lobby');
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setCreating(false);
-    }
+      setRoomCode(data.code); setSession(data.session); setPhase('lobby');
+    } catch (e) { setError(e.message); }
+    finally { setCreating(false); }
   };
 
-  // ── Start game ────────────────────────────────────────────────────────────────
   const startGame = async () => {
-    setStarting(true);
-    setError('');
+    setStarting(true); setError('');
     try {
-      const res = await fetch('/api/teacher/snakelad', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res  = await fetch('/api/teacher/snakelad', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'start', code: roomCode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed');
-      setSession(data.session);
-      setPhase('playing');
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setStarting(false);
-    }
+      setSession(data.session); setPhase('playing');
+    } catch (e) { setError(e.message); }
+    finally { setStarting(false); }
   };
 
-  // ── Reset game ────────────────────────────────────────────────────────────────
   const resetGame = async () => {
     try {
-      const res = await fetch('/api/teacher/snakelad', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res  = await fetch('/api/teacher/snakelad', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reset', code: roomCode }),
       });
       const data = await res.json();
-      if (res.ok && data.session) {
-        setSession(data.session);
-        setPhase('lobby');
-      }
+      if (res.ok && data.session) { setSession(data.session); setPhase('lobby'); }
     } catch { /* ignore */ }
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────────────────
   const studentUrl = typeof window !== 'undefined' && roomCode
-    ? `${window.location.origin}/student/snakelad?code=${roomCode}`
-    : '';
+    ? `${window.location.origin}/student/snakelad?code=${roomCode}` : '';
   const qrUrl = studentUrl
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(studentUrl)}`
-    : '';
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(studentUrl)}` : '';
 
-  const players    = session?.players || [];
-  const curIdx     = session?.currentPlayerIdx ?? 0;
-  const curPlayer  = players[curIdx] || null;
-  const curTheme   = THEMES[session?.theme || theme || 'funpark'];
+  const players   = session?.players || [];
+  const curIdx    = session?.currentPlayerIdx ?? 0;
+  const curPlayer = players[curIdx] || null;
+  const curTheme  = THEMES[session?.theme || theme || 'funpark'];
 
-  // ── Lang button ───────────────────────────────────────────────────────────────
+  // Confetti positions (memoised — fixed per mount)
+  const confetti = useMemo(() =>
+    Array.from({ length: 30 }).map((_, i) => ({
+      left:  `${(i * 37 + 5) % 100}%`,
+      delay: `${(i * 0.17) % 3}s`,
+      dur:   `${2.5 + (i * 0.23) % 2}s`,
+      color: ['#FF6B9D','#FFD93D','#6BCB77','#4D96FF','#FF6B6B','#C77DFF','#fbbf24'][i % 7],
+      shape: i % 3 === 0 ? '50%' : '0',
+    })),
+    []
+  );
+
   const LangBtn = () => (
-    <button
-      onClick={() => setLang(l => l === 'th' ? 'en' : 'th')}
-      style={{
-        position: 'fixed', top: 12, right: 16, zIndex: 100,
-        padding: '4px 12px', borderRadius: 20,
-        border: '1px solid rgba(255,255,255,0.2)',
-        background: 'rgba(0,0,0,0.4)', color: '#fff',
-        fontSize: 12, cursor: 'pointer', fontFamily: FONT,
-        backdropFilter: 'blur(8px)',
-      }}
-    >
+    <button onClick={() => setLang(l => l === 'th' ? 'en' : 'th')} style={{
+      position:'fixed', top:12, right:16, zIndex:100,
+      padding:'4px 14px', borderRadius:20,
+      border:'1px solid rgba(255,255,255,0.2)',
+      background:'rgba(0,0,0,0.45)', color:'#fff',
+      fontSize:12, cursor:'pointer', fontFamily:FONT,
+      backdropFilter:'blur(10px)',
+    }}>
       {lang === 'th' ? 'EN' : 'ไทย'}
     </button>
   );
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // PHASE: THEME SELECTION
-  // ════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  // THEME SELECTION
+  // ══════════════════════════════════════════════════════════════════════════
   if (phase === 'theme') {
     return (
-      <div style={{ fontFamily: FONT, background: BG, minHeight: '100vh', padding: '32px 24px', color: '#fff' }}>
+      <div style={{ fontFamily:FONT, background:BG, minHeight:'100vh', padding:'28px 20px', color:'#fff' }}>
+        <style>{GLOBAL_CSS}</style>
         <LangBtn />
-        <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 36 }}>
-            <div style={{ fontSize: 60, marginBottom: 8 }}>🎲</div>
-            <h1 style={{ margin: 0, fontSize: 34, fontWeight: 900, letterSpacing: 1 }}>{tx.title}</h1>
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, margin: '6px 0 0' }}>{tx.subtitle}</p>
+        <div style={{ maxWidth:700, margin:'0 auto' }}>
+          {/* Hero */}
+          <div style={{ textAlign:'center', marginBottom:36 }}>
+            <div style={{
+              fontSize:72, marginBottom:10,
+              filter:'drop-shadow(0 0 24px rgba(99,102,241,0.6))',
+              animation:'fpBounce 3s ease infinite',
+            }}>🎲</div>
+            <h1 style={{ margin:'0 0 6px', fontSize:36, fontWeight:900, letterSpacing:1 }}>
+              {tx.title}
+            </h1>
+            <p style={{ color:'rgba(165,180,252,0.55)', fontSize:13, margin:0, letterSpacing:4 }}>
+              {tx.subtitle.toUpperCase()}
+            </p>
           </div>
 
-          <h2 style={{ textAlign: 'center', fontSize: 18, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 24 }}>
-            {tx.pickTheme}
-          </h2>
+          <div style={{
+            textAlign:'center', fontSize:16, fontWeight:700,
+            color:'rgba(255,255,255,0.55)', marginBottom:20,
+          }}>
+            ✦ {tx.pickTheme} ✦
+          </div>
 
-          {/* Theme cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 32 }}>
-            {Object.values(THEMES).map(th => (
-              <button
+          {/* Theme cards — 2×2 */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:16, marginBottom:28 }}>
+            {Object.values(THEMES).map((th, i) => (
+              <ThemeCard
                 key={th.key}
+                th={th}
+                isSelected={theme === th.key}
                 onClick={() => setTheme(th.key)}
-                style={{
-                  background: theme === th.key ? th.grad : 'rgba(255,255,255,0.06)',
-                  border: `2px solid ${theme === th.key ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.1)'}`,
-                  borderRadius: 16,
-                  padding: '28px 20px',
-                  cursor: 'pointer',
-                  fontSize: 20,
-                  fontWeight: 900,
-                  color: '#fff',
-                  fontFamily: FONT,
-                  textAlign: 'center',
-                  transition: 'all 0.2s',
-                  boxShadow: theme === th.key ? `0 0 24px ${th.border}66` : 'none',
-                  transform: theme === th.key ? 'scale(1.03)' : 'scale(1)',
-                }}
-              >
-                {th.label}
-              </button>
+                animDelay={i * 0.08}
+              />
             ))}
           </div>
 
-          {/* Max players counter */}
+          {/* Max players */}
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16,
-            marginBottom: 28,
+            display:'flex', alignItems:'center', justifyContent:'center', gap:14,
+            marginBottom:24,
           }}>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, fontWeight: 700 }}>
-              ผู้เล่มสูงสุด
+            <span style={{ color:'rgba(255,255,255,0.45)', fontSize:14, fontWeight:700 }}>
+              {tx.maxPlayersLabel}
             </span>
-            <button
-              onClick={() => setMaxPlayers(n => Math.max(2, n - 1))}
-              style={{
-                width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)',
-                background: 'rgba(255,255,255,0.07)', color: '#fff', fontSize: 20, fontWeight: 900,
-                cursor: 'pointer', fontFamily: FONT, lineHeight: 1,
-              }}
-            >−</button>
-            <span style={{ fontSize: 28, fontWeight: 900, color: '#a5b4fc', minWidth: 40, textAlign: 'center' }}>
+            <button onClick={() => setMaxPlayers(n => Math.max(2, n - 1))} style={{
+              width:38, height:38, borderRadius:'50%',
+              border:'1px solid rgba(255,255,255,0.2)',
+              background:'rgba(255,255,255,0.08)', color:'#fff',
+              fontSize:22, fontWeight:900, cursor:'pointer', fontFamily:FONT,
+            }}>−</button>
+            <span style={{ fontSize:30, fontWeight:900, color:'#a5b4fc', minWidth:44, textAlign:'center' }}>
               {maxPlayers}
             </span>
-            <button
-              onClick={() => setMaxPlayers(n => Math.min(50, n + 1))}
-              style={{
-                width: 36, height: 36, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.2)',
-                background: 'rgba(255,255,255,0.07)', color: '#fff', fontSize: 20, fontWeight: 900,
-                cursor: 'pointer', fontFamily: FONT, lineHeight: 1,
-              }}
-            >+</button>
+            <button onClick={() => setMaxPlayers(n => Math.min(50, n + 1))} style={{
+              width:38, height:38, borderRadius:'50%',
+              border:'1px solid rgba(255,255,255,0.2)',
+              background:'rgba(255,255,255,0.08)', color:'#fff',
+              fontSize:22, fontWeight:900, cursor:'pointer', fontFamily:FONT,
+            }}>+</button>
           </div>
 
           {error && (
-            <div style={{ textAlign: 'center', color: '#f87171', fontSize: 14, marginBottom: 16 }}>
+            <div style={{ textAlign:'center', color:'#f87171', fontSize:14, marginBottom:14 }}>
               ⚠️ {error}
             </div>
           )}
 
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ textAlign:'center' }}>
             <button
               onClick={createRoom}
               disabled={!theme || creating}
               style={{
-                padding: '16px 48px',
-                borderRadius: 14,
-                border: 'none',
-                background: (theme && !creating) ? 'linear-gradient(135deg,#6366f1,#8b5cf6)' : 'rgba(255,255,255,0.07)',
-                color: (theme && !creating) ? '#fff' : 'rgba(255,255,255,0.3)',
-                fontSize: 18,
-                fontWeight: 900,
-                cursor: (theme && !creating) ? 'pointer' : 'not-allowed',
-                fontFamily: FONT,
-                boxShadow: theme ? '0 0 32px rgba(99,102,241,0.4)' : 'none',
+                padding:'17px 56px', borderRadius:16, border:'none',
+                background: theme && !creating
+                  ? `linear-gradient(135deg,${curTheme.border},${curTheme.border}cc)`
+                  : 'rgba(255,255,255,0.07)',
+                color: theme && !creating ? '#fff' : 'rgba(255,255,255,0.3)',
+                fontSize:19, fontWeight:900, cursor: theme && !creating ? 'pointer' : 'not-allowed',
+                fontFamily:FONT,
+                boxShadow: theme && !creating ? `0 0 40px ${curTheme.border}55` : 'none',
+                transition:'all 0.3s',
               }}
             >
               {creating ? tx.creating : `🎲 ${tx.createRoom}`}
@@ -530,161 +684,112 @@ export default function SnakeLadderGame() {
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // PHASE: LOBBY (waiting for players)
-  // ════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  // LOBBY
+  // ══════════════════════════════════════════════════════════════════════════
   if (phase === 'lobby') {
     return (
-      <div style={{ fontFamily: FONT, background: BG, minHeight: '100vh', padding: '32px 24px', color: '#fff' }}>
+      <div style={{ fontFamily:FONT, background:BG, minHeight:'100vh', padding:'28px 20px', color:'#fff' }}>
+        <style>{GLOBAL_CSS}</style>
         <LangBtn />
-        <div style={{ maxWidth: 800, margin: '0 auto' }}>
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div style={{ fontSize: 48, marginBottom: 6 }}>🎲</div>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 900 }}>{tx.title}</h1>
+        <div style={{ maxWidth:820, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:28 }}>
+            <div style={{ fontSize:44, marginBottom:6 }}>🎲</div>
+            <h1 style={{ margin:'0 0 8px', fontSize:26, fontWeight:900 }}>{tx.title}</h1>
+            {/* Theme badge */}
             <div style={{
-              display: 'inline-block',
-              background: curTheme.grad,
-              borderRadius: 20,
-              padding: '4px 18px',
-              fontSize: 13,
-              fontWeight: 700,
-              marginTop: 8,
+              display:'inline-flex', alignItems:'center', gap:8,
+              background: curTheme.grad, borderRadius:24,
+              padding:'5px 18px', fontSize:13, fontWeight:700, marginBottom:4,
             }}>
-              {curTheme.label}
+              <span>{curTheme.label}</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {/* QR + join code */}
+          <div style={{ display:'flex', gap:20, flexWrap:'wrap', justifyContent:'center' }}>
+            {/* QR panel */}
             <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 20,
-              padding: '28px',
-              textAlign: 'center',
-              minWidth: 240,
-              flex: '0 0 auto',
+              background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)',
+              borderRadius:22, padding:'26px', textAlign:'center', minWidth:240, flex:'0 0 auto',
             }}>
-              {/* Room code badge */}
               <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 10,
-                background: 'rgba(99,102,241,0.2)',
-                border: '1px solid rgba(99,102,241,0.5)',
-                borderRadius: 14,
-                padding: '8px 20px',
-                marginBottom: 20,
+                display:'inline-flex', alignItems:'center', gap:10,
+                background:'rgba(99,102,241,0.22)', border:'1px solid rgba(99,102,241,0.5)',
+                borderRadius:14, padding:'8px 22px', marginBottom:18,
               }}>
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>CODE</span>
-                <span style={{ color: '#a5b4fc', fontFamily: 'monospace', letterSpacing: 6, fontWeight: 900, fontSize: 24 }}>
+                <span style={{ color:'rgba(255,255,255,0.4)', fontSize:11, letterSpacing:2 }}>CODE</span>
+                <span style={{ color:'#a5b4fc', fontFamily:'monospace', letterSpacing:7, fontWeight:900, fontSize:26 }}>
                   {roomCode}
                 </span>
               </div>
-
-              {/* QR */}
               {qrUrl && (
-                <div style={{ marginBottom: 16 }}>
-                  <img
-                    src={qrUrl}
-                    alt="QR Code"
-                    style={{ display: 'block', margin: '0 auto', borderRadius: 10, background: '#fff', padding: 8, width: 200, height: 200 }}
-                  />
-                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, margin: '8px 0 0' }}>{tx.scanQR}</p>
+                <div style={{ marginBottom:14 }}>
+                  <img src={qrUrl} alt="QR" style={{
+                    display:'block', margin:'0 auto', borderRadius:12,
+                    background:'#fff', padding:8, width:190, height:190,
+                  }} />
+                  <p style={{ color:'rgba(255,255,255,0.3)', fontSize:11, margin:'8px 0 0' }}>{tx.scanQR}</p>
                 </div>
               )}
-
-              {/* URL hint */}
               <div style={{
-                background: 'rgba(0,0,0,0.3)',
-                borderRadius: 8,
-                padding: '8px 12px',
-                fontSize: 11,
-                color: 'rgba(255,255,255,0.3)',
-                wordBreak: 'break-all',
-                marginBottom: 20,
-                textAlign: 'left',
-              }}>
-                {studentUrl}
-              </div>
-
-              {error && (
-                <div style={{ color: '#f87171', fontSize: 13, marginBottom: 12 }}>⚠️ {error}</div>
-              )}
-
-              {/* Start button */}
+                background:'rgba(0,0,0,0.3)', borderRadius:8, padding:'6px 10px',
+                fontSize:10, color:'rgba(255,255,255,0.25)', wordBreak:'break-all', marginBottom:16, textAlign:'left',
+              }}>{studentUrl}</div>
+              {error && <div style={{ color:'#f87171', fontSize:13, marginBottom:10 }}>⚠️ {error}</div>}
               <button
                 onClick={startGame}
                 disabled={players.length < 2 || starting}
                 style={{
-                  width: '100%',
-                  padding: '14px',
-                  borderRadius: 12,
-                  border: 'none',
-                  background: (players.length >= 2 && !starting)
+                  width:'100%', padding:'14px', borderRadius:12, border:'none',
+                  background: players.length >= 2 && !starting
                     ? 'linear-gradient(135deg,#10b981,#059669)'
                     : 'rgba(255,255,255,0.07)',
-                  color: (players.length >= 2 && !starting) ? '#fff' : 'rgba(255,255,255,0.25)',
-                  fontSize: 16,
-                  fontWeight: 900,
-                  cursor: (players.length >= 2 && !starting) ? 'pointer' : 'not-allowed',
-                  fontFamily: FONT,
-                  marginBottom: 10,
+                  color: players.length >= 2 && !starting ? '#fff' : 'rgba(255,255,255,0.25)',
+                  fontSize:16, fontWeight:900,
+                  cursor: players.length >= 2 && !starting ? 'pointer' : 'not-allowed',
+                  fontFamily:FONT, marginBottom:8,
                 }}
               >
-                {starting ? tx.starting : (players.length >= 2 ? `▶ ${tx.startGame}` : tx.waitPlayers(players.length))}
+                {starting ? tx.starting : players.length >= 2 ? `▶ ${tx.startGame}` : tx.waitPlayers(players.length)}
               </button>
-
               <button
                 onClick={() => { setPhase('theme'); setRoomCode(''); setSession(null); clearInterval(pollRef.current); }}
                 style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: 8,
-                  border: '1px solid rgba(239,68,68,0.3)',
-                  background: 'rgba(239,68,68,0.08)',
-                  color: 'rgba(239,68,68,0.7)',
-                  fontSize: 13,
-                  cursor: 'pointer',
-                  fontFamily: FONT,
+                  width:'100%', padding:'8px', borderRadius:8,
+                  border:'1px solid rgba(239,68,68,0.3)',
+                  background:'rgba(239,68,68,0.08)', color:'rgba(239,68,68,0.7)',
+                  fontSize:13, cursor:'pointer', fontFamily:FONT,
                 }}
-              >
-                ← กลับ
-              </button>
+              >← กลับ</button>
             </div>
 
-            {/* Player list */}
+            {/* Players panel */}
             <div style={{
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 20,
-              padding: '24px',
-              flex: 1,
-              minWidth: 220,
+              background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)',
+              borderRadius:22, padding:'22px', flex:1, minWidth:220,
             }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 800, color: 'rgba(255,255,255,0.7)' }}>
+              <h3 style={{ margin:'0 0 14px', fontSize:15, fontWeight:800, color:'rgba(255,255,255,0.65)' }}>
                 {tx.players} ({players.length})
               </h3>
               {players.length === 0 ? (
-                <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: 14, textAlign: 'center', padding: '24px 0' }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>⏳</div>
+                <div style={{ color:'rgba(255,255,255,0.22)', fontSize:14, textAlign:'center', padding:'20px 0' }}>
+                  <div style={{ fontSize:30, marginBottom:8 }}>⏳</div>
                   {tx.waitingFor}
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
                   {players.map((p, i) => (
                     <div key={p.id} style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      background: 'rgba(255,255,255,0.04)',
-                      borderRadius: 12,
-                      padding: '12px 16px',
-                      border: `1px solid ${p.color}44`,
+                      display:'flex', alignItems:'center', gap:10,
+                      background:'rgba(255,255,255,0.04)',
+                      borderRadius:12, padding:'11px 14px',
+                      border:`1px solid ${p.color}40`,
+                      animation:`playerIn 0.4s ${i*0.07}s ease both`,
                     }}>
-                      <span style={{ fontSize: 20 }}>{p.avatar}</span>
-                      <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-                      <span style={{ color: '#fff', fontWeight: 700, flex: 1, fontSize: 15 }}>{p.name}</span>
-                      <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 12 }}>#{i + 1}</span>
+                      <span style={{ fontSize:20 }}>{p.avatar}</span>
+                      <div style={{ width:11, height:11, borderRadius:'50%', background:p.color, flexShrink:0 }} />
+                      <span style={{ color:'#fff', fontWeight:700, flex:1, fontSize:14 }}>{p.name}</span>
+                      <span style={{ color:'rgba(255,255,255,0.3)', fontSize:12 }}>#{i+1}</span>
                     </div>
                   ))}
                 </div>
@@ -696,279 +801,180 @@ export default function SnakeLadderGame() {
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // PHASE: FINISHED
-  // ════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  // FINISHED
+  // ══════════════════════════════════════════════════════════════════════════
   if (phase === 'finished' && session) {
-    const winnerName = session.winner;
+    const winnerName   = session.winner;
     const winnerPlayer = players.find(p => p.name === winnerName) || players.find(p => p.position === 100);
     return (
       <div style={{
-        fontFamily: FONT,
-        background: BG,
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#fff',
-        padding: 24,
+        fontFamily:FONT, background:BG, minHeight:'100vh',
+        display:'flex', flexDirection:'column', alignItems:'center',
+        justifyContent:'center', color:'#fff', padding:24,
       }}>
+        <style>{GLOBAL_CSS}</style>
         <LangBtn />
-        <style>{`
-          @keyframes confetti {
-            0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-          }
-          @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-16px)} }
-        `}</style>
-
-        {/* Confetti dots */}
-        {Array.from({ length: 24 }).map((_, i) => (
+        {confetti.map((c, i) => (
           <div key={i} style={{
-            position: 'fixed',
-            left: `${Math.random() * 100}%`,
-            top: '-20px',
-            width: 10,
-            height: 10,
-            borderRadius: Math.random() > 0.5 ? '50%' : '0',
-            background: ['#FF6B9D','#FFD93D','#6BCB77','#4D96FF','#FF6B6B','#C77DFF'][i % 6],
-            animation: `confetti ${2 + Math.random() * 3}s ${Math.random() * 2}s linear infinite`,
-            zIndex: 0,
+            position:'fixed', left:c.left, top:'-30px',
+            width:10, height:10, borderRadius:c.shape,
+            background:c.color,
+            animation:`confetti ${c.dur} ${c.delay} linear infinite`,
+            zIndex:0,
           }} />
         ))}
-
         <div style={{
-          background: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(99,102,241,0.4)',
-          borderRadius: 28,
-          padding: '44px 36px',
-          maxWidth: 440,
-          textAlign: 'center',
-          position: 'relative',
-          zIndex: 1,
+          background:'rgba(255,255,255,0.06)', border:'1px solid rgba(99,102,241,0.4)',
+          borderRadius:28, padding:'40px 32px', maxWidth:440, textAlign:'center',
+          position:'relative', zIndex:1,
         }}>
-          <div style={{ fontSize: 88, animation: 'bounce 1s ease infinite', marginBottom: 16 }}>🏆</div>
-          <h2 style={{ margin: '0 0 12px', fontSize: 32, fontWeight: 900 }}>{tx.winner}</h2>
+          <div style={{ fontSize:80, animation:'cardBounce 1s ease infinite', marginBottom:14 }}>🏆</div>
+          <h2 style={{ margin:'0 0 10px', fontSize:30, fontWeight:900 }}>{tx.winner}</h2>
           {winnerPlayer && (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 12,
-              marginBottom: 28,
-            }}>
-              <span style={{ fontSize: 28 }}>{winnerPlayer.avatar}</span>
-              <span style={{ fontSize: 26, fontWeight: 900, color: winnerPlayer.color }}>{winnerPlayer.name}</span>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12, marginBottom:24 }}>
+              <span style={{ fontSize:26 }}>{winnerPlayer.avatar}</span>
+              <span style={{ fontSize:24, fontWeight:900, color:winnerPlayer.color }}>{winnerPlayer.name}</span>
             </div>
           )}
-
-          {/* Final standings */}
           <div style={{
-            background: 'rgba(0,0,0,0.2)',
-            borderRadius: 14,
-            padding: '14px',
-            marginBottom: 24,
-            textAlign: 'left',
+            background:'rgba(0,0,0,0.22)', borderRadius:14, padding:14, marginBottom:22, textAlign:'left',
           }}>
-            {[...players].sort((a, b) => b.position - a.position).map((p, i) => (
+            {[...players].sort((a,b)=>b.position-a.position).map((p,i)=>(
               <div key={p.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '8px 0',
-                borderBottom: i < players.length - 1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                display:'flex', alignItems:'center', gap:10, padding:'8px 0',
+                borderBottom: i < players.length-1 ? '1px solid rgba(255,255,255,0.06)' : 'none',
               }}>
-                <span style={{ fontSize: 14, color: 'rgba(255,255,255,0.4)', width: 20, textAlign: 'center' }}>
-                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}
+                <span style={{ fontSize:14, color:'rgba(255,255,255,0.4)', width:20, textAlign:'center' }}>
+                  {i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`}
                 </span>
-                <span style={{ fontSize: 18 }}>{p.avatar}</span>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
+                <span style={{ fontSize:18 }}>{p.avatar}</span>
+                <div style={{ width:10, height:10, borderRadius:'50%', background:p.color, flexShrink:0 }} />
                 <span style={{
-                  flex: 1, fontSize: 14,
-                  color: p.name === winnerName ? p.color : 'rgba(255,255,255,0.7)',
-                  fontWeight: p.name === winnerName ? 900 : 500,
-                }}>
-                  {p.name}
-                </span>
-                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>ช่อง {p.position}</span>
+                  flex:1, fontSize:14,
+                  color:p.name===winnerName?p.color:'rgba(255,255,255,0.7)',
+                  fontWeight:p.name===winnerName?900:500,
+                }}>{p.name}</span>
+                <span style={{ fontSize:12, color:'rgba(255,255,255,0.4)' }}>ช่อง {p.position}</span>
               </div>
             ))}
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button
-              onClick={resetGame}
-              style={{
-                padding: '14px',
-                borderRadius: 12,
-                border: 'none',
-                background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
-                color: '#fff',
-                fontSize: 16,
-                fontWeight: 900,
-                cursor: 'pointer',
-                fontFamily: FONT,
-              }}
-            >
-              🎲 {tx.newGame}
-            </button>
-            <button
-              onClick={() => { setPhase('theme'); setRoomCode(''); setSession(null); clearInterval(pollRef.current); }}
-              style={{
-                padding: '10px',
-                borderRadius: 10,
-                border: '1px solid rgba(239,68,68,0.3)',
-                background: 'rgba(239,68,68,0.08)',
-                color: 'rgba(239,68,68,0.7)',
-                fontSize: 13,
-                cursor: 'pointer',
-                fontFamily: FONT,
-              }}
-            >
-              ออกเกม
-            </button>
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <button onClick={resetGame} style={{
+              padding:14, borderRadius:12, border:'none',
+              background:'linear-gradient(135deg,#6366f1,#8b5cf6)',
+              color:'#fff', fontSize:16, fontWeight:900, cursor:'pointer', fontFamily:FONT,
+            }}>🎲 {tx.newGame}</button>
+            <button onClick={() => { setPhase('theme'); setRoomCode(''); setSession(null); clearInterval(pollRef.current); }} style={{
+              padding:10, borderRadius:10, border:'1px solid rgba(239,68,68,0.3)',
+              background:'rgba(239,68,68,0.08)', color:'rgba(239,68,68,0.7)',
+              fontSize:13, cursor:'pointer', fontFamily:FONT,
+            }}>ออกเกม</button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ════════════════════════════════════════════════════════════════════════════
-  // PHASE: PLAYING
-  // ════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════
+  // PLAYING
+  // ══════════════════════════════════════════════════════════════════════════
   const lastEvent = session?.lastEvent;
   const lastRoll  = session?.lastRoll;
   const log       = session?.log || [];
 
   const eventColor = () => {
     if (!lastEvent) return '#a5b4fc';
-    if (lastEvent.type === 'snake')    return '#ef4444';
-    if (lastEvent.type === 'ladder')   return '#22c55e';
-    if (lastEvent.type === 'win')      return '#fbbf24';
+    if (lastEvent.type === 'snake')      return '#ef4444';
+    if (lastEvent.type === 'ladder')     return '#22c55e';
+    if (lastEvent.type === 'win')        return '#fbbf24';
     if (lastEvent.type === 'extra_roll') return '#f59e0b';
     return '#a5b4fc';
   };
 
   return (
     <div style={{
-      fontFamily: FONT,
-      background: BG,
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      color: '#fff',
-      padding: '12px',
-      overflow: 'hidden',
+      fontFamily:FONT, background:BG, minHeight:'100vh',
+      display:'flex', flexDirection:'column', color:'#fff',
+      padding:12, overflow:'hidden',
     }}>
+      <style>{GLOBAL_CSS}</style>
       <LangBtn />
 
       {/* Top bar */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-        flexShrink: 0,
-        flexWrap: 'wrap',
-        gap: 8,
+        display:'flex', alignItems:'center', justifyContent:'space-between',
+        marginBottom:10, flexShrink:0, flexWrap:'wrap', gap:8,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 22 }}>🎲</span>
-          <span style={{ fontWeight: 900, fontSize: 18 }}>{tx.title}</span>
-          <span style={{
-            background: curTheme.grad,
-            borderRadius: 20,
-            padding: '2px 14px',
-            fontSize: 12,
-            fontWeight: 700,
-          }}>
-            {curTheme.label}
-          </span>
-          <span style={{
-            background: 'rgba(99,102,241,0.2)',
-            border: '1px solid rgba(99,102,241,0.4)',
-            borderRadius: 8,
-            padding: '2px 10px',
-            fontFamily: 'monospace',
-            letterSpacing: 2,
-            fontSize: 14,
-            color: '#a5b4fc',
-          }}>{roomCode}</span>
+        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontSize:22 }}>🎲</span>
+          <span style={{ fontWeight:900, fontSize:18 }}>{tx.title}</span>
+          <div style={{
+            background: curTheme.grad, borderRadius:20,
+            padding:'2px 14px', fontSize:12, fontWeight:700,
+          }}>{curTheme.label}</div>
+          <div style={{
+            background:'rgba(99,102,241,0.2)', border:'1px solid rgba(99,102,241,0.4)',
+            borderRadius:8, padding:'2px 10px',
+            fontFamily:'monospace', letterSpacing:2, fontSize:14, color:'#a5b4fc',
+          }}>{roomCode}</div>
         </div>
         <button
           onClick={() => { clearInterval(pollRef.current); setPhase('theme'); setRoomCode(''); setSession(null); }}
           style={{
-            padding: '6px 14px',
-            borderRadius: 8,
-            border: '1px solid rgba(239,68,68,0.3)',
-            background: 'rgba(239,68,68,0.08)',
-            color: 'rgba(239,68,68,0.7)',
-            fontSize: 12,
-            cursor: 'pointer',
-            fontFamily: FONT,
+            padding:'6px 14px', borderRadius:8,
+            border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.08)',
+            color:'rgba(239,68,68,0.7)', fontSize:12, cursor:'pointer', fontFamily:FONT,
           }}
-        >
-          {tx.endGame}
-        </button>
+        >{tx.endGame}</button>
       </div>
 
       {/* Main layout */}
-      <div style={{ display: 'flex', gap: 14, flex: 1, minHeight: 0, alignItems: 'flex-start' }}>
-
-        {/* Board — 60% */}
-        <div style={{ flex: '0 0 60%', maxWidth: '60%', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ display:'flex', gap:14, flex:1, minHeight:0, alignItems:'flex-start' }}>
+        {/* Board */}
+        <div style={{ flex:'0 0 60%', maxWidth:'60%', display:'flex', justifyContent:'center' }}>
           <SnakeAndLadderBoard
             players={players}
             theme={session?.theme || 'funpark'}
+            currentPlayerIdx={curIdx}
           />
         </div>
 
-        {/* Side panel — 40% */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, overflow: 'auto', maxHeight: 'calc(100vh - 80px)' }}>
+        {/* Side panel */}
+        <div style={{ flex:1, display:'flex', flexDirection:'column', gap:10, minWidth:0, overflow:'auto', maxHeight:'calc(100vh - 80px)' }}>
 
-          {/* Current turn */}
           {curPlayer && (
             <div style={{
-              background: `${curPlayer.color}22`,
-              border: `2px solid ${curPlayer.color}80`,
-              borderRadius: 14,
-              padding: '12px 16px',
-              textAlign: 'center',
+              background:`${curPlayer.color}1e`,
+              border:`2px solid ${curPlayer.color}88`,
+              borderRadius:14, padding:'11px 14px', textAlign:'center',
             }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', marginBottom: 4 }}>{tx.currentTurn}</div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22 }}>{curPlayer.avatar}</span>
-                <span style={{ fontWeight: 900, fontSize: 18, color: curPlayer.color }}>{curPlayer.name}</span>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', marginBottom:4 }}>{tx.currentTurn}</div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10 }}>
+                <span style={{ fontSize:24 }}>{curPlayer.avatar}</span>
+                <span style={{ fontWeight:900, fontSize:18, color:curPlayer.color }}>{curPlayer.name}</span>
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 3 }}>
+              <div style={{ color:'rgba(255,255,255,0.4)', fontSize:12, marginTop:3 }}>
                 {tx.position} {curPlayer.position}
               </div>
             </div>
           )}
 
-          {/* Dice + last event */}
           {(lastRoll || lastEvent) && (
             <div style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 12,
-              padding: '12px 14px',
-              textAlign: 'center',
+              background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.1)',
+              borderRadius:12, padding:'12px 14px', textAlign:'center',
+              animation:'diceAppear 0.3s ease',
             }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>{tx.lastResult}</div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-                {lastRoll && <DiceFace value={lastRoll} size={50} color={eventColor()} />}
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginBottom:8 }}>{tx.lastResult}</div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:12 }}>
+                {lastRoll && <DiceFace value={lastRoll} size={52} color={eventColor()} />}
                 <div>
                   {lastRoll && (
-                    <div style={{ fontSize: 20, fontWeight: 900, color: eventColor() }}>
-                      {lastRoll}
-                    </div>
+                    <div style={{ fontSize:22, fontWeight:900, color:eventColor() }}>{lastRoll}</div>
                   )}
                   {lastEvent?.msg && (
-                    <div style={{ fontSize: 13, fontWeight: 700, color: eventColor() }}>
-                      {lastEvent.msg}
-                    </div>
+                    <div style={{ fontSize:13, fontWeight:700, color:eventColor() }}>{lastEvent.msg}</div>
                   )}
                 </div>
               </div>
@@ -977,72 +983,53 @@ export default function SnakeLadderGame() {
 
           {/* Player list */}
           <div style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 12,
-            padding: '10px 12px',
+            background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)',
+            borderRadius:12, padding:'10px 12px',
           }}>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginBottom: 8 }}>
+            <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginBottom:8 }}>
               {tx.players} ({players.length})
             </div>
             {players.map((p, i) => (
               <div key={p.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '7px 8px',
-                borderRadius: 8,
-                marginBottom: 4,
-                background: i === curIdx ? `${p.color}18` : 'transparent',
-                border: i === curIdx ? `1px solid ${p.color}60` : '1px solid transparent',
+                display:'flex', alignItems:'center', gap:8, padding:'7px 8px',
+                borderRadius:8, marginBottom:4,
+                background: i===curIdx ? `${p.color}18` : 'transparent',
+                border: i===curIdx ? `1px solid ${p.color}55` : '1px solid transparent',
               }}>
-                <span style={{ fontSize: 16 }}>{p.avatar}</span>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-                <span style={{
-                  flex: 1, fontSize: 13,
-                  fontWeight: i === curIdx ? 800 : 500,
-                  color: i === curIdx ? '#fff' : 'rgba(255,255,255,0.6)',
-                }}>
+                <span style={{ fontSize:16 }}>{p.avatar}</span>
+                <div style={{ width:10, height:10, borderRadius:'50%', background:p.color, flexShrink:0 }} />
+                <span style={{ flex:1, fontSize:13, fontWeight:i===curIdx?800:500, color:i===curIdx?'#fff':'rgba(255,255,255,0.6)' }}>
                   {p.name}
                 </span>
-                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-                  {p.position === 0 ? 'START' : `ช่อง ${p.position}`}
+                <span style={{ fontSize:11, color:'rgba(255,255,255,0.4)' }}>
+                  {p.position===0?'START':`ช่อง ${p.position}`}
                 </span>
-                {i === curIdx && <span style={{ fontSize: 10, color: p.color }}>▶</span>}
+                {i===curIdx && <span style={{ fontSize:10, color:p.color }}>▶</span>}
               </div>
             ))}
           </div>
 
-          {/* Game log */}
+          {/* Log */}
           {log.length > 0 && (
             <div style={{
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid rgba(255,255,255,0.06)',
-              borderRadius: 12,
-              padding: '10px 12px',
-              maxHeight: 180,
-              overflow: 'auto',
+              background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.05)',
+              borderRadius:12, padding:'10px 12px', maxHeight:160, overflow:'auto',
             }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginBottom: 8 }}>{tx.log}</div>
-              {log.slice(0, 15).map((entry, i) => (
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', marginBottom:7 }}>{tx.log}</div>
+              {log.slice(0,14).map((e, i) => (
                 <div key={i} style={{
-                  fontSize: 12,
-                  color: 'rgba(255,255,255,0.5)',
-                  padding: '3px 0',
-                  borderBottom: i < log.slice(0, 15).length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  fontSize:12, color:'rgba(255,255,255,0.5)', padding:'3px 0',
+                  borderBottom: i < Math.min(log.length,14)-1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                 }}>
-                  <span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 700 }}>{entry.player}</span>
-                  {' '}ทอย {entry.roll} → ช่อง {entry.toPos}
-                  {entry.event && (
-                    <span style={{ color: '#fbbf24', marginLeft: 6 }}>{entry.event}</span>
-                  )}
+                  <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:700 }}>{e.player}</span>
+                  {' '}ทอย {e.roll} → ช่อง {e.toPos}
+                  {e.event && <span style={{ color:'#fbbf24', marginLeft:6 }}>{e.event}</span>}
                 </div>
               ))}
             </div>
           )}
 
-          {/* Legend */}
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', lineHeight: 1.9 }}>
+          <div style={{ fontSize:11, color:'rgba(255,255,255,0.28)', lineHeight:2 }}>
             {tx.legend.map((l, i) => <div key={i}>{l}</div>)}
           </div>
         </div>
