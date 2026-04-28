@@ -74,7 +74,7 @@ export const translations = {
     tool_scoreboard: 'กระดานคะแนนทีม',
     tool_millionaire: 'เกมเศรษฐี',
     tool_bussanook: 'BUS-SANOOK',
-    tool_snake_ladder: 'งูและบันได',
+    tool_snake_ladder: 'บันไดงู',
 
     // Marketing
     side_marketing: 'ด้านสื่อสารการตลาด',
@@ -186,6 +186,8 @@ export const translations = {
     tool_random_group: 'Random Group Maker',
     tool_scoreboard: 'Team Scoreboard',
     tool_millionaire: 'Millionaire Quiz Game',
+    tool_bussanook: 'BUS-SANOOK',
+    tool_snake_ladder: 'Snake & Ladder',
 
     // Marketing
     side_marketing: 'Marketing Communications',

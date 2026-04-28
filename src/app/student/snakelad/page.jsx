@@ -361,7 +361,7 @@ function StudentSnakeLadderInner() {
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div style={{ fontSize: 64, marginBottom: 8 }}>🎲</div>
             <h1 style={{ margin: '0 0 4px', fontSize: 30, fontWeight: 900, color: '#fff', letterSpacing: 1 }}>
-              งูและบันได
+              บันไดงู
             </h1>
             <p style={{ color: 'rgba(165,180,252,0.5)', fontSize: 12, margin: 0, letterSpacing: 3 }}>
               SNAKE &amp; LADDER

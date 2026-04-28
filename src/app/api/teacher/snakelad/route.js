@@ -20,7 +20,7 @@ async function checkSb() {
   try {
     const sb = createAdminClient();
     if (!sb) { sbOk = false; return false; }
-    const { error } = await sb.from('scoreboard_sessions').select('id').limit(1);
+    const { error } = await sb.from('scoreboard_sessions').select('session_id').limit(1);
     sbOk = !error || (error.code !== 'PGRST205' && error.code !== '42P01');
     return sbOk;
   } catch { sbOk = false; return false; }
@@ -44,35 +44,24 @@ const EVENTS  = {
 const PLAYER_COLORS  = ['#FF6B9D','#4ECDC4','#FFE66D','#A8E6CF','#DDA0DD','#87CEEB','#FFA07A','#98FB98','#F0E68C','#E6A8D7'];
 const PLAYER_AVATARS = ['🐶','🐱','🐻','🦊','🐸','🦁','🐯','🐺','🦝','🐨'];
 
-// ── Serialize / deserialize ───────────────────────────────────────────────────
-function serRoom(r) {
-  return JSON.stringify(r);
-}
-
-function deserRoom(s) {
-  if (!s) return null;
-  try {
-    return typeof s === 'string' ? JSON.parse(s) : s;
-  } catch { return null; }
-}
-
-// ── CRUD helpers (table: scoreboard_sessions, columns: id, teams, active, expires_at) ──
+// ── CRUD helpers — same schema as bussanook: session_id / session_data / updated_at ──
 async function getRoom(code) {
   const key = PREFIX + code;
   if (await checkSb()) {
     const sb = createAdminClient();
     const { data } = await sb
       .from('scoreboard_sessions')
-      .select('teams, active, expires_at')
-      .eq('id', key)
+      .select('session_data, updated_at')
+      .eq('session_id', key)
       .single();
-    if (!data || !data.active) return null;
-    if (data.expires_at && new Date(data.expires_at) < new Date()) return null;
-    return deserRoom(data.teams);
+    if (!data?.session_data) return null;
+    const updatedMs = new Date(data.updated_at).getTime();
+    if (Date.now() - updatedMs > TTL_MS) return null;
+    return data.session_data;
   }
   const r = memRooms.get(code);
   if (!r) return null;
-  if (Date.now() - r.createdAt > TTL_MS) { memRooms.delete(code); return null; }
+  if (Date.now() - (r.createdAt || 0) > TTL_MS) { memRooms.delete(code); return null; }
   return r;
 }
 
@@ -81,11 +70,9 @@ async function saveRoom(code, room) {
   if (await checkSb()) {
     const sb = createAdminClient();
     await sb.from('scoreboard_sessions').upsert({
-      id:         key,
-      teams:      serRoom(room),
-      active:     true,
-      created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + TTL_MS).toISOString(),
+      session_id:   key,
+      session_data: room,
+      updated_at:   new Date().toISOString(),
     });
     return;
   }
@@ -98,18 +85,17 @@ async function mutateRoom(code, mutator) {
     const sb = createAdminClient();
     const { data } = await sb
       .from('scoreboard_sessions')
-      .select('teams, active, expires_at')
-      .eq('id', key)
+      .select('session_data')
+      .eq('session_id', key)
       .single();
-    if (!data || !data.active) return null;
-    const room = deserRoom(data.teams);
-    if (!room) return null;
+    if (!data?.session_data) return null;
+    const room = data.session_data;
     const result = mutator(room);
-    if (result === false) return room; // mutator signalled early exit but room is still valid
+    if (result === false) return room;
     await sb
       .from('scoreboard_sessions')
-      .update({ teams: serRoom(room) })
-      .eq('id', key);
+      .update({ session_data: room, updated_at: new Date().toISOString() })
+      .eq('session_id', key);
     return room;
   }
   const r = memRooms.get(code);

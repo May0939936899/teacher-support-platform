@@ -300,15 +300,19 @@ export default function BusSanookGame() {
   }, [phase, gameState?.currentQ]);
 
   // Auto-reveal when ALL players have answered
+  // NOTE: compute from gameState directly (allAnswered/playerCount defined later → TDZ)
   const autoRevealAllRef = useRef(null);
   useEffect(() => {
-    if (phase === 'question' && allAnswered && playerCount > 0 && !autoRevealScheduled) {
+    const pCount = gameState?.players?.length ?? 0;
+    const aCount = gameState?.answers ? Object.keys(gameState.answers).length : 0;
+    const allAns = pCount > 0 && aCount >= pCount;
+    if (phase === 'question' && allAns && pCount > 0 && !autoRevealScheduled) {
       if (autoRevealAllRef.current) clearTimeout(autoRevealAllRef.current);
       autoRevealAllRef.current = setTimeout(() => { handleReveal(); }, 800);
     }
     return () => { if (autoRevealAllRef.current) clearTimeout(autoRevealAllRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, allAnswered, playerCount, autoRevealScheduled]);
+  }, [phase, gameState?.players?.length, gameState?.answers, autoRevealScheduled]);
 
   // Animate bars on reveal
   useEffect(() => {
