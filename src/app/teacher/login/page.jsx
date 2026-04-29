@@ -263,6 +263,16 @@ function TeacherLanding() {
     },
   }[lang];
 
+  // Auto-skip login screen — anyone hitting /teacher/login goes straight
+  // to the dashboard. Login is OPTIONAL (only needed for cloud sync).
+  // Users who want to sign in can use the user menu inside the dashboard.
+  useEffect(() => {
+    // Allow query ?force=1 to still show login form (e.g. for explicit sign-in)
+    const force = searchParams.get('force');
+    if (force) return;
+    router.replace('/teacher');
+  }, [router, searchParams]);
+
   useEffect(() => {
     if (!loading && user) router.push('/teacher');
   }, [user, loading, router]);
