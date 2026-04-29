@@ -232,6 +232,9 @@ export default function StudentSplash({ duration = 2200, onFinish }) {
 }
 
 // ── Soft fluffy cloud — pure SVG, drifts gently across the sky ─────────────
+// IMPORTANT: must use SOLID fill (no gradient with computed ID) — Safari/iOS
+// rejects SVG IDs containing parentheses or commas (e.g. "cloudGradclamp(56px..)")
+// which made clouds render as default-black on mobile. Solid #fff is foolproof.
 function Cloud({ style }) {
   const { size, opacity, animation, animationDelay, top } = style;
   return (
@@ -245,24 +248,20 @@ function Cloud({ style }) {
       animationDelay,
       zIndex: 0,
       pointerEvents: 'none',
+      filter: 'drop-shadow(0 4px 12px rgba(120,160,200,0.18))',
     }}>
       <svg viewBox="0 0 120 60" style={{ width: '100%', height: 'auto', display: 'block' }}>
-        <defs>
-          <radialGradient id={`cloudGrad${size}`} cx="40%" cy="35%" r="65%">
-            <stop offset="0%"  stopColor="#ffffff" />
-            <stop offset="80%" stopColor="#f0f7ff" />
-            <stop offset="100%" stopColor="#dbeafe" />
-          </radialGradient>
-        </defs>
-        <g fill={`url(#cloudGrad${size})`}>
+        <g fill="#ffffff">
           <ellipse cx="40" cy="38" rx="22" ry="14" />
           <ellipse cx="62" cy="32" rx="26" ry="18" />
           <ellipse cx="84" cy="38" rx="20" ry="13" />
           <ellipse cx="50" cy="42" rx="14" ry="10" />
           <ellipse cx="74" cy="44" rx="16" ry="9" />
         </g>
-        {/* Subtle inner highlight */}
-        <ellipse cx="55" cy="28" rx="14" ry="6" fill="#ffffff" opacity="0.6" />
+        {/* Subtle inner highlight (still white) */}
+        <ellipse cx="55" cy="28" rx="14" ry="6" fill="#ffffff" opacity="0.7" />
+        {/* Soft bottom shadow tint */}
+        <ellipse cx="62" cy="48" rx="38" ry="6" fill="#dbeafe" opacity="0.5" />
       </svg>
     </div>
   );

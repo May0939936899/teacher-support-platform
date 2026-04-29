@@ -1110,70 +1110,197 @@ export default function BusSanookGame() {
     );
   }
 
-  // ── RENDER: LOBBY ────────────────────────────────────────────────────────
+  // ── RENDER: LOBBY (REDESIGNED — modern, clean, world-class) ────────────────
   if (phase === 'lobby') {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
     const joinUrl = `${appUrl}/student/bussanook?room=${room}`;
     const players = gameState?.players || [];
+    const totalQs = gameState?.questions?.length || 0;
+    const maxP    = gameState?.maxPlayers || 50;
 
     return (
-      <div style={{ display:'flex', flexDirection:'column', height:'100%', background:BG, fontFamily:FONT, color:'#fff', overflow:'hidden' }}>
+      <div style={{
+        display:'flex', flexDirection:'column', height:'100%',
+        background: `radial-gradient(ellipse at top, ${CYAN}12 0%, transparent 60%), radial-gradient(ellipse at bottom, ${MAGENTA}10 0%, transparent 60%), ${BG}`,
+        fontFamily:FONT, color:'#fff', overflow:'hidden',
+      }}>
         {/* Header */}
-        <div style={{ background:SURFACE, padding:'10px 20px', display:'flex', alignItems:'center', gap:12, borderBottom:`2px solid ${CYAN}`, flexShrink:0 }}>
+        <div style={{ background:'rgba(12,12,32,0.8)', backdropFilter:'blur(8px)', padding:'12px 22px', display:'flex', alignItems:'center', gap:12, borderBottom:`2px solid ${CYAN}`, flexShrink:0 }}>
           <span style={{ fontSize:22, fontWeight:900, color:CYAN, letterSpacing:2, textShadow:`0 0 16px ${CYAN}` }}>🎮 BUS-SANOOK</span>
-          <span style={{ background:`${CYAN}22`, color:CYAN, borderRadius:6, padding:'2px 10px', fontSize:13, fontWeight:600 }}>LOBBY</span>
-          <button onClick={() => setPhase('setup')} style={{ ...btnStyle('#444'), marginLeft:'auto', fontSize:13 }}>✏️ แก้ไขคำถาม</button>
+          <span style={{ background:`${CYAN}22`, color:CYAN, borderRadius:8, padding:'4px 12px', fontSize:12, fontWeight:800, letterSpacing:1 }}>● LOBBY</span>
+          <button onClick={() => setPhase('setup')} style={{ ...btnStyle('#383850'), marginLeft:'auto', fontSize:13 }}>✏️ แก้ไขคำถาม</button>
         </div>
 
-        <div style={{ flex:1, overflow:'auto', padding:20, display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
-          {/* Left: code + QR */}
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16 }}>
-            <div style={{ fontSize:14, color:'#aaa', letterSpacing:2 }}>รหัสห้อง</div>
-            <div style={{
-              fontSize:72, fontWeight:900, letterSpacing:12, fontFamily:'monospace',
-              color:CYAN, textShadow:`0 0 24px ${CYAN}, 0 0 48px ${CYAN}66`,
-              animation:'buss-glow 2.5s infinite',
-            }}>{room}</div>
-            <div style={{ fontSize:13, color:'#888' }}>{joinUrl}</div>
-            {qrDataUrl && (
-              <div style={{ background:'#fff', borderRadius:16, padding:10, boxShadow:`0 0 24px ${CYAN}44` }}>
-                <img src={qrDataUrl} alt="QR Code" style={{ display:'block', width:200, height:200 }} />
-              </div>
-            )}
-            <div style={{ fontSize:13, color:'#aaa', textAlign:'center' }}>
-              สแกน QR หรือไปที่ URL แล้วใส่รหัส <strong style={{ color:CYAN }}>{room}</strong>
-            </div>
-          </div>
+        <div style={{ flex:1, overflow:'auto', padding:'24px 28px' }}>
+          <div style={{
+            display:'grid',
+            gridTemplateColumns:'minmax(380px, 1fr) minmax(380px, 1.3fr)',
+            gap:24, maxWidth:1280, margin:'0 auto',
+          }}>
 
-          {/* Right: players */}
-          <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <span style={{ fontSize:28, fontWeight:900, color:GOLD }}>{players.length}</span>
-              <span style={{ color:'#aaa', fontSize:15 }}>คน รอเข้าเล่น</span>
+            {/* ═══ LEFT: Join card ═══ */}
+            <div style={{
+              background:'rgba(20,20,55,0.6)', backdropFilter:'blur(10px)',
+              border:`1px solid ${CYAN}33`, borderRadius:24,
+              padding:'28px 24px', position:'relative', overflow:'hidden',
+              boxShadow:`0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04)`,
+            }}>
+              {/* Decorative glow */}
+              <div style={{
+                position:'absolute', top:'-30%', right:'-20%', width:'250px', height:'250px',
+                background:`radial-gradient(circle, ${CYAN}30, transparent 70%)`,
+                pointerEvents:'none',
+              }} />
+
+              <div style={{ position:'relative', textAlign:'center' }}>
+                <div style={{ fontSize:11, color:'#94a3b8', letterSpacing:3, fontWeight:700, marginBottom:6 }}>
+                  📲 SCAN TO JOIN
+                </div>
+
+                {/* Big Code */}
+                <div style={{
+                  fontSize:64, fontWeight:900, letterSpacing:10, fontFamily:'monospace',
+                  background:`linear-gradient(135deg, ${CYAN}, ${MAGENTA})`,
+                  WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
+                  filter:`drop-shadow(0 0 24px ${CYAN}88)`,
+                  marginBottom:6,
+                  animation:'buss-glow 2.5s infinite',
+                }}>{room}</div>
+
+                <button
+                  onClick={() => { navigator.clipboard.writeText(joinUrl); /* could toast */ }}
+                  style={{
+                    background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)',
+                    borderRadius:8, padding:'4px 12px', fontSize:11, color:'#94a3b8',
+                    cursor:'pointer', fontFamily:FONT, letterSpacing:0.5,
+                    marginBottom:18,
+                  }}>
+                  🔗 คัดลอกลิงก์
+                </button>
+
+                {/* QR Code */}
+                {qrDataUrl && (
+                  <div style={{
+                    display:'inline-block', background:'#fff', borderRadius:18,
+                    padding:14, boxShadow:`0 8px 32px ${CYAN}55`,
+                    border:`3px solid ${CYAN}66`,
+                    marginBottom:14,
+                  }}>
+                    <img src={qrDataUrl} alt="QR" style={{ display:'block', width:200, height:200 }} />
+                  </div>
+                )}
+
+                <div style={{ fontSize:13, color:'#cbd5e1', lineHeight:1.7 }}>
+                  สแกน QR หรือใส่รหัส <strong style={{ color:CYAN, fontFamily:'monospace', fontSize:15 }}>{room}</strong>
+                  <br/>
+                  <span style={{ fontSize:11, color:'#64748b' }}>ที่ <code>{appUrl}/student/bussanook</code></span>
+                </div>
+              </div>
             </div>
-            <div style={{ display:'flex', flexWrap:'wrap', gap:8, flex:1, alignContent:'flex-start', overflowY:'auto', maxHeight:300 }}>
-              {players.map((p, i) => (
-                <div key={p.id} style={{
-                  padding:'6px 14px', borderRadius:20, fontSize:13, fontWeight:600,
-                  background: `hsl(${(i * 47) % 360},60%,35%)`,
-                  border: `1px solid hsl(${(i * 47) % 360},60%,55%)`,
-                  animation:'buss-popIn 0.3s ease',
-                }}>{p.name}</div>
-              ))}
-              {players.length === 0 && <div style={{ color:'#555', fontSize:14 }}>รอผู้เล่นเข้าห้อง...</div>}
-            </div>
-            <div style={{ paddingTop:8 }}>
-              <div style={{ fontSize:12, color:'#666', marginBottom:8 }}>{gameState?.questions?.length || 0} คำถาม • สูงสุด {gameState?.maxPlayers} คน</div>
+
+            {/* ═══ RIGHT: Players + Stats + Start ═══ */}
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+              {/* Stats row */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
+                <StatCard icon="👥" value={players.length} label="ผู้เล่น" color={GOLD} />
+                <StatCard icon="❓" value={totalQs} label="คำถาม" color={CYAN} />
+                <StatCard icon="🚀" value={maxP} label="สูงสุด" color={MAGENTA} />
+              </div>
+
+              {/* Players grid */}
+              <div style={{
+                background:'rgba(20,20,55,0.5)', backdropFilter:'blur(8px)',
+                border:'1px solid rgba(255,255,255,0.08)', borderRadius:18,
+                padding:18, flex:1, minHeight:280,
+                display:'flex', flexDirection:'column',
+              }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                  <div style={{ fontSize:14, fontWeight:800, color:'#e2e8f0', letterSpacing:0.5 }}>
+                    🎯 ผู้เล่นในห้อง
+                  </div>
+                  <div style={{
+                    background: players.length > 0 ? `${GOLD}22` : 'rgba(255,255,255,0.05)',
+                    border:`1px solid ${players.length > 0 ? GOLD : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius:20, padding:'3px 12px',
+                    fontSize:12, fontWeight:800,
+                    color: players.length > 0 ? GOLD : '#64748b',
+                  }}>
+                    {players.length} คน
+                  </div>
+                </div>
+
+                {players.length === 0 ? (
+                  <div style={{
+                    flex:1, display:'flex', flexDirection:'column',
+                    alignItems:'center', justifyContent:'center',
+                    color:'#64748b', textAlign:'center',
+                  }}>
+                    <div style={{ fontSize:48, marginBottom:8, animation:'buss-pulse 1.8s ease infinite' }}>👋</div>
+                    <div style={{ fontSize:15, color:'#94a3b8', fontWeight:600 }}>
+                      รอผู้เล่นสแกน QR เข้าห้อง...
+                    </div>
+                    <div style={{ fontSize:12, color:'#475569', marginTop:6 }}>
+                      เมื่อมีผู้เล่นเข้าห้อง ชื่อจะปรากฏที่นี่
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{
+                    display:'grid',
+                    gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))',
+                    gap:8, alignContent:'flex-start',
+                    overflow:'auto', flex:1,
+                  }}>
+                    {players.map((p, i) => {
+                      const hue = (i * 47) % 360;
+                      const initial = (p.name || '?').trim().charAt(0).toUpperCase();
+                      return (
+                        <div key={p.id} style={{
+                          display:'flex', alignItems:'center', gap:8,
+                          padding:'8px 12px', borderRadius:12,
+                          background: `linear-gradient(135deg, hsla(${hue},65%,45%,0.25), hsla(${hue},65%,30%,0.15))`,
+                          border: `1.5px solid hsla(${hue},65%,55%,0.6)`,
+                          animation:'buss-bounce-in 0.4s ease',
+                        }}>
+                          <div style={{
+                            width:26, height:26, borderRadius:'50%',
+                            background:`hsl(${hue},65%,55%)`,
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            fontSize:12, fontWeight:900, color:'#fff',
+                            flexShrink:0,
+                          }}>{initial}</div>
+                          <div style={{
+                            fontSize:13, fontWeight:700, color:'#fff',
+                            overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                          }}>{p.name}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Start button */}
               <button
                 onClick={handleStartGame}
                 disabled={players.length === 0}
                 style={{
-                  ...btnStyle('#26890c'),
-                  fontSize:18, padding:'14px 36px', width:'100%', fontWeight:900,
-                  opacity: players.length === 0 ? 0.4 : 1,
-                  boxShadow: players.length > 0 ? '0 0 20px #26890c88' : 'none',
-                }}
-              >▶ เริ่มเกม</button>
+                  width:'100%', padding:'18px', borderRadius:14, border:'none',
+                  background: players.length === 0
+                    ? 'rgba(255,255,255,0.06)'
+                    : `linear-gradient(135deg, #16a34a, #22c55e)`,
+                  color: players.length === 0 ? '#475569' : '#fff',
+                  cursor: players.length === 0 ? 'not-allowed' : 'pointer',
+                  fontFamily:FONT, fontWeight:900, fontSize:18, letterSpacing:1,
+                  boxShadow: players.length === 0
+                    ? 'none'
+                    : '0 8px 32px rgba(34,197,94,0.4), 0 0 0 1px rgba(255,255,255,0.1)',
+                  transition:'all 0.2s',
+                }}>
+                {players.length === 0
+                  ? '⏳ รออย่างน้อย 1 ผู้เล่น'
+                  : `▶  เริ่มเกม (${players.length} คน · ${totalQs} ข้อ)`}
+              </button>
             </div>
           </div>
         </div>
