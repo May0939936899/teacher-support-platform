@@ -46,14 +46,15 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
   const activeCat = selectedCategory ? menuItems.find(m => m.side === selectedCategory) : null;
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', fontFamily: FONT }}>
+    <div style={{ fontFamily: FONT }}>
 
-      {/* ===== BANNER (responsive scenic hero) ===== */}
+      {/* ===== BANNER (full-bleed scenic hero) ===== */}
       <div style={{
         background: `linear-gradient(145deg,${CI.dark} 0%,#111145 45%,#1f1f6e 100%)`,
         padding: 'clamp(20px,3.2vw,38px) clamp(20px,3vw,40px) 0', color: '#fff',
         position: 'relative', overflow: 'hidden',
-        minHeight: 'clamp(210px,22vw,290px)',
+        minHeight: 'clamp(220px,24vw,310px)',
+        width: '100%',
       }}>
         {/* Background glows */}
         <div style={{ position:'absolute', top:'-40%', right:'-15%', width:'60%', height:'180%', background:`radial-gradient(ellipse,${CI.cyan}1c 0%,transparent 70%)`, pointerEvents:'none' }} />
@@ -88,43 +89,69 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
 
         <style>{`
           @keyframes twinkle { 0%,100%{opacity:0.25} 50%{opacity:0.95} }
-          @keyframes bannerBusRun  { 0%{transform:translateX(-30%)}    100%{transform:translateX(140%)} }
-          @keyframes bannerBusRun2 { 0%{transform:translateX(140%) scaleX(-1)} 100%{transform:translateX(-30%) scaleX(-1)} }
-          @keyframes bannerBounce  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
-          @keyframes bannerRoadDash{ 0%{stroke-dashoffset:0} 100%{stroke-dashoffset:-40} }
-          @keyframes cloudDrift    { 0%{transform:translateX(-15%)}    100%{transform:translateX(115%)} }
-          @keyframes cloudDrift2   { 0%{transform:translateX(115%)}    100%{transform:translateX(-15%)} }
-          @keyframes headlightPulse{ 0%,100%{opacity:0.6} 50%{opacity:1} }
+          @keyframes bannerBusRun  { 0%{left:-25%}                     100%{left:115%} }
+          @keyframes bannerBusRun2 { 0%{left:115%; transform:scaleX(-1)}  100%{left:-25%; transform:scaleX(-1)} }
+          @keyframes bannerBounce  { 0%,100%{transform:translateY(0)}  50%{transform:translateY(-3px)} }
+          @keyframes bannerRoadDash{ 0%{stroke-dashoffset:0}           100%{stroke-dashoffset:-40} }
+          @keyframes cloudDrift    { 0%{left:-15%}                     100%{left:115%} }
+          @keyframes cloudDrift2   { 0%{left:115%}                     100%{left:-15%} }
+          @keyframes headlightPulse{ 0%,100%{opacity:0.6}              50%{opacity:1} }
+          @keyframes rainbowShift  { 0%{background-position:0% 50%}    100%{background-position:300% 50%} }
+          @keyframes titleBob      { 0%,100%{transform:translateY(0)}  50%{transform:translateY(-5px)} }
+          @keyframes titleGlow     { 0%,100%{filter:drop-shadow(0 0 10px rgba(0,180,230,0.5))} 50%{filter:drop-shadow(0 0 22px rgba(230,0,126,0.7)) drop-shadow(0 0 8px rgba(255,193,7,0.4))} }
+          @keyframes auroraShift   { 0%{transform:translateX(-30%) skewX(-15deg)} 100%{transform:translateX(130%) skewX(-15deg)} }
         `}</style>
 
-        {/* Drifting clouds */}
+        {/* Aurora light beam (decorative) */}
+        <div style={{
+          position:'absolute', top:'-20%', left:0,
+          width:'40%', height:'140%',
+          background: `linear-gradient(120deg, transparent 0%, ${CI.cyan}22 35%, ${CI.magenta}1a 55%, transparent 80%)`,
+          filter:'blur(30px)',
+          animation:'auroraShift 16s ease-in-out infinite alternate',
+          pointerEvents:'none', zIndex:1,
+        }} />
+
+        {/* Drifting clouds — full-width traversal */}
         <div style={{ position:'absolute', top:'18%', left:0, width:'100%', height:'30px', zIndex:1, pointerEvents:'none' }}>
           <div style={{ position:'absolute', top:0, animation:'cloudDrift 28s linear infinite', fontSize:'clamp(20px,2.5vw,32px)', opacity:0.25, filter:'blur(0.5px)' }}>☁️</div>
           <div style={{ position:'absolute', top:'40%', animation:'cloudDrift2 38s linear infinite', animationDelay:'-12s', fontSize:'clamp(16px,2vw,26px)', opacity:0.2, filter:'blur(0.5px)' }}>☁️</div>
           <div style={{ position:'absolute', top:'80%', animation:'cloudDrift 44s linear infinite', animationDelay:'-22s', fontSize:'clamp(22px,2.8vw,36px)', opacity:0.18, filter:'blur(0.5px)' }}>☁️</div>
         </div>
 
-        {/* Title */}
-        <div style={{ position:'relative', zIndex:3, marginBottom:'clamp(10px,1.4vw,18px)' }}>
+        {/* Title — animated rainbow gradient + gentle bounce + glow */}
+        <div style={{
+          position:'relative', zIndex:3, marginBottom:'clamp(10px,1.4vw,18px)',
+          maxWidth:'1200px', margin:'0 auto clamp(10px,1.4vw,18px)',
+        }}>
           <h1 style={{
-            margin:'0 0 4px',
-            fontSize:'clamp(24px,3.2vw,40px)',
-            fontWeight:800, letterSpacing:'0.02em', lineHeight:1.1,
+            margin:'0 0 6px',
+            fontSize:'clamp(28px,4vw,52px)',
+            fontWeight:900, letterSpacing:'0.04em', lineHeight:1.05,
+            display:'inline-block',
+            animation:'titleBob 3s ease-in-out infinite, titleGlow 4s ease-in-out infinite',
           }}>
-            <span style={{ color:'#fff' }}>SPUBUS</span>
-            <span style={{ color:CI.cyan, marginLeft:'10px', fontWeight:600 }}>MAGIC</span>
             <span style={{
-              display:'inline-block', marginLeft:'12px', fontSize:'0.45em',
-              background:`linear-gradient(135deg,${CI.gold},#ffd45a)`, color:'#1a1a2e',
-              padding:'4px 10px', borderRadius:'12px', fontWeight:800, letterSpacing:'0.05em',
-              transform:'translateY(-4px)', verticalAlign:'middle',
-            }}>v2.0</span>
+              background: `linear-gradient(90deg, ${CI.cyan} 0%, ${CI.purple} 18%, ${CI.magenta} 36%, ${CI.gold} 54%, ${CI.cyan} 72%, ${CI.purple} 90%, ${CI.magenta} 100%)`,
+              backgroundSize: '300% 100%',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              color: 'transparent',
+              animation: 'rainbowShift 5s linear infinite',
+              display: 'inline-block',
+              fontWeight:900,
+              textShadow:'0 4px 20px rgba(0,0,0,0.4)',
+            }}>
+              SPUBUS MAGIC
+            </span>
           </h1>
           <p style={{
             margin:0, fontSize:'clamp(12px,1.1vw,15px)',
-            color:'rgba(255,255,255,0.65)', maxWidth:'600px', lineHeight:1.5,
+            color:'rgba(255,255,255,0.7)', maxWidth:'600px', lineHeight:1.5,
+            textShadow:'0 2px 8px rgba(0,0,0,0.5)',
           }}>
-            แพลตฟอร์ม AI เปลี่ยนห้องเรียนให้มีชีวิต · คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
+            ✨ แพลตฟอร์ม AI เปลี่ยนห้องเรียนให้มีชีวิต · คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
           </p>
         </div>
 
@@ -179,11 +206,11 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
               stroke="rgba(255,255,255,0.2)" strokeWidth="1" fill="none" />
           </svg>
 
-          {/* Big bus (cyan) — scales with container */}
+          {/* Big bus (cyan) — runs all the way across the banner */}
           <div style={{
-            position:'absolute', bottom:'clamp(28px,3vw,42px)', left:'-10%',
+            position:'absolute', bottom:'clamp(28px,3vw,42px)',
             width:'clamp(110px,11vw,165px)',
-            animation:'bannerBusRun 8s linear infinite',
+            animation:'bannerBusRun 11s linear infinite',
             zIndex:3,
           }}>
             <div style={{ animation:'bannerBounce 0.28s ease-in-out infinite' }}>
@@ -213,12 +240,12 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
             </div>
           </div>
 
-          {/* Smaller bus (magenta) — opposite direction */}
+          {/* Smaller bus (magenta) — opposite direction, full traversal */}
           <div style={{
-            position:'absolute', bottom:'clamp(22px,2.4vw,32px)', left:'-10%',
+            position:'absolute', bottom:'clamp(22px,2.4vw,32px)',
             width:'clamp(70px,7vw,110px)',
-            animation:'bannerBusRun2 12s linear infinite',
-            animationDelay:'2.5s',
+            animation:'bannerBusRun2 16s linear infinite',
+            animationDelay:'3.5s',
             zIndex:2, opacity:0.88,
           }}>
             <svg viewBox="0 0 140 65" style={{ width:'100%', height:'auto', display:'block' }}>
@@ -251,7 +278,7 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      <div style={{ padding: '28px 24px' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '28px 24px' }}>
 
         {/* ===== CATEGORY VIEW ===== */}
         {!activeCat ? (
