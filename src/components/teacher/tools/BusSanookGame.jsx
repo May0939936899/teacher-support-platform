@@ -261,6 +261,97 @@ export default function BusSanookGame() {
   const [globalTime, setGlobalTime] = useState(20);
   const [maxPlayers, setMaxPlayers] = useState(50);
 
+  // ── Question Library (saved sets) ────────────────────────────────────────
+  const LIBRARY_KEY = 'bussanook_library_v1';
+  const [library, setLibrary] = useState([]);  // [{id, name, questions, savedAt}]
+  const [showLibrary, setShowLibrary] = useState(false);
+  const [editingSetId, setEditingSetId] = useState(null);  // ID being edited from library
+
+  // Load library on mount
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LIBRARY_KEY) || '[]');
+      setLibrary(saved);
+    } catch {}
+  }, []);
+
+  const persistLibrary = (arr) => {
+    setLibrary(arr);
+    try { localStorage.setItem(LIBRARY_KEY, JSON.stringify(arr.slice(0, 100))); } catch {}
+  };
+
+  const saveCurrentSet = () => {
+    if (questions.length === 0 || (questions.length === 1 && !questions[0].q)) {
+      alert('กรอกคำถามอย่างน้อย 1 ข้อก่อนบันทึก');
+      return;
+    }
+    const valid = questions.filter(q => q.q && q.q.trim());
+    if (valid.length === 0) {
+      alert('ยังไม่มีคำถามที่กรอกข้อความ');
+      return;
+    }
+
+    if (editingSetId) {
+      // Update existing
+      const updated = library.map(s =>
+        s.id === editingSetId ? { ...s, questions: [...questions], savedAt: new Date().toISOString() } : s
+      );
+      persistLibrary(updated);
+      const set = updated.find(s => s.id === editingSetId);
+      alert(`✅ อัปเดต "${set?.name}" แล้ว (${valid.length} ข้อ)`);
+      return;
+    }
+
+    const defaultName = `ชุดข้อสอบ ${new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} ${new Date().toLocaleTimeString('th-TH', { hour:'2-digit', minute:'2-digit' })}`;
+    const name = prompt(`ตั้งชื่อชุดข้อสอบนี้:\n(${valid.length} ข้อ)`, defaultName);
+    if (!name) return;
+    const entry = {
+      id: Date.now().toString(),
+      name: name.trim(),
+      questions: [...questions],
+      savedAt: new Date().toISOString(),
+    };
+    persistLibrary([entry, ...library]);
+    setEditingSetId(entry.id);
+    alert(`💾 บันทึก "${entry.name}" แล้ว!`);
+  };
+
+  const loadSet = (set) => {
+    if (questions.some(q => q.q && q.q.trim())) {
+      if (!confirm(`โหลด "${set.name}" จะแทนที่คำถามปัจจุบัน — แน่ใจหรือไม่?`)) return;
+    }
+    setQuestions(set.questions.map(q => ({...q})));
+    setEditingSetId(set.id);
+    setShowLibrary(false);
+  };
+
+  const deleteSet = (id) => {
+    const set = library.find(s => s.id === id);
+    if (!set) return;
+    if (!confirm(`ลบชุด "${set.name}"?`)) return;
+    persistLibrary(library.filter(s => s.id !== id));
+    if (editingSetId === id) setEditingSetId(null);
+  };
+
+  const renameSet = (id) => {
+    const set = library.find(s => s.id === id);
+    if (!set) return;
+    const newName = prompt('เปลี่ยนชื่อชุดเป็น:', set.name);
+    if (!newName || newName.trim() === set.name) return;
+    persistLibrary(library.map(s => s.id === id ? { ...s, name: newName.trim() } : s));
+  };
+
+  const newSet = () => {
+    if (questions.some(q => q.q && q.q.trim())) {
+      if (!confirm('สร้างชุดใหม่จะล้างคำถามปัจจุบัน — แน่ใจ?')) return;
+    }
+    setQuestions([DEFAULT_Q()]);
+    setEditingSetId(null);
+    setEditingIdx(0);
+  };
+
+  const editingSetName = editingSetId ? library.find(s => s.id === editingSetId)?.name : null;
+
   // Room / game state
   const [phase,      setPhase]     = useState('setup'); // setup|lobby|question|reveal|finished
   const [room,       setRoom]      = useState('');
@@ -591,15 +682,133 @@ export default function BusSanookGame() {
       <div style={{ display:'flex', flexDirection:'column', height:'100%', background:BG, fontFamily:FONT, color:'#fff', overflow:'hidden' }}>
 
         {/* Header */}
-        <div style={{ background:SURFACE, padding:'12px 20px', display:'flex', alignItems:'center', gap:12, borderBottom:`2px solid ${CYAN}`, flexShrink:0 }}>
+        <div style={{ background:SURFACE, padding:'12px 20px', display:'flex', alignItems:'center', gap:12, borderBottom:`2px solid ${CYAN}`, flexShrink:0, flexWrap:'wrap' }}>
           <span style={{ fontSize:24, fontWeight:900, color:CYAN, letterSpacing:2, textShadow:`0 0 16px ${CYAN}` }}>🎮 BUS-SANOOK</span>
           <span style={{ color:'#aaa', fontSize:14 }}>สร้างเกมคำถาม Kahoot-style</span>
-          <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
+          {editingSetName && (
+            <span style={{
+              background:`${GOLD}20`, border:`1px solid ${GOLD}66`, color:GOLD,
+              borderRadius:8, padding:'4px 12px', fontSize:12, fontWeight:700,
+              display:'flex', alignItems:'center', gap:6,
+            }}>
+              📂 {editingSetName}
+            </span>
+          )}
+          <div style={{ marginLeft:'auto', display:'flex', gap:8, flexWrap:'wrap' }}>
+            <button onClick={newSet} style={{ ...btnStyle('#383850'), fontSize:13 }}>
+              ✨ ชุดใหม่
+            </button>
+            <button onClick={() => setShowLibrary(true)} style={{
+              ...btnStyle(MAGENTA, '#fff'),
+              fontSize:13, fontWeight:800,
+              boxShadow:`0 0 16px ${MAGENTA}55`,
+            }}>
+              📚 คลังข้อสอบ {library.length > 0 && `(${library.length})`}
+            </button>
+            <button onClick={saveCurrentSet} style={{
+              ...btnStyle('#16a34a', '#fff'),
+              fontSize:13, fontWeight:800,
+              boxShadow:`0 0 16px #16a34a55`,
+            }}>
+              💾 {editingSetId ? 'บันทึก' : 'บันทึกชุดนี้'}
+            </button>
             <button onClick={() => setImporting(true)} style={btnStyle('#555')}>
-              📥 นำเข้าคำถาม
+              📥 นำเข้า
             </button>
           </div>
         </div>
+
+        {/* ═══ LIBRARY MODAL ═══ */}
+        {showLibrary && (
+          <div onClick={e => { if (e.target === e.currentTarget) setShowLibrary(false); }}
+            style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.88)', zIndex:998, display:'flex', alignItems:'center', justifyContent:'center', padding:12 }}>
+            <div style={{
+              background:SURFACE2, borderRadius:20,
+              width:'min(820px, 97vw)', maxHeight:'90vh',
+              display:'flex', flexDirection:'column',
+              border:`1px solid ${MAGENTA}33`, boxShadow:`0 0 80px ${MAGENTA}22`,
+              overflow:'hidden',
+            }}>
+              {/* Header */}
+              <div style={{ padding:'18px 24px', borderBottom:`1px solid #2a2a4a`, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div>
+                  <div style={{ fontSize:20, fontWeight:900, color:MAGENTA }}>📚 คลังข้อสอบของฉัน</div>
+                  <div style={{ fontSize:12, color:'#888', marginTop:2 }}>
+                    เก็บไว้ใน browser นี้ · {library.length} ชุด · เปิดใช้ครั้งหน้าได้เลย
+                  </div>
+                </div>
+                <button onClick={() => setShowLibrary(false)} style={{
+                  background:'transparent', border:'1px solid #444', color:'#aaa',
+                  borderRadius:8, padding:'6px 14px', cursor:'pointer', fontFamily:FONT,
+                }}>✕ ปิด</button>
+              </div>
+
+              {/* Body */}
+              <div style={{ flex:1, overflowY:'auto', padding:'18px 24px' }}>
+                {library.length === 0 ? (
+                  <div style={{ textAlign:'center', padding:'60px 20px', color:'#666' }}>
+                    <div style={{ fontSize:60, marginBottom:14, opacity:0.5 }}>📚</div>
+                    <div style={{ fontSize:16, color:'#aaa', marginBottom:6 }}>ยังไม่มีชุดข้อสอบที่บันทึกไว้</div>
+                    <div style={{ fontSize:13 }}>กรอกคำถาม → กดปุ่ม <strong style={{ color:'#16a34a' }}>💾 บันทึกชุดนี้</strong> เพื่อเก็บไว้ใช้ครั้งหน้า</div>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                    {library.map(set => {
+                      const valid = set.questions.filter(q => q.q?.trim()).length;
+                      const isActive = editingSetId === set.id;
+                      return (
+                        <div key={set.id} style={{
+                          background: isActive ? `${MAGENTA}15` : '#0e0e28',
+                          border: `2px solid ${isActive ? MAGENTA : '#252550'}`,
+                          borderRadius:12, padding:'14px 16px',
+                          display:'flex', alignItems:'center', gap:14,
+                          flexWrap:'wrap',
+                        }}>
+                          <div style={{
+                            background: isActive ? MAGENTA : `${CYAN}22`,
+                            color: isActive ? '#fff' : CYAN,
+                            borderRadius:10, width:48, height:48,
+                            display:'flex', alignItems:'center', justifyContent:'center',
+                            fontSize:22, fontWeight:900, flexShrink:0,
+                          }}>
+                            {valid}
+                          </div>
+                          <div style={{ flex:1, minWidth:160 }}>
+                            <div style={{ fontSize:15, fontWeight:800, color:'#fff', display:'flex', alignItems:'center', gap:8 }}>
+                              {set.name}
+                              {isActive && <span style={{ background:MAGENTA, color:'#fff', borderRadius:5, padding:'1px 7px', fontSize:10, fontWeight:700 }}>กำลังแก้ไข</span>}
+                            </div>
+                            <div style={{ fontSize:12, color:'#888', marginTop:3 }}>
+                              {valid} ข้อ · บันทึก {new Date(set.savedAt).toLocaleString('th-TH', { dateStyle:'short', timeStyle:'short' })}
+                            </div>
+                          </div>
+                          <div style={{ display:'flex', gap:6 }}>
+                            <button onClick={() => loadSet(set)} style={{
+                              ...btnStyle(CYAN, '#000'), fontSize:12, padding:'6px 14px', fontWeight:800,
+                            }}>
+                              📂 โหลด
+                            </button>
+                            <button onClick={() => renameSet(set.id)} style={{
+                              ...btnStyle('#383850'), fontSize:12, padding:'6px 12px',
+                            }}>
+                              ✏️
+                            </button>
+                            <button onClick={() => deleteSet(set.id)} style={{
+                              background:'#2a0808', color:'#ff6b6b', border:'1px solid #ff333322',
+                              borderRadius:8, padding:'6px 12px', cursor:'pointer', fontFamily:FONT, fontSize:12,
+                            }}>
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Import Modal — visual quiz-creator style */}
         {importing && (
