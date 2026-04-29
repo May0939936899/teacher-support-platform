@@ -391,38 +391,41 @@ function BusSplashScreen({ onFinish }) {
         })}
       </svg>
 
-      {/* ===== TITLE: SPUBUS MAGIC ===== */}
+      {/* ===== TITLE: SPUBUS MAGIC (no sparkles, prettier subtitle) ===== */}
       <div style={{ position:'relative', zIndex:10, textAlign:'center', marginBottom:'8px' }}>
         <div style={{
           animation:'titleDrop 0.7s cubic-bezier(0.34,1.56,0.64,1) 0.2s both',
-          lineHeight:1,
+          lineHeight:1.05,
+          filter:'drop-shadow(0 6px 22px rgba(124,77,255,0.25)) drop-shadow(0 2px 8px rgba(25,118,210,0.18))',
         }}>
           <span style={{
-            fontSize:'clamp(42px,8vw,86px)', fontWeight:900, letterSpacing:'-1px',
-            background:'linear-gradient(135deg, #1a6fbe 0%, #2196e0 40%, #0288d1 60%)',
+            fontSize:'clamp(46px,8.5vw,92px)', fontWeight:900, letterSpacing:'0.01em',
+            background:'linear-gradient(135deg, #1565c0 0%, #1976d2 40%, #2196e0 70%)',
             WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
             fontFamily:"'Kanit','DB XDMAN X',sans-serif",
           }}>SPUBUS&nbsp;</span>
           <span style={{
-            fontSize:'clamp(42px,8vw,86px)', fontWeight:900, letterSpacing:'-1px',
-            background:'linear-gradient(135deg, #e6007e 0%, #c2185b 40%, #7c4dff 80%)',
+            fontSize:'clamp(46px,8.5vw,92px)', fontWeight:900, letterSpacing:'0.01em',
+            background:'linear-gradient(135deg, #c2185b 0%, #ad1457 30%, #7c4dff 80%)',
             WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent',
             fontFamily:"'Kanit','DB XDMAN X',sans-serif",
           }}>MAGIC</span>
         </div>
+
+        {/* Decorative gradient line */}
         <div style={{
-          fontSize:'clamp(13px,2vw,18px)', color:'#4a7fa8', letterSpacing:'3px', fontWeight:500,
-          marginTop:'6px', animation:'subFade 0.6s ease-out 0.9s both',
+          width:'min(60%, 280px)', height:3, margin:'14px auto 0',
+          borderRadius:99,
+          background:'linear-gradient(90deg, transparent, rgba(124,77,255,0.4), rgba(194,24,91,0.4), rgba(25,118,210,0.4), transparent)',
+        }} />
+
+        <div style={{
+          fontSize:'clamp(14px,1.6vw,18px)', color:'#2c4f7a',
+          letterSpacing:'0.06em', fontWeight:600,
+          marginTop:'14px', animation:'subFade 0.6s ease-out 0.9s both',
         }}>
-          คณะบริหารธุรกิจ&nbsp;&nbsp;มหาวิทยาลัยศรีปทุม
+          คณะบริหารธุรกิจ&nbsp;&nbsp;·&nbsp;&nbsp;มหาวิทยาลัยศรีปทุม
         </div>
-        {/* Sparkles */}
-        {[['-30px','-10px','1.2s'],['calc(100%+20px)','-15px','1.5s'],['20%','-25px','1.8s'],['75%','-20px','1.3s']].map(([l,t,d],i)=>(
-          <div key={i} style={{
-            position:'absolute', left:l, top:t, fontSize:'20px',
-            animation:`sparkle 2s ease-in-out ${d} infinite`,
-          }}>✨</div>
-        ))}
       </div>
 
       {/* ===== Elevated rail platform ===== */}
@@ -451,9 +454,66 @@ function BusSplashScreen({ onFinish }) {
         </svg>
       </div>
 
-      {/* ===== BTS TRAIN ===== */}
+      {/* ===== Scattered Trees on the ground ===== */}
+      {[
+        { left:'2%',  bottom:'4%',  size:42, emoji:'🌲' },
+        { left:'8%',  bottom:'2%',  size:32, emoji:'🌳' },
+        { left:'14%', bottom:'5%',  size:38, emoji:'🌲' },
+        { left:'20%', bottom:'2.5%',size:28, emoji:'🌳' },
+        { left:'26%', bottom:'4.5%',size:36, emoji:'🌲' },
+        { left:'33%', bottom:'2%',  size:26, emoji:'🌳' },
+        { left:'40%', bottom:'5%',  size:34, emoji:'🌲' },
+        { left:'60%', bottom:'3%',  size:30, emoji:'🌳' },
+        { left:'67%', bottom:'5.5%',size:40, emoji:'🌲' },
+        { left:'74%', bottom:'2.5%',size:30, emoji:'🌳' },
+        { left:'81%', bottom:'4.5%',size:42, emoji:'🌲' },
+        { left:'87%', bottom:'2%',  size:28, emoji:'🌳' },
+        { left:'93%', bottom:'5%',  size:36, emoji:'🌲' },
+        { left:'97%', bottom:'2.5%',size:30, emoji:'🌳' },
+      ].map((tr, i) => (
+        <div key={`tree${i}`} style={{
+          position:'absolute', left:tr.left, bottom:tr.bottom,
+          fontSize: tr.size, zIndex:2,
+          transform:'translateX(-50%)',
+          animation:`treeSway ${3 + (i%3)*0.6}s ease-in-out infinite`,
+          animationDelay: `${i*0.2}s`,
+          filter:'drop-shadow(0 2px 4px rgba(50,80,40,0.18))',
+        }}>{tr.emoji}</div>
+      ))}
+
+      {/* ===== Drifting overlay clouds (slower, more clouds) ===== */}
+      <div style={{ position:'absolute', top:0, left:0, width:'100%', height:'45%', zIndex:1, pointerEvents:'none', overflow:'hidden' }}>
+        <style>{`
+          @keyframes overlayCloud1 { 0%{left:-15%}    100%{left:115%} }
+          @keyframes overlayCloud2 { 0%{left:115%}    100%{left:-15%} }
+        `}</style>
+        {[
+          { top:'12%', size:90,  speed:55, delay:-10, dir:1, opacity:0.85 },
+          { top:'22%', size:64,  speed:72, delay:-25, dir:2, opacity:0.7 },
+          { top:'40%', size:120, speed:48, delay:-5,  dir:1, opacity:0.6 },
+          { top:'8%',  size:48,  speed:60, delay:-40, dir:2, opacity:0.55 },
+          { top:'30%', size:78,  speed:64, delay:-18, dir:1, opacity:0.75 },
+        ].map((c, i) => (
+          <div key={`oc${i}`} style={{
+            position:'absolute', top:c.top, left:'-15%', width:c.size, opacity:c.opacity,
+            animation:`overlayCloud${c.dir} ${c.speed}s linear infinite`,
+            animationDelay: `${c.delay}s`,
+          }}>
+            <svg viewBox="0 0 120 60" style={{ width:'100%', display:'block' }}>
+              <ellipse cx="40" cy="38" rx="22" ry="14" fill="#fff" />
+              <ellipse cx="62" cy="32" rx="26" ry="18" fill="#fff" />
+              <ellipse cx="84" cy="38" rx="20" ry="13" fill="#fff" />
+              <ellipse cx="50" cy="42" rx="14" ry="10" fill="#fff" />
+              <ellipse cx="74" cy="44" rx="16" ry="9"  fill="#fff" />
+              <ellipse cx="55" cy="28" rx="14" ry="6"  fill="#fff" opacity="0.6" />
+            </svg>
+          </div>
+        ))}
+      </div>
+
+      {/* ===== BTS TRAIN — wheels touch the rail surface ===== */}
       <div style={{
-        position:'absolute', bottom:'calc(18% + 18px)', left:0, zIndex:5,
+        position:'absolute', bottom:'calc(18% + 80px)', left:0, zIndex:5,
         animation:'trainRun 4.5s cubic-bezier(0.4,0,0.6,1) 0.5s infinite',
       }}>
         <svg width="520" height="72" viewBox="0 0 520 72">

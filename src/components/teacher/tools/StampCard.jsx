@@ -72,6 +72,14 @@ export default function StampCard() {
     QRCode.toCanvas(qrRef.current, url, { width: 280, margin: 2 });
   }, [classData?.activeSession, activeCode]);
 
+  // Render permanent class-join QR
+  const classQrRef = useRef(null);
+  useEffect(() => {
+    if (!activeCode || !classQrRef.current) return;
+    const url = `${window.location.origin}/student/stamp?code=${activeCode}`;
+    QRCode.toCanvas(classQrRef.current, url, { width: 220, margin: 2, color: { dark: '#1e293b', light: '#ffffff' } });
+  }, [activeCode, view]);
+
   const createClass = async () => {
     if (!form.course || !form.courseName) { toast.error('กรอกรหัสและชื่อวิชา'); return; }
     setLoading(true);
@@ -183,39 +191,90 @@ export default function StampCard() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          {/* QR Generator */}
-          <div style={{ background: '#fff', borderRadius: 16, padding: 22, border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 12px', color: '#0f172a' }}>📲 เปิด Session ใหม่</h3>
-            {!isOpen ? (
-              <>
-                <label style={lbl}>เลือกคาบที่ {openSession} / {classData.totalSessions}</label>
-                <input type="number" min="1" max={classData.totalSessions} value={openSession}
-                  onChange={e => setOpenSession(Math.max(1, Math.min(classData.totalSessions, Number(e.target.value) || 1)))}
-                  style={{...inp, fontSize: 18, fontWeight: 800, textAlign: 'center'}} />
-                <button onClick={openSessionQR} style={{
-                  marginTop: 12, width: '100%', padding: '14px', borderRadius: 12, border: 'none',
-                  background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`, color: '#fff',
-                  cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 16,
-                  boxShadow: `0 6px 20px ${CI.cyan}40`,
-                }}>📲 เปิด QR (15 นาที)</button>
-              </>
-            ) : (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ background: '#dcfce7', border: '2px solid #22c55e', borderRadius: 12, padding: 12, marginBottom: 14 }}>
-                  <div style={{ fontSize: 13, color: '#166534', fontWeight: 700 }}>🟢 LIVE • Session {classData.activeSession.number} • เหลือ {minutesLeft} นาที</div>
-                </div>
-                <canvas ref={qrRef} style={{ maxWidth: '100%', borderRadius: 12 }} />
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>นักศึกษาสแกน QR นี้เพื่อรับตรา</div>
-                <button onClick={closeSession} style={{
-                  marginTop: 14, padding: '10px 20px', borderRadius: 10, border: '2px solid #e2e8f0',
-                  background: '#fff', color: '#dc2626', cursor: 'pointer', fontFamily: FONT, fontWeight: 700,
-                }}>⏹️ ปิด Session</button>
-              </div>
-            )}
+        {/* ═══ STEP-BY-STEP GUIDE ═══ */}
+        <div style={{
+          background: 'linear-gradient(135deg, #f0f9ff, #fef3c7)',
+          border: '1px solid #bae6fd', borderRadius: 16,
+          padding: '14px 18px', marginBottom: 16,
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: '#0369a1', marginBottom: 8 }}>
+            📖 วิธีให้นักศึกษาสแกนสะสมการ์ด
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, fontSize: 12, color: '#475569', lineHeight: 1.6 }}>
+            <div><strong style={{ color: CI.cyan }}>1️⃣ ครั้งแรก</strong> · นักศึกษาสแกน <strong>QR ห้องเรียน</strong> ด้านล่าง → กรอกรหัส+ชื่อ → เข้าห้อง</div>
+            <div><strong style={{ color: CI.purple }}>2️⃣ ทุกคาบ</strong> · อาจารย์กด <strong>"เปิด Session"</strong> → QR ใหม่จะเด้งมา</div>
+            <div><strong style={{ color: CI.magenta }}>3️⃣ เช็กชื่อ</strong> · นักศึกษาสแกน QR Session → รับตราอัตโนมัติ +10 ⭐</div>
+          </div>
+        </div>
 
-            <div style={{ marginTop: 16, fontSize: 12, color: '#64748b', background: '#fef9c3', borderLeft: '3px solid #fbbf24', padding: '10px 12px', borderRadius: 6 }}>
-              💡 แชร์ Code <strong style={{ color: CI.cyan }}>{activeCode}</strong> ให้นักศึกษาเข้าผ่าน /student/stamp
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {/* ═══ COLUMN 1: TWO QR CODES ═══ */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* Class Join QR (always shown) */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 18, border: `2px solid ${CI.cyan}40` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ background: CI.cyan, color: '#fff', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 800 }}>STEP 1</span>
+                <h3 style={{ margin: 0, fontSize: 15, color: '#0f172a' }}>🎫 QR ห้องเรียน <span style={{ fontSize: 11, color: '#64748b', fontWeight: 500 }}>(ครั้งแรก)</span></h3>
+              </div>
+              <p style={{ margin: '0 0 10px', fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                แชร์ QR หรือ Code ให้นักศึกษาทุกคน — เข้าห้องครั้งเดียว ใช้ตลอดเทอม
+              </p>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                <canvas ref={classQrRef} style={{ borderRadius: 8, flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>หรือบอก Code</div>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: CI.cyan, letterSpacing: 4, fontFamily: 'monospace' }}>{activeCode}</div>
+                  <button onClick={() => {
+                    const url = `${window.location.origin}/student/stamp?code=${activeCode}`;
+                    navigator.clipboard.writeText(url);
+                    toast.success('คัดลอกลิงก์แล้ว');
+                  }} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#475569', fontFamily: FONT }}>
+                    🔗 คัดลอกลิงก์
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Session Check-in QR */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: 18, border: `2px solid ${isOpen ? '#22c55e' : '#e2e8f0'}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ background: isOpen ? '#22c55e' : CI.purple, color: '#fff', borderRadius: 6, padding: '2px 8px', fontSize: 11, fontWeight: 800 }}>STEP 2-3</span>
+                <h3 style={{ margin: 0, fontSize: 15, color: '#0f172a' }}>📲 เช็กชื่อคาบเรียน</h3>
+                {isOpen && <span style={{ marginLeft: 'auto', fontSize: 11, color: '#16a34a', fontWeight: 800, background: '#dcfce7', padding: '2px 8px', borderRadius: 4 }}>🟢 LIVE</span>}
+              </div>
+
+              {!isOpen ? (
+                <>
+                  <label style={lbl}>เลือกคาบที่ <strong style={{ color: CI.cyan }}>{openSession}</strong> / {classData.totalSessions}</label>
+                  <input type="number" min="1" max={classData.totalSessions} value={openSession}
+                    onChange={e => setOpenSession(Math.max(1, Math.min(classData.totalSessions, Number(e.target.value) || 1)))}
+                    style={{...inp, fontSize: 18, fontWeight: 800, textAlign: 'center'}} />
+                  <button onClick={openSessionQR} style={{
+                    marginTop: 10, width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+                    background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`, color: '#fff',
+                    cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 15,
+                    boxShadow: `0 6px 20px ${CI.cyan}40`,
+                  }}>📲 เปิด QR เช็กชื่อ (15 นาที)</button>
+                  <div style={{ marginTop: 10, fontSize: 11, color: '#94a3b8', textAlign: 'center', fontStyle: 'italic' }}>
+                    💡 ตอนนี้ยังไม่เปิด Session — กดปุ่มเพื่อให้นักศึกษาเช็กชื่อ
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ background: '#dcfce7', border: '1px solid #86efac', borderRadius: 10, padding: '6px 12px', marginBottom: 10, display: 'inline-block' }}>
+                    <div style={{ fontSize: 12, color: '#166534', fontWeight: 700 }}>Session {classData.activeSession.number} · เหลือ {minutesLeft} นาที</div>
+                  </div>
+                  <canvas ref={qrRef} style={{ maxWidth: '100%', borderRadius: 12, display: 'block', margin: '0 auto' }} />
+                  <div style={{ fontSize: 11, color: '#475569', marginTop: 8, fontWeight: 600 }}>
+                    📱 ฉาย QR หน้าชั้น → นักศึกษาที่เคย join แล้วสแกน → รับตราเลย
+                  </div>
+                  <button onClick={closeSession} style={{
+                    marginTop: 12, padding: '8px 18px', borderRadius: 8, border: '2px solid #fecaca',
+                    background: '#fff', color: '#dc2626', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 12,
+                  }}>⏹️ ปิด Session ทันที</button>
+                </div>
+              )}
             </div>
           </div>
 
