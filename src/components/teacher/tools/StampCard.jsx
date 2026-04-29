@@ -262,8 +262,8 @@ export default function StampCard() {
     <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto', fontFamily: FONT }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 24, color: '#0f172a' }}>🎴 การ์ดสะสมตรา</h2>
-          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>เปลี่ยนการเช็กชื่อให้สนุกแบบ gamified — เก็บตรา ปลด badge ได้รางวัล</p>
+          <h2 style={{ margin: 0, fontSize: 26, color: '#0f172a', fontWeight: 900 }}>🎫 Class Pass+ <span style={{ fontSize: 18, color: '#64748b', fontWeight: 600 }}>· การ์ดสะสมคะแนนเข้าเรียน</span></h2>
+          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>สแกนเข้าเรียน · สะสมตรา · ปลด badge — เปลี่ยนการเช็กชื่อให้นักศึกษาตื่นเต้นทุกคาบ</p>
         </div>
         <button onClick={() => setView('create')} style={{
           padding: '12px 22px', borderRadius: 12, border: 'none',
