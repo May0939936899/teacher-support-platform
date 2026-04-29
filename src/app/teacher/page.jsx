@@ -68,6 +68,8 @@ const CI = {
 };
 
 // Build menu from i18n keys
+// Order: 1.กิจกรรมในชั้นเรียน → 2.เช็กชื่อเข้าเรียน → 3.เครื่องมือเอกสาร →
+//        4.การจัดการและแบ่งปัน → 5.การทำโครงการ → 6.ตรวจสอบตารางสอน → 7.ด้านสื่อสารการตลาด
 function buildMenu(lang) {
   return [
     {
@@ -86,6 +88,15 @@ function buildMenu(lang) {
           { id: 'smart-quiz',             labelKey: 'tool_smart_quiz',     icon: '📝', phase: 0 },
           { id: 'video-quiz',             labelKey: 'tool_video_quiz',     icon: '🎬', phase: 0 },
           { id: 'auto-grader',            labelKey: 'tool_auto_grader',    icon: '✅', phase: 0 },
+        ]},
+      ],
+    },
+    {
+      side: 'attendance', labelKey: 'side_attendance', color: 'green', icon: '📅',
+      groups: [
+        { labelKey: 'group_attendance', items: [
+          { id: 'attendance-tracker',   labelKey: 'tool_attendance',  icon: '📅', phase: 0 },
+          { id: 'student-progress',     labelKey: 'tool_progress',    icon: '📈', phase: 0 },
         ]},
       ],
     },
@@ -117,21 +128,18 @@ function buildMenu(lang) {
       ],
     },
     {
-      side: 'marketing', labelKey: 'side_marketing', color: 'gold', icon: '📣',
+      side: 'project', labelKey: 'side_project', color: 'magenta', icon: '🗂️',
       groups: [
-        { labelKey: 'group_content', items: [
-          { id: 'marketing-content',    labelKey: 'tool_marketing_content', icon: '✨', phase: 0 },
-          { id: 'auto-poster',          labelKey: 'tool_auto_poster',       icon: '🎨', phase: 0 },
+        { labelKey: 'group_projects', items: [
+          { id: 'event-coordinator',    labelKey: 'tool_event',       icon: '🎪', phase: 0 },
+          { id: 'budget-tracker',       labelKey: 'tool_budget',      icon: '💰', phase: 0 },
+          { id: 'ta-coordinator',       labelKey: 'tool_ta',          icon: '👥', phase: 0 },
+          { id: 'stakeholder-portal',   labelKey: 'tool_stakeholder', icon: '🏛️', phase: 0 },
         ]},
-      ],
-    },
-    {
-      // แยก: เช็กชื่อ = attendance_track | ตรวจสอบตาราง = schedule | ตรวจเอกสาร = doc_check
-      side: 'attendance', labelKey: 'side_attendance', color: 'green', icon: '📅',
-      groups: [
-        { labelKey: 'group_attendance', items: [
-          { id: 'attendance-tracker',   labelKey: 'tool_attendance',  icon: '📅', phase: 0 },
-          { id: 'student-progress',     labelKey: 'tool_progress',    icon: '📈', phase: 0 },
+        { labelKey: 'group_report', items: [
+          { id: 'meeting-notes',        labelKey: 'tool_meeting',     icon: '🗒️', phase: 0 },
+          { id: 'kpi-dashboard',        labelKey: 'tool_kpi',         icon: '📉', phase: 0 },
+          { id: 'line-broadcast',       labelKey: 'tool_broadcast',   icon: '📢', phase: 0 },
         ]},
       ],
     },
@@ -152,18 +160,11 @@ function buildMenu(lang) {
       ],
     },
     {
-      side: 'project', labelKey: 'side_project', color: 'magenta', icon: '🗂️',
+      side: 'marketing', labelKey: 'side_marketing', color: 'gold', icon: '📣',
       groups: [
-        { labelKey: 'group_projects', items: [
-          { id: 'event-coordinator',    labelKey: 'tool_event',       icon: '🎪', phase: 0 },
-          { id: 'budget-tracker',       labelKey: 'tool_budget',      icon: '💰', phase: 0 },
-          { id: 'ta-coordinator',       labelKey: 'tool_ta',          icon: '👥', phase: 0 },
-          { id: 'stakeholder-portal',   labelKey: 'tool_stakeholder', icon: '🏛️', phase: 0 },
-        ]},
-        { labelKey: 'group_report', items: [
-          { id: 'meeting-notes',        labelKey: 'tool_meeting',     icon: '🗒️', phase: 0 },
-          { id: 'kpi-dashboard',        labelKey: 'tool_kpi',         icon: '📉', phase: 0 },
-          { id: 'line-broadcast',       labelKey: 'tool_broadcast',   icon: '📢', phase: 0 },
+        { labelKey: 'group_content', items: [
+          { id: 'marketing-content',    labelKey: 'tool_marketing_content', icon: '✨', phase: 0 },
+          { id: 'auto-poster',          labelKey: 'tool_auto_poster',       icon: '🎨', phase: 0 },
         ]},
       ],
     },
