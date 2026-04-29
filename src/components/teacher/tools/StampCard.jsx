@@ -60,6 +60,7 @@ export default function StampCard() {
   }, [activeCode, view]);
 
   const [fetchError, setFetchError] = useState(null);
+  const [autoRecovering, setAutoRecovering] = useState(false);
   const fetchClass = async () => {
     if (!activeCode) return;
     try {
@@ -68,9 +69,42 @@ export default function StampCard() {
       if (res.ok) {
         setClassData(data);
         setFetchError(null);
-      } else {
-        setFetchError(data.error || 'ไม่พบห้องเรียน');
+        return;
       }
+      // 404 — try silent auto-recovery if we have full local config
+      const cached = savedClasses.find(c => c.code === activeCode);
+      if (res.status === 404 && cached && cached.courseName && !autoRecovering) {
+        setAutoRecovering(true);
+        try {
+          const r2 = await fetch('/api/teacher/stampcard', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'create',
+              course: cached.course, courseName: cached.courseName,
+              section: cached.section || '1', teacher: cached.teacher || '',
+              theme: cached.theme || 'space',
+              totalSessions: cached.totalSessions || 15,
+            }),
+          });
+          const newData = await r2.json();
+          if (r2.ok) {
+            // Replace old code with new, navigate seamlessly
+            const updated = [
+              { ...cached, code: newData.code, createdAt: Date.now() },
+              ...savedClasses.filter(c => c.code !== activeCode),
+            ];
+            setSavedClasses(updated); saveCodes(updated);
+            setActiveCode(newData.code);
+            setClassData(newData.class);
+            setFetchError(null);
+            setAutoRecovering(false);
+            return;
+          }
+        } catch {}
+        setAutoRecovering(false);
+      }
+      setFetchError(data.error || 'ไม่พบห้องเรียน');
     } catch {
       setFetchError('เชื่อมต่อไม่ได้');
     }

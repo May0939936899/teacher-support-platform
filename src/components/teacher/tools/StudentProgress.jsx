@@ -105,17 +105,45 @@ export default function GradeBook() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCode, view]);
 
+  const [autoRecovering, setAutoRecovering] = useState(false);
   const fetchClass = async (code) => {
     if (!code) return;
+    const upper = code.toUpperCase();
     try {
-      const res = await fetch(`/api/teacher/gradebook?code=${code.toUpperCase()}`);
+      const res = await fetch(`/api/teacher/gradebook?code=${upper}`);
       const data = await res.json();
       if (res.ok) {
         setClassData(data);
         setFetchError(null);
-      } else {
-        setFetchError(data.error || 'ไม่พบห้องเรียน');
+        return;
       }
+      // 404 — try silent auto-recovery if we have full local form
+      const cached = savedClasses.find(c => c.code === upper);
+      if (res.status === 404 && cached?.fullForm && !autoRecovering) {
+        setAutoRecovering(true);
+        try {
+          const r2 = await fetch('/api/teacher/gradebook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'create', ...cached.fullForm }),
+          });
+          const newData = await r2.json();
+          if (r2.ok) {
+            const updated = [
+              { code: newData.code, course: cached.fullForm.course, courseName: cached.fullForm.courseName, section: cached.fullForm.section, createdAt: Date.now(), fullForm: cached.fullForm },
+              ...savedClasses.filter(c => c.code !== upper),
+            ];
+            setSavedClasses(updated); saveCodes(updated);
+            setActiveCode(newData.code);
+            setClassData(newData.class);
+            setFetchError(null);
+            setAutoRecovering(false);
+            return;
+          }
+        } catch {}
+        setAutoRecovering(false);
+      }
+      setFetchError(data.error || 'ไม่พบห้องเรียน');
     } catch {
       setFetchError('เชื่อมต่อไม่ได้');
     }
@@ -496,64 +524,130 @@ export default function GradeBook() {
   }
 
   // ════════════════════════════════════════════════════════════════════════
-  // LIST VIEW (default)
+  // LIST VIEW (default) — REDESIGNED for clarity & speed
   // ════════════════════════════════════════════════════════════════════════
   return (
-    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto', fontFamily: FONT }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto', fontFamily: FONT }}>
+      {/* Hero header */}
+      <div style={{
+        background: `linear-gradient(135deg, ${CI.cyan}10, ${CI.purple}08)`,
+        borderRadius: 18, padding: '24px 28px', marginBottom: 22,
+        border: `1px solid ${CI.cyan}22`,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 18, flexWrap: 'wrap',
+      }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 24, color: '#0f172a' }}>📊 ระบบบันทึกคะแนนเก็บ</h2>
-          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>โปร่งใส ตรวจสอบได้ — นักศึกษาเช็กความคืบหน้าได้เอง</p>
+          <div style={{ fontSize: 12, color: CI.cyan, fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>📊 GRADE BOOK</div>
+          <h2 style={{ margin: 0, fontSize: 26, color: '#0f172a', fontWeight: 900 }}>ระบบบันทึกคะแนนเก็บ</h2>
+          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>โปร่งใส ตรวจสอบได้ · นักศึกษาเช็กคะแนน + ส่งงานได้เอง</p>
         </div>
         <button onClick={() => setView('create')} style={{
-          padding: '12px 22px', borderRadius: 12, border: 'none',
+          padding: '14px 24px', borderRadius: 12, border: 'none',
           background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`,
           color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 15,
-          boxShadow: `0 4px 16px ${CI.cyan}30`,
-        }}>+ สร้างห้องเรียนใหม่</button>
+          boxShadow: `0 8px 24px ${CI.cyan}40`,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>＋ สร้างห้องเรียนใหม่</button>
       </div>
 
-      {/* Quick join existing class by code */}
-      <div style={{ background: '#f1f5f9', borderRadius: 12, padding: 16, marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 14, color: '#475569', fontWeight: 600 }}>📥 เปิดห้องด้วย Code:</span>
-        <input id="join-code" placeholder="C12345" maxLength={10} style={{ ...inp, width: 200, textTransform: 'uppercase', fontWeight: 800, letterSpacing: 2 }} />
-        <button onClick={() => {
-          const v = document.getElementById('join-code').value.trim().toUpperCase();
-          if (v) openClass(v);
-        }} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700 }}>เปิด →</button>
-      </div>
-
-      {/* Saved classes */}
       {savedClasses.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 16, border: '2px dashed #e2e8f0' }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>📚</div>
-          <h3 style={{ margin: '0 0 6px', color: '#0f172a' }}>ยังไม่มีห้องเรียน</h3>
-          <p style={{ margin: 0, color: '#64748b' }}>กด "+ สร้างห้องเรียนใหม่" เพื่อเริ่ม</p>
+        // ── Empty state ──
+        <div style={{ textAlign: 'center', padding: '80px 20px', background: '#fff', borderRadius: 18, border: '2px dashed #e2e8f0' }}>
+          <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.7 }}>📚</div>
+          <h3 style={{ margin: '0 0 8px', color: '#0f172a', fontSize: 20 }}>เริ่มต้นห้องแรก</h3>
+          <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: 14 }}>สร้างห้องเรียน → ตั้งสัดส่วนคะแนน → แชร์ Code ให้นักศึกษา → จบ</p>
+          <button onClick={() => setView('create')} style={{
+            padding: '14px 32px', borderRadius: 14, border: 'none',
+            background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`,
+            color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 16,
+            boxShadow: `0 8px 24px ${CI.cyan}40`,
+          }}>＋ สร้างห้องเรียนใหม่</button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-          {savedClasses.map(c => (
-            <div key={c.code} onClick={() => openClass(c.code)} style={{
-              background: '#fff', borderRadius: 14, padding: 18, border: '1px solid #e2e8f0',
-              cursor: 'pointer', transition: 'all 0.15s',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 20px ${CI.cyan}25`; e.currentTarget.style.borderColor = CI.cyan; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-            >
-              <div style={{
-                display: 'inline-block', background: `${CI.cyan}15`, color: CI.cyan,
-                padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800, letterSpacing: 1,
-                marginBottom: 8,
-              }}>{c.code}</div>
-              <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#0f172a' }}>{c.courseName}</h3>
-              <div style={{ fontSize: 13, color: '#64748b' }}>{c.course} · กลุ่ม {c.section}</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
-                สร้าง: {new Date(c.createdAt).toLocaleDateString('th-TH')}
-              </div>
+        // ── Class cards ──
+        <>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#64748b', marginBottom: 12, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            ห้องเรียนของคุณ ({savedClasses.length})
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+            {savedClasses.map(c => {
+              const numComps = c.fullForm?.components?.length || 0;
+              return (
+                <div key={c.code} style={{
+                  position: 'relative',
+                  background: '#fff', borderRadius: 16, padding: 0, border: '1px solid #e2e8f0',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                  overflow: 'hidden',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 12px 28px ${CI.cyan}25`; e.currentTarget.style.borderColor = CI.cyan; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                >
+                  {/* Color strip header */}
+                  <div style={{
+                    height: 6,
+                    background: `linear-gradient(90deg, ${CI.cyan}, ${CI.purple}, ${CI.magenta})`,
+                  }} />
+
+                  <div onClick={() => openClass(c.code)} style={{ cursor: 'pointer', padding: '16px 18px 12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                      <span style={{
+                        background: `${CI.cyan}15`, color: CI.cyan,
+                        padding: '4px 12px', borderRadius: 6, fontSize: 12, fontWeight: 800,
+                        letterSpacing: 1, fontFamily: 'monospace',
+                      }}>{c.code}</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 'auto' }}>
+                        {new Date(c.createdAt).toLocaleDateString('th-TH', { day:'numeric', month:'short' })}
+                      </span>
+                    </div>
+                    <h3 style={{ margin: '0 0 4px', fontSize: 17, color: '#0f172a', fontWeight: 800, lineHeight: 1.3 }}>{c.courseName}</h3>
+                    <div style={{ fontSize: 13, color: '#64748b' }}>{c.course} · กลุ่ม {c.section}</div>
+                    {numComps > 0 && (
+                      <div style={{ marginTop: 10, fontSize: 11, color: '#94a3b8' }}>
+                        📋 {numComps} ชิ้นงาน{c.fullForm?.bonus?.length ? ` · 🎁 ${c.fullForm.bonus.length} คะแนนพิเศษ` : ''}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action bar */}
+                  <div style={{
+                    borderTop: '1px solid #f1f5f9', padding: '8px 12px',
+                    display: 'flex', gap: 6, justifyContent: 'space-between',
+                  }}>
+                    <button onClick={() => openClass(c.code)} style={{
+                      flex: 1, padding: '8px', borderRadius: 8, border: 'none',
+                      background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`,
+                      color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 13,
+                    }}>📂 เปิดห้อง</button>
+                    <button onClick={() => removeFromLocal(c.code)}
+                      title="ลบออกจากรายการ"
+                      style={{
+                        padding: '8px 12px', borderRadius: 8,
+                        background: '#fff', border: '1px solid #e2e8f0',
+                        cursor: 'pointer', fontSize: 13,
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.borderColor = '#fca5a5'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    >🗑️</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Quick join — collapsed under a small toggle */}
+          <details style={{ marginTop: 24 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13, color: '#64748b', fontWeight: 600, padding: '8px 0' }}>
+              ➕ เปิดห้องที่ไม่อยู่ในรายการ (ใช้ Code)
+            </summary>
+            <div style={{ marginTop: 10, background: '#f8fafc', borderRadius: 10, padding: '12px 14px', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input id="join-code" placeholder="C12345" maxLength={10} style={{ ...inp, width: 180, textTransform: 'uppercase', fontWeight: 800, letterSpacing: 2 }} />
+              <button onClick={() => {
+                const v = document.getElementById('join-code').value.trim().toUpperCase();
+                if (v) openClass(v);
+              }} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700 }}>เปิด →</button>
             </div>
-          ))}
-        </div>
+          </details>
+        </>
       )}
     </div>
   );
