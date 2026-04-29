@@ -28,6 +28,45 @@ function saveCodes(arr) {
   try { localStorage.setItem(STORAGE, JSON.stringify(arr.slice(0, 50))); } catch {}
 }
 
+// ── CSV / Excel parsing ──────────────────────────────────────────────────────
+// Returns array of row arrays (e.g. [[col1, col2], ...]) — header NOT auto-stripped
+async function parseSpreadsheet(file) {
+  const ext = file.name.toLowerCase().split('.').pop();
+
+  if (ext === 'xlsx' || ext === 'xls') {
+    // Dynamic import xlsx (~250KB) only when user uploads Excel
+    const XLSX = await import('xlsx');
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  }
+
+  // CSV / TSV — simple splitter (handles quoted fields with commas)
+  const text = await file.text();
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const isTabSep = lines[0]?.includes('\t');
+  const sep = isTabSep ? '\t' : ',';
+  return lines.map(line => {
+    const cells = [];
+    let cur = '', inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQuotes = !inQuotes; continue; }
+      if (c === sep && !inQuotes) { cells.push(cur.trim()); cur = ''; }
+      else cur += c;
+    }
+    cells.push(cur.trim());
+    return cells;
+  });
+}
+
+// Detect if first row looks like a header (heuristic: contains text like 'รหัส', 'student', 'ชื่อ')
+function isHeaderRow(row) {
+  const joined = row.join('|').toLowerCase();
+  return /รหัส|student|id|ชื่อ|name|first|last|นามสกุล|คะแนน|score/i.test(joined);
+}
+
 export default function GradeBook() {
   const [view, setView]               = useState('list');  // list | create | manage
   const [savedClasses, setSavedClasses] = useState([]);
@@ -126,6 +165,107 @@ export default function GradeBook() {
       body: JSON.stringify({ action: 'remove_student', code: activeCode, studentId }),
     });
     if (res.ok) { toast.success('ลบแล้ว'); fetchClass(activeCode); }
+  };
+
+  // Bulk import roster from CSV/Excel
+  const importRoster = async (file) => {
+    const tid = toast.loading('กำลังอ่านไฟล์...');
+    try {
+      const rows = await parseSpreadsheet(file);
+      const dataRows = rows[0] && isHeaderRow(rows[0]) ? rows.slice(1) : rows;
+      let added = 0, dup = 0, skipped = 0;
+      for (const row of dataRows) {
+        const studentId = String(row[0] || '').trim();
+        const firstName = String(row[1] || '').trim();
+        const lastName  = String(row[2] || '').trim();
+        if (!studentId || !firstName) { skipped++; continue; }
+        const res = await fetch('/api/teacher/gradebook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'add_student', code: activeCode, studentId, firstName, lastName }),
+        });
+        const data = await res.json();
+        if (res.ok) added++;
+        else if (data.error?.includes('มีอยู่แล้ว')) dup++;
+        else skipped++;
+      }
+      await fetchClass(activeCode);
+      toast.success(`✅ นำเข้า ${added} คน${dup ? ` · ซ้ำ ${dup}` : ''}${skipped ? ` · ข้าม ${skipped}` : ''}`, { id: tid, duration: 5000 });
+    } catch (e) {
+      toast.error(`อ่านไฟล์ไม่ได้: ${e.message}`, { id: tid });
+    }
+  };
+
+  // Bulk import scores from CSV/Excel
+  // Format: col0=studentId, col1=firstName, col2=lastName, col3+ = scores per component (in order)
+  const importScores = async (file) => {
+    const tid = toast.loading('กำลังอ่านไฟล์...');
+    try {
+      const rows = await parseSpreadsheet(file);
+      if (rows.length === 0) throw new Error('ไฟล์ว่างเปล่า');
+
+      // Try to detect header — if row[0] looks like header, use it to map columns
+      const firstRow = rows[0];
+      const hasHeader = isHeaderRow(firstRow);
+      const dataRows = hasHeader ? rows.slice(1) : rows;
+
+      const components = classData?.components || [];
+      const bonusItems = classData?.bonus || [];
+
+      // Map header columns to component IDs (by name match if header provided)
+      // Otherwise fallback: col 3 → comp[0], col 4 → comp[1], etc.
+      let colToComp = []; // array of {id, isBonus} per column index (0-based from col3)
+
+      if (hasHeader && firstRow.length > 3) {
+        for (let i = 3; i < firstRow.length; i++) {
+          const colName = String(firstRow[i] || '').trim().toLowerCase();
+          if (!colName) continue;
+          const c = components.find(x => x.name.toLowerCase() === colName || x.name.toLowerCase().includes(colName) || colName.includes(x.name.toLowerCase()));
+          if (c) { colToComp[i - 3] = { id: c.id, isBonus: false }; continue; }
+          const b = bonusItems.find(x => x.name.toLowerCase() === colName || x.name.toLowerCase().includes(colName) || colName.includes(x.name.toLowerCase()));
+          if (b) { colToComp[i - 3] = { id: b.id, isBonus: true }; continue; }
+        }
+      }
+
+      // Fallback: positional mapping
+      if (colToComp.filter(Boolean).length === 0) {
+        components.forEach((c, idx) => { colToComp[idx] = { id: c.id, isBonus: false }; });
+        bonusItems.forEach((b, idx) => { colToComp[components.length + idx] = { id: b.id, isBonus: true }; });
+      }
+
+      let updated = 0, notFound = 0, scored = 0;
+      const studentMap = new Map((classData?.students || []).map(s => [String(s.studentId), s]));
+
+      for (const row of dataRows) {
+        const studentId = String(row[0] || '').trim();
+        if (!studentId) continue;
+        if (!studentMap.has(studentId)) { notFound++; continue; }
+
+        for (let i = 3; i < row.length; i++) {
+          const cell = row[i];
+          if (cell === '' || cell === null || cell === undefined) continue;
+          const score = Number(cell);
+          if (isNaN(score)) continue;
+          const target = colToComp[i - 3];
+          if (!target) continue;
+          await fetch('/api/teacher/gradebook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'update_score',
+              code: activeCode,
+              studentId, componentId: target.id, score, isBonus: target.isBonus,
+            }),
+          });
+          scored++;
+        }
+        updated++;
+      }
+      await fetchClass(activeCode);
+      toast.success(`✅ อัปเดต ${updated} คน · ${scored} คะแนน${notFound ? ` · ไม่พบ ${notFound} คน` : ''}`, { id: tid, duration: 5000 });
+    } catch (e) {
+      toast.error(`อ่านไฟล์ไม่ได้: ${e.message}`, { id: tid });
+    }
   };
 
   const updateScore = async (studentId, componentId, score, isBonus) => {
@@ -235,6 +375,8 @@ export default function GradeBook() {
       onRemoveStudent={removeStudent}
       onUpdateScore={updateScore}
       onRefresh={() => fetchClass(activeCode)}
+      onImportRoster={importRoster}
+      onImportScores={importScores}
     />;
   }
 
@@ -305,10 +447,12 @@ export default function GradeBook() {
 // ════════════════════════════════════════════════════════════════════════════
 // ManageView — show roster, gradebook, audit log
 // ════════════════════════════════════════════════════════════════════════════
-function ManageView({ code, classData, onBack, onAddStudent, onRemoveStudent, onUpdateScore, onRefresh }) {
+function ManageView({ code, classData, onBack, onAddStudent, onRemoveStudent, onUpdateScore, onRefresh, onImportRoster, onImportScores }) {
   const [tab, setTab] = useState('grades'); // grades | roster | audit | share
   const [newStu, setNewStu] = useState({ studentId: '', firstName: '', lastName: '' });
   const qrRef = useRef(null);
+  const rosterFileRef = useRef(null);
+  const scoresFileRef = useRef(null);
 
   const studentUrl = typeof window !== 'undefined' ? `${window.location.origin}/student/progress?code=${code}` : '';
 
@@ -356,6 +500,64 @@ function ManageView({ code, classData, onBack, onAddStudent, onRemoveStudent, on
 
       {/* TAB: GRADES */}
       {tab === 'grades' && (
+        <>
+          {/* Bulk import scores bar */}
+          <div style={{
+            background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+            border: '2px solid #fbbf24', borderRadius: 14,
+            padding: '12px 18px', marginBottom: 14,
+            display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+          }}>
+            <div style={{ flex: '1 1 280px' }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#78350f' }}>📥 นำเข้าคะแนนจาก Excel/CSV</div>
+              <div style={{ fontSize: 11, color: '#92400e', lineHeight: 1.5, marginTop: 2 }}>
+                คอลัมน์: <code style={{ background:'#fff', padding:'1px 5px', borderRadius:3 }}>รหัส | ชื่อ | นามสกุล | คะแนนงาน1 | คะแนนงาน2 | ...</code>
+                {' — '}AI จับคู่ชื่อชิ้นงานจากหัวคอลัมน์ ถ้าไม่ตรงจะเรียงตามลำดับ
+              </div>
+            </div>
+            <input
+              ref={scoresFileRef}
+              type="file"
+              accept=".csv,.tsv,.xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={async e => {
+                const f = e.target.files?.[0];
+                if (f) await onImportScores(f);
+                e.target.value = '';
+              }}
+            />
+            <button
+              onClick={() => {
+                const components = classData?.components || [];
+                const bonusItems = classData?.bonus || [];
+                const headers = ['รหัสนักศึกษา', 'ชื่อ', 'นามสกุล',
+                  ...components.map(c => c.name),
+                  ...bonusItems.map(b => `(พิเศษ) ${b.name}`)];
+                let csv = '﻿' + headers.join(',') + '\n';
+                (classData?.students || []).forEach(s => {
+                  const row = [s.studentId, s.firstName, s.lastName || ''];
+                  components.forEach(c => row.push(s.scores?.[c.id] ?? ''));
+                  bonusItems.forEach(b => row.push(s.bonus?.[b.id] ?? ''));
+                  csv += row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',') + '\n';
+                });
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.href = url; a.download = `${code}_scores_template.csv`;
+                a.click(); URL.revokeObjectURL(url);
+              }}
+              style={{ padding:'8px 14px', borderRadius:8, border:'1px solid #fbbf24', background:'#fff', cursor:'pointer', fontFamily:FONT, fontWeight:700, fontSize:12, color:'#78350f' }}>
+              ⬇️ Template (พร้อมรายชื่อ)
+            </button>
+            <button onClick={() => scoresFileRef.current?.click()} style={{
+              padding: '10px 22px', borderRadius: 10, border: 'none',
+              background: 'linear-gradient(135deg, #f59e0b, #dc2626)',
+              color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 14,
+              boxShadow: '0 4px 12px rgba(245,158,11,0.35)',
+            }}>
+              📂 อัปโหลดคะแนน
+            </button>
+          </div>
+
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: 16, overflowX: 'auto' }}>
           {(classData.students || []).length === 0 ? (
             <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
@@ -400,25 +602,70 @@ function ManageView({ code, classData, onBack, onAddStudent, onRemoveStudent, on
             </table>
           )}
         </div>
+        </>
       )}
 
       {/* TAB: ROSTER */}
       {tab === 'roster' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: 18 }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#0f172a' }}>+ เพิ่มนักศึกษา (เอง)</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <input placeholder="รหัสนักศึกษา *" value={newStu.studentId} onChange={e => setNewStu({...newStu, studentId: e.target.value})} style={inp} />
-              <input placeholder="ชื่อ *" value={newStu.firstName} onChange={e => setNewStu({...newStu, firstName: e.target.value})} style={inp} />
-              <input placeholder="นามสกุล" value={newStu.lastName} onChange={e => setNewStu({...newStu, lastName: e.target.value})} style={inp} />
-              <button onClick={() => {
-                if (!newStu.studentId || !newStu.firstName) { toast.error('กรอกรหัสและชื่อ'); return; }
-                onAddStudent(newStu.studentId, newStu.firstName, newStu.lastName);
-                setNewStu({ studentId: '', firstName: '', lastName: '' });
-              }} style={{ padding: '10px', borderRadius: 8, border: 'none', background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700 }}>+ เพิ่ม</button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* ── Bulk import box ── */}
+            <div style={{ background: 'linear-gradient(135deg, #f0f9ff, #ecfdf5)', borderRadius: 14, border: '2px solid #93c5fd', padding: 18 }}>
+              <h3 style={{ margin: '0 0 6px', fontSize: 16, color: '#0c4a6e' }}>📥 นำเข้ารายชื่อจากไฟล์</h3>
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+                ไฟล์ <strong>CSV / Excel (.xlsx)</strong> — คอลัมน์เรียงตามนี้:<br/>
+                <code style={{ background:'#fff', padding:'2px 6px', borderRadius:4, color:'#1e40af', fontWeight:700 }}>รหัส | ชื่อ | นามสกุล</code>
+              </p>
+              <input
+                ref={rosterFileRef}
+                type="file"
+                accept=".csv,.tsv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                style={{ display: 'none' }}
+                onChange={async e => {
+                  const f = e.target.files?.[0];
+                  if (f) await onImportRoster(f);
+                  e.target.value = '';
+                }}
+              />
+              <button onClick={() => rosterFileRef.current?.click()} style={{
+                width: '100%', padding: '12px', borderRadius: 10, border: 'none',
+                background: 'linear-gradient(135deg, #0284c7, #2563eb)',
+                color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 14,
+                boxShadow: '0 4px 12px rgba(37,99,235,0.3)',
+              }}>
+                📂 เลือกไฟล์ (CSV / Excel)
+              </button>
+              <button
+                onClick={() => {
+                  // Download a CSV template
+                  const csv = '﻿รหัสนักศึกษา,ชื่อ,นามสกุล\n65000001,สมชาย,ใจดี\n65000002,สมหญิง,ใจงาม';
+                  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = 'template_roster.csv';
+                  a.click(); URL.revokeObjectURL(url);
+                }}
+                style={{ marginTop:8, width:'100%', padding:'8px', borderRadius:8, border:'1px solid #93c5fd', background:'#fff', cursor:'pointer', fontFamily:FONT, fontWeight:700, fontSize:12, color:'#0c4a6e' }}>
+                ⬇️ ดาวน์โหลด Template CSV
+              </button>
             </div>
-            <div style={{ marginTop: 14, fontSize: 12, color: '#64748b', background: '#f0fdf4', borderLeft: '3px solid #22c55e', padding: '10px 12px', borderRadius: 6 }}>
-              💡 หรือให้นักศึกษาสแกน QR ในแท็บ "แชร์" เพื่อเข้าร่วมเองได้
+
+            {/* ── Manual add ── */}
+            <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: 18 }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#0f172a' }}>+ เพิ่มทีละคน</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input placeholder="รหัสนักศึกษา *" value={newStu.studentId} onChange={e => setNewStu({...newStu, studentId: e.target.value})} style={inp} />
+                <input placeholder="ชื่อ *" value={newStu.firstName} onChange={e => setNewStu({...newStu, firstName: e.target.value})} style={inp} />
+                <input placeholder="นามสกุล" value={newStu.lastName} onChange={e => setNewStu({...newStu, lastName: e.target.value})} style={inp} />
+                <button onClick={() => {
+                  if (!newStu.studentId || !newStu.firstName) { toast.error('กรอกรหัสและชื่อ'); return; }
+                  onAddStudent(newStu.studentId, newStu.firstName, newStu.lastName);
+                  setNewStu({ studentId: '', firstName: '', lastName: '' });
+                }} style={{ padding: '10px', borderRadius: 8, border: 'none', background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700 }}>+ เพิ่ม</button>
+              </div>
+              <div style={{ marginTop: 14, fontSize: 12, color: '#64748b', background: '#f0fdf4', borderLeft: '3px solid #22c55e', padding: '10px 12px', borderRadius: 6 }}>
+                💡 หรือให้นักศึกษาสแกน QR ในแท็บ "แชร์" เพื่อเข้าร่วมเองได้
+              </div>
             </div>
           </div>
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: 18 }}>
