@@ -14,6 +14,7 @@ const AIContentDetector = dynamic(() => import('@/components/teacher/tools/AICon
 const QRGenerator = dynamic(() => import('@/components/teacher/tools/QRGenerator'), { ssr: false });
 const URLShortener = dynamic(() => import('@/components/teacher/tools/URLShortener'), { ssr: false });
 const AttendanceTracker = dynamic(() => import('@/components/teacher/tools/AttendanceTracker'), { ssr: false });
+const StampCard = dynamic(() => import('@/components/teacher/tools/StampCard'), { ssr: false });
 const AILessonPlanner = dynamic(() => import('@/components/teacher/tools/AILessonPlanner'), { ssr: false });
 const LiveQuizGame = dynamic(() => import('@/components/teacher/tools/LiveQuizGame'), { ssr: false });
 const CertificateGenerator = dynamic(() => import('@/components/teacher/tools/CertificateGenerator'), { ssr: false });
@@ -95,8 +96,9 @@ function buildMenu(lang) {
       side: 'attendance', labelKey: 'side_attendance', color: 'green', icon: '📅',
       groups: [
         { labelKey: 'group_attendance', items: [
-          { id: 'attendance-tracker',   labelKey: 'tool_attendance',  icon: '📅', phase: 0 },
-          { id: 'student-progress',     labelKey: 'tool_progress',    icon: '📈', phase: 0 },
+          { id: 'attendance-tracker',   labelKey: 'tool_attendance_gps',  icon: '📍', phase: 0 },
+          { id: 'stamp-card',           labelKey: 'tool_stamp_card',      icon: '🎴', phase: 0 },
+          { id: 'student-progress',     labelKey: 'tool_progress',        icon: '📈', phase: 0 },
         ]},
       ],
     },
@@ -180,6 +182,7 @@ const TOOL_MAP = {
   'qr-generator': QRGenerator,
   'url-shortener': URLShortener,
   'attendance-tracker': AttendanceTracker,
+  'stamp-card': StampCard,
   // Phase 2
   'lesson-planner': AILessonPlanner,
   'live-quiz': LiveQuizGame,

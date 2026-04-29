@@ -114,25 +114,24 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
         width: '100%',
         transition: 'background 1s ease',
       }}>
-        {/* Live clock — top-right corner */}
+        {/* Live clock — top-right corner (local time only) */}
         <div style={{
           position: 'absolute', top: 12, right: 16, zIndex: 10,
           background: T.clockBg, backdropFilter: 'blur(8px)',
           border: `1px solid ${T.clockBorder}`,
-          borderRadius: 12, padding: '6px 14px',
+          borderRadius: 12, padding: '7px 14px',
           fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-          color: T.clockText, fontSize: 'clamp(11px,1vw,13px)',
+          color: T.clockText,
           boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          minWidth: 180, textAlign: 'right',
+          textAlign: 'right',
           transition: 'all 0.5s ease',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, fontWeight: 700, fontSize: 'clamp(13px,1.1vw,15px)', letterSpacing: 0.5 }}>
             <span>{isDay ? '☀️' : '🌙'}</span>
             <span>{localTime}</span>
-            <span style={{ fontSize: '0.7em', opacity: 0.7 }}>(เวลาไทย)</span>
           </div>
-          <div style={{ fontSize: 'clamp(10px,0.85vw,11px)', opacity: 0.75, marginTop: 2, fontWeight: 500 }}>
-            🌐 UTC {utcTime} · {dateStr}
+          <div style={{ fontSize: 'clamp(10px,0.85vw,11px)', opacity: 0.7, marginTop: 1, fontWeight: 500 }}>
+            {dateStr}
           </div>
         </div>
 
@@ -157,9 +156,9 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           );
         })}
 
-        {/* ☀️/🌙 Sky body — kawaii sun (day) or kawaii crescent moon (night) */}
+        {/* ☀️/🌙 Sky body — moved LEFT so the clock doesn't cover it */}
         <div style={{
-          position:'absolute', top:'14%', right:'7%',
+          position:'absolute', top:'18%', right:'22%',
           width:'clamp(58px,6.5vw,90px)', height:'clamp(58px,6.5vw,90px)',
           zIndex: 2, animation: 'skyBob 4s ease-in-out infinite',
         }}>
