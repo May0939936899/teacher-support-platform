@@ -234,24 +234,39 @@ function BusSanookStudentInner() {
     const finalPid = getOrCreatePid(finalRoom);
     setPid(finalPid);
 
-    try {
-      const res = await fetch('/api/teacher/bussanook', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'join', room: finalRoom, pid: finalPid, name: finalName }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
+    // Retry up to 3 times on transient errors
+    let lastErr = '';
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const res = await fetch('/api/teacher/bussanook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'join', room: finalRoom, pid: finalPid, name: finalName }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          playJoin(audioRef);
+          setRoom(finalRoom);
+          setPhase('lobby');
+          setJoining(false);
+          return;
+        }
+        // 404 (room not found): retry once in case of DB lag, then give up
+        if (res.status === 404 && attempt < 2) {
+          lastErr = data.error || 'ไม่พบห้อง';
+          await new Promise(r => setTimeout(r, 500));
+          continue;
+        }
+        // Other errors: don't retry, just show
         setJoinError(data.error || 'เกิดข้อผิดพลาด');
         setJoining(false);
         return;
+      } catch {
+        lastErr = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้';
+        if (attempt < 3) await new Promise(r => setTimeout(r, 500 * attempt));
       }
-      playJoin(audioRef);
-      setRoom(finalRoom);
-      setPhase('lobby');
-    } catch {
-      setJoinError('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
     }
+    setJoinError(lastErr || 'เกิดข้อผิดพลาด — กรุณาตรวจสอบรหัสห้องและลองใหม่');
     setJoining(false);
   }
 

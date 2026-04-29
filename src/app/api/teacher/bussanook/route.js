@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase-server';
 // ── In-memory fallback ────────────────────────────────────────────────────────
 const memRooms = globalThis.__bussanookRooms || (globalThis.__bussanookRooms = new Map());
 let sbOk = null;
+let sbCheckedAt = 0;
+const SB_RECHECK_MS = 60_000; // re-check Supabase every 60s if it was down
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -21,7 +23,11 @@ export async function OPTIONS() {
 
 // ── Supabase helpers ──────────────────────────────────────────────────────────
 async function checkSb() {
-  if (sbOk !== null) return sbOk;
+  // Re-check periodically if previous check failed (handles transient outages)
+  const now = Date.now();
+  if (sbOk === false && (now - sbCheckedAt) < SB_RECHECK_MS) return false;
+  if (sbOk === true) return true;
+  sbCheckedAt = now;
   try {
     const sb = createAdminClient();
     if (!sb) { sbOk = false; return false; }
@@ -35,21 +41,25 @@ const PREFIX = 'BUSS_';
 const TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 async function getRoom(code) {
+  // Try Supabase first
   if (await checkSb()) {
-    const sb = createAdminClient();
-    const { data } = await sb
-      .from('scoreboard_sessions')
-      .select('session_data, updated_at')
-      .eq('session_id', PREFIX + code)
-      .single();
-    if (!data) return null;
-    const s = data.session_data;
-    if (!s) return null;
-    // TTL check
-    const updatedMs = new Date(data.updated_at).getTime();
-    if (Date.now() - updatedMs > TTL_MS) return null;
-    return s;
+    try {
+      const sb = createAdminClient();
+      const { data, error } = await sb
+        .from('scoreboard_sessions')
+        .select('session_data, updated_at')
+        .eq('session_id', PREFIX + code)
+        .maybeSingle();
+      if (!error && data?.session_data) {
+        const updatedMs = new Date(data.updated_at).getTime();
+        if (Date.now() - updatedMs <= TTL_MS) return data.session_data;
+      }
+    } catch (e) {
+      // Transient DB error — fall through to in-memory
+      console.warn('[bussanook] getRoom DB error → fallback to memory:', e?.message || e);
+    }
   }
+  // In-memory fallback (also serves as cache when DB is down)
   const r = memRooms.get(code);
   if (!r) return null;
   if (Date.now() - (r.createdAt || 0) > TTL_MS) { memRooms.delete(code); return null; }
@@ -57,35 +67,48 @@ async function getRoom(code) {
 }
 
 async function saveRoom(code, state) {
-  if (await checkSb()) {
-    const sb = createAdminClient();
-    await sb.from('scoreboard_sessions').upsert({
-      session_id:   PREFIX + code,
-      session_data: state,
-      updated_at:   new Date().toISOString(),
-    });
-    return;
-  }
+  // Always also keep a memory copy as fallback during DB outages
   memRooms.set(code, state);
+  if (await checkSb()) {
+    try {
+      const sb = createAdminClient();
+      await sb.from('scoreboard_sessions').upsert({
+        session_id:   PREFIX + code,
+        session_data: state,
+        updated_at:   new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn('[bussanook] saveRoom DB error (kept memory copy):', e?.message || e);
+    }
+  }
 }
 
 async function mutateRoom(code, mutator) {
+  // Try Supabase first
   if (await checkSb()) {
-    const sb = createAdminClient();
-    const { data } = await sb
-      .from('scoreboard_sessions')
-      .select('session_data')
-      .eq('session_id', PREFIX + code)
-      .single();
-    if (!data?.session_data) return null;
-    const state = data.session_data;
-    mutator(state);
-    await sb
-      .from('scoreboard_sessions')
-      .update({ session_data: state, updated_at: new Date().toISOString() })
-      .eq('session_id', PREFIX + code);
-    return state;
+    try {
+      const sb = createAdminClient();
+      const { data, error: selErr } = await sb
+        .from('scoreboard_sessions')
+        .select('session_data')
+        .eq('session_id', PREFIX + code)
+        .maybeSingle();
+      if (!selErr && data?.session_data) {
+        const state = data.session_data;
+        mutator(state);
+        await sb
+          .from('scoreboard_sessions')
+          .update({ session_data: state, updated_at: new Date().toISOString() })
+          .eq('session_id', PREFIX + code);
+        // Sync memory cache
+        memRooms.set(code, state);
+        return state;
+      }
+    } catch (e) {
+      console.warn('[bussanook] mutateRoom DB error → fallback to memory:', e?.message || e);
+    }
   }
+  // In-memory fallback
   const r = memRooms.get(code);
   if (!r) return null;
   mutator(r);

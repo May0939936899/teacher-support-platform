@@ -366,16 +366,17 @@ export default function BusSanookGame() {
     if (phase === 'question') setAutoRevealScheduled(false);
   }, [phase, gameState?.currentQ]);
 
-  // Auto-reveal when ALL players have answered
-  // NOTE: compute from gameState directly (allAnswered/playerCount defined later → TDZ)
+  // Auto-reveal when ALL players have answered (snappier 500ms delay)
   const autoRevealAllRef = useRef(null);
   useEffect(() => {
     const pCount = gameState?.players?.length ?? 0;
     const aCount = gameState?.answers ? Object.keys(gameState.answers).length : 0;
     const allAns = pCount > 0 && aCount >= pCount;
     if (phase === 'question' && allAns && pCount > 0 && !autoRevealScheduled) {
+      // Lock the flag immediately to prevent double-fire from subsequent polls
+      setAutoRevealScheduled(true);
       if (autoRevealAllRef.current) clearTimeout(autoRevealAllRef.current);
-      autoRevealAllRef.current = setTimeout(() => { handleReveal(); }, 800);
+      autoRevealAllRef.current = setTimeout(() => { handleReveal(); }, 500);
     }
     return () => { if (autoRevealAllRef.current) clearTimeout(autoRevealAllRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
