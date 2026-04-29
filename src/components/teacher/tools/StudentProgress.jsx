@@ -1,427 +1,579 @@
 'use client';
-import { useState, useEffect } from 'react';
+/* ────────────────────────────────────────────────────────────────────────────
+   GradeBook — Transparent attendance/score tracking for a class.
+   Teacher creates a class with grade components → gets a code →
+   shares code with students → students self-enroll + check submissions →
+   teacher enters scores → everyone can audit changes.
+   ──────────────────────────────────────────────────────────────────────────── */
+import { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import DownloadDropdown from './DownloadDropdown';
-import { downloadExcel, buildTableHTML, downloadHTMLAsPDF } from '@/lib/teacher/exportUtils';
+import QRCode from 'qrcode';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'DB XDMAN X', 'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
+const STORAGE = 'teacher_gradebooks_v1';
 
-const STORAGE_KEY = 'teacher_student_progress';
+const lbl = { fontSize: 13, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 };
+const inp = {
+  width: '100%', padding: '10px 13px', borderRadius: 10, border: '2px solid #e2e8f0',
+  fontSize: 14, fontFamily: FONT, outline: 'none', background: '#fff', color: '#1e293b',
+  boxSizing: 'border-box', transition: 'border-color 0.15s',
+};
 
-export default function StudentProgress() {
-  const [students, setStudents] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [grades, setGrades] = useState({});
-  const [newStudent, setNewStudent] = useState({ name: '', studentId: '' });
-  const [newAssignment, setNewAssignment] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [view, setView] = useState('table'); // table | individual | chart
+// ── localStorage cache of teacher's class codes ──────────────────────────────
+function loadCodes() {
+  try { return JSON.parse(localStorage.getItem(STORAGE) || '[]'); } catch { return []; }
+}
+function saveCodes(arr) {
+  try { localStorage.setItem(STORAGE, JSON.stringify(arr.slice(0, 50))); } catch {}
+}
 
+export default function GradeBook() {
+  const [view, setView]               = useState('list');  // list | create | manage
+  const [savedClasses, setSavedClasses] = useState([]);
+  const [activeCode, setActiveCode]   = useState('');
+  const [classData, setClassData]     = useState(null);
+  const [loading, setLoading]         = useState(false);
+  const pollRef = useRef(null);
+
+  // ── Form state for creating a class ───────────────────────────────────────
+  const [form, setForm] = useState({
+    course: '', courseName: '', section: '1', teacher: '',
+    components: [
+      { id: 'c1', name: 'งานที่ 1', weight: 10, maxScore: 10, deadline: '' },
+      { id: 'c2', name: 'งานที่ 2', weight: 10, maxScore: 10, deadline: '' },
+      { id: 'c3', name: 'มิดเทอม', weight: 30, maxScore: 100, deadline: '' },
+      { id: 'c4', name: 'ปลายภาค', weight: 50, maxScore: 100, deadline: '' },
+    ],
+    bonus: [{ id: 'b1', name: 'เข้าร่วมกิจกรรม', maxScore: 5 }],
+  });
+
+  useEffect(() => { setSavedClasses(loadCodes()); }, []);
+
+  // Polling for live updates while managing a class
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const data = JSON.parse(saved);
-      setStudents(data.students || []);
-      setAssignments(data.assignments || []);
-      setGrades(data.grades || {});
+    if (!activeCode || view !== 'manage') {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
     }
-  }, []);
+    fetchClass(activeCode);
+    pollRef.current = setInterval(() => fetchClass(activeCode), 6000);
+    return () => clearInterval(pollRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCode, view]);
 
-  const saveData = (s, a, g) => {
-    setStudents(s);
-    setAssignments(a);
-    setGrades(g);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ students: s, assignments: a, grades: g }));
+  const fetchClass = async (code) => {
+    try {
+      const res = await fetch(`/api/teacher/gradebook?code=${code.toUpperCase()}`);
+      const data = await res.json();
+      if (res.ok) setClassData(data);
+    } catch {}
   };
 
-  const addStudent = () => {
-    if (!newStudent.name || !newStudent.studentId) { toast.error('กรุณากรอกชื่อและรหัสนักศึกษา'); return; }
-    if (students.find(s => s.studentId === newStudent.studentId)) { toast.error('รหัสนักศึกษาซ้ำ'); return; }
-    const updated = [...students, { ...newStudent, id: Date.now().toString() }];
-    saveData(updated, assignments, grades);
-    setNewStudent({ name: '', studentId: '' });
-    toast.success('เพิ่มนักศึกษาแล้ว');
+  const totalWeight = form.components.reduce((s, c) => s + (Number(c.weight) || 0), 0);
+
+  const createClass = async () => {
+    if (!form.course || !form.courseName) { toast.error('กรอกรหัสและชื่อวิชา'); return; }
+    if (Math.abs(totalWeight - 100) > 0.5) {
+      toast.error(`น้ำหนักรวม = ${totalWeight}% — ต้องเป็น 100%`);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/teacher/gradebook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', ...form }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const updated = [{
+        code: data.code, course: form.course, courseName: form.courseName,
+        section: form.section, createdAt: Date.now(),
+      }, ...savedClasses];
+      setSavedClasses(updated); saveCodes(updated);
+      setActiveCode(data.code); setClassData(data.class); setView('manage');
+      toast.success(`สร้างห้องเรียน ${data.code} สำเร็จ!`);
+    } catch (e) {
+      toast.error(e.message || 'สร้างห้องไม่สำเร็จ');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const removeStudent = (id) => {
-    const updated = students.filter(s => s.id !== id);
-    const newGrades = { ...grades };
-    delete newGrades[id];
-    saveData(updated, assignments, newGrades);
-    if (selectedStudent === id) setSelectedStudent(null);
-    toast.success('ลบนักศึกษาแล้ว');
+  const openClass = async (code) => {
+    setActiveCode(code);
+    setView('manage');
+    await fetchClass(code);
   };
 
-  const addAssignment = () => {
-    if (!newAssignment.trim()) { toast.error('กรุณากรอกชื่องาน'); return; }
-    const updated = [...assignments, { id: Date.now().toString(), name: newAssignment.trim() }];
-    saveData(students, updated, grades);
-    setNewAssignment('');
-    toast.success('เพิ่มงานแล้ว');
-  };
-
-  const removeAssignment = (aId) => {
-    const updated = assignments.filter(a => a.id !== aId);
-    const newGrades = { ...grades };
-    Object.keys(newGrades).forEach(sId => {
-      if (newGrades[sId]) delete newGrades[sId][aId];
+  const addStudent = async (studentId, firstName, lastName) => {
+    const res = await fetch('/api/teacher/gradebook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'add_student', code: activeCode, studentId, firstName, lastName }),
     });
-    saveData(students, updated, newGrades);
-    toast.success('ลบงานแล้ว');
+    const data = await res.json();
+    if (res.ok) { toast.success('เพิ่มแล้ว'); fetchClass(activeCode); }
+    else toast.error(data.error);
   };
 
-  const updateGrade = (studentId, assignmentId, value) => {
-    const val = value === '' ? '' : Math.min(100, Math.max(0, Number(value)));
-    const newGrades = { ...grades, [studentId]: { ...(grades[studentId] || {}), [assignmentId]: val } };
-    saveData(students, assignments, newGrades);
-  };
-
-  const getStudentAvg = (sId) => {
-    const sg = grades[sId] || {};
-    const vals = assignments.map(a => sg[a.id]).filter(v => v !== undefined && v !== '');
-    if (vals.length === 0) return null;
-    return (vals.reduce((a, b) => a + Number(b), 0) / vals.length).toFixed(1);
-  };
-
-  const getAssignmentAvg = (aId) => {
-    const vals = students.map(s => (grades[s.id] || {})[aId]).filter(v => v !== undefined && v !== '');
-    if (vals.length === 0) return null;
-    return (vals.reduce((a, b) => a + Number(b), 0) / vals.length).toFixed(1);
-  };
-
-  const getLetterGrade = (score) => {
-    if (score >= 80) return 'A';
-    if (score >= 70) return 'B';
-    if (score >= 60) return 'C';
-    if (score >= 50) return 'D';
-    return 'F';
-  };
-
-  const getProgressData = () => {
-    const headers = ['รหัสนักศึกษา', 'ชื่อ', ...assignments.map(a => a.name), 'เฉลี่ย', 'เกรด'];
-    const rows = students.map(s => {
-      const sg = grades[s.id] || {};
-      const avg = getStudentAvg(s.id);
-      return [s.studentId, s.name, ...assignments.map(a => sg[a.id] ?? ''), avg ?? '', getGrade(avg)];
+  const removeStudent = async (studentId) => {
+    if (!confirm(`ลบนักศึกษา ${studentId}?`)) return;
+    const res = await fetch('/api/teacher/gradebook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'remove_student', code: activeCode, studentId }),
     });
-    return { headers, rows };
+    if (res.ok) { toast.success('ลบแล้ว'); fetchClass(activeCode); }
   };
 
-  const exportCSV = () => {
-    if (students.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
-    const { headers, rows } = getProgressData();
-    const lines = [headers.join(','), ...rows.map(r => r.join(','))];
-    const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `student_progress_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Export CSV สำเร็จ');
+  const updateScore = async (studentId, componentId, score, isBonus) => {
+    await fetch('/api/teacher/gradebook', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'update_score', code: activeCode, studentId, componentId, score, isBonus }),
+    });
+    fetchClass(activeCode);
   };
 
-  const exportExcelData = () => {
-    if (students.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
-    const { headers, rows } = getProgressData();
-    downloadExcel(headers, rows, `student_progress_${new Date().toISOString().slice(0, 10)}`, 'Progress');
-    toast.success('Export Excel สำเร็จ');
-  };
+  // ════════════════════════════════════════════════════════════════════════
+  // CREATE VIEW
+  // ════════════════════════════════════════════════════════════════════════
+  if (view === 'create') {
+    return (
+      <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto', fontFamily: FONT }}>
+        <button onClick={() => setView('list')} style={{ marginBottom: 16, padding: '6px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontFamily: FONT, color: '#64748b' }}>← กลับ</button>
 
-  const exportPDFData = async () => {
-    if (students.length === 0) { toast.error('ไม่มีข้อมูลให้ export'); return; }
-    const { headers, rows } = getProgressData();
-    const html = buildTableHTML('รายงานผลการเรียน', headers, rows);
-    await downloadHTMLAsPDF(html, `student_progress_${new Date().toISOString().slice(0, 10)}`);
-    toast.success('Export PDF สำเร็จ');
-  };
+        <div style={{ background: '#fff', borderRadius: 16, padding: 28, border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+          <h2 style={{ margin: '0 0 6px', fontSize: 22, color: '#0f172a' }}>📚 สร้างห้องเรียนใหม่</h2>
+          <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 14 }}>ตั้งค่าวิชา + สัดส่วนคะแนน — ระบบจะออก Code ให้แชร์กับนักศึกษา</p>
 
-  const selectedStudentData = selectedStudent ? students.find(s => s.id === selectedStudent) : null;
+          {/* Course info */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div>
+              <label style={lbl}>รหัสวิชา *</label>
+              <input value={form.course} onChange={e => setForm({...form, course: e.target.value})} placeholder="MGT3367" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>ชื่อวิชา *</label>
+              <input value={form.courseName} onChange={e => setForm({...form, courseName: e.target.value})} placeholder="การตัดสินใจทางธุรกิจ" style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>กลุ่มเรียน</label>
+              <input value={form.section} onChange={e => setForm({...form, section: e.target.value})} placeholder="101" style={inp} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 24 }}>
+            <label style={lbl}>ชื่ออาจารย์</label>
+            <input value={form.teacher} onChange={e => setForm({...form, teacher: e.target.value})} placeholder="อ.สมชาย ใจดี" style={inp} />
+          </div>
 
-  const btnStyle = {
-    padding: '10px 24px',
-    border: 'none',
-    borderRadius: 12,
-    background: `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`,
-    color: '#fff',
-    fontFamily: FONT,
-    fontSize: 16,
-    cursor: 'pointer',
-    fontWeight: 600,
-  };
+          {/* Components */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: 16, color: '#0f172a' }}>📊 สัดส่วนคะแนนเก็บ</h3>
+              <div style={{
+                fontSize: 13, fontWeight: 800,
+                color: Math.abs(totalWeight - 100) < 0.5 ? '#16a34a' : '#dc2626',
+                background: Math.abs(totalWeight - 100) < 0.5 ? '#dcfce7' : '#fee2e2',
+                borderRadius: 8, padding: '4px 12px',
+              }}>
+                รวม: {totalWeight}% {Math.abs(totalWeight - 100) < 0.5 ? '✓' : '— ต้องเป็น 100%'}
+              </div>
+            </div>
+            {form.components.map((c, i) => (
+              <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr 1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <input value={c.name} onChange={e => setForm({...form, components: form.components.map((x, j) => j === i ? {...x, name: e.target.value} : x)})} placeholder="ชื่อชิ้นงาน" style={inp} />
+                <input type="number" value={c.weight} onChange={e => setForm({...form, components: form.components.map((x, j) => j === i ? {...x, weight: Number(e.target.value) || 0} : x)})} placeholder="%" style={{...inp, textAlign: 'center'}} />
+                <input type="number" value={c.maxScore} onChange={e => setForm({...form, components: form.components.map((x, j) => j === i ? {...x, maxScore: Number(e.target.value) || 100} : x)})} placeholder="เต็ม" style={{...inp, textAlign: 'center'}} />
+                <input type="date" value={c.deadline} onChange={e => setForm({...form, components: form.components.map((x, j) => j === i ? {...x, deadline: e.target.value} : x)})} style={inp} />
+                <button onClick={() => setForm({...form, components: form.components.filter((_, j) => j !== i)})} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '8px 10px', cursor: 'pointer', fontSize: 14 }}>🗑️</button>
+              </div>
+            ))}
+            <button onClick={() => setForm({...form, components: [...form.components, { id: 'c' + Date.now(), name: '', weight: 0, maxScore: 100, deadline: '' }]})} style={{ background: '#dbeafe', color: '#1e40af', border: '2px dashed #93c5fd', borderRadius: 10, padding: '8px 16px', cursor: 'pointer', fontWeight: 700, fontFamily: FONT, fontSize: 13 }}>+ เพิ่มงาน</button>
+          </div>
 
-  const inputStyle = {
-    padding: '10px 14px',
-    border: `2px solid ${CI.cyan}33`,
-    borderRadius: 10,
-    background: '#16163a',
-    color: '#fff',
-    fontFamily: FONT,
-    fontSize: 15,
-    outline: 'none',
-    width: '100%',
-  };
+          {/* Bonus */}
+          <div style={{ marginBottom: 24 }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#0f172a' }}>🎁 คะแนนพิเศษ <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>(บวกเพิ่มจาก 100)</span></h3>
+            {form.bonus.map((b, i) => (
+              <div key={b.id} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+                <input value={b.name} onChange={e => setForm({...form, bonus: form.bonus.map((x, j) => j === i ? {...x, name: e.target.value} : x)})} placeholder="ชื่อคะแนนพิเศษ" style={inp} />
+                <input type="number" value={b.maxScore} onChange={e => setForm({...form, bonus: form.bonus.map((x, j) => j === i ? {...x, maxScore: Number(e.target.value) || 5} : x)})} placeholder="เต็ม" style={{...inp, textAlign: 'center'}} />
+                <button onClick={() => setForm({...form, bonus: form.bonus.filter((_, j) => j !== i)})} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 8, padding: '8px 10px', cursor: 'pointer' }}>🗑️</button>
+              </div>
+            ))}
+            <button onClick={() => setForm({...form, bonus: [...form.bonus, { id: 'b' + Date.now(), name: '', maxScore: 5 }]})} style={{ background: '#fef3c7', color: '#92400e', border: '2px dashed #fbbf24', borderRadius: 10, padding: '8px 16px', cursor: 'pointer', fontWeight: 700, fontFamily: FONT, fontSize: 13 }}>+ เพิ่มคะแนนพิเศษ</button>
+          </div>
 
-  const cardStyle = {
-    background: 'rgba(255,255,255,0.04)',
-    borderRadius: 16,
-    border: '1px solid rgba(255,255,255,0.08)',
-    padding: 20,
-    marginBottom: 16,
-  };
-
-  return (
-    <div style={{ fontFamily: FONT, color: '#fff', minHeight: '100vh', padding: '24px 0' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 16px' }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <h2 style={{ fontSize: 22, margin: 0, background: `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            📊 Student Progress Tracker
-          </h2>
-          <p style={{ fontSize: 15, color: '#aaa', marginTop: 6 }}>ติดตามผลการเรียนนักศึกษาแบบครบวงจร</p>
+          <button onClick={createClass} disabled={loading || Math.abs(totalWeight - 100) >= 0.5}
+            style={{
+              width: '100%', padding: '14px', borderRadius: 12, border: 'none',
+              background: (loading || Math.abs(totalWeight - 100) >= 0.5) ? '#e2e8f0' : `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`,
+              color: (loading || Math.abs(totalWeight - 100) >= 0.5) ? '#94a3b8' : '#fff',
+              cursor: (loading || Math.abs(totalWeight - 100) >= 0.5) ? 'not-allowed' : 'pointer',
+              fontFamily: FONT, fontWeight: 800, fontSize: 17,
+              boxShadow: (loading || Math.abs(totalWeight - 100) >= 0.5) ? 'none' : `0 6px 20px ${CI.cyan}40`,
+            }}>
+            {loading ? 'กำลังสร้าง...' : '🚀 สร้างห้องเรียน'}
+          </button>
         </div>
+      </div>
+    );
+  }
 
-        {/* View tabs */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 20 }}>
-          {[{ key: 'table', label: '📋 ตารางคะแนน' }, { key: 'individual', label: '👤 รายบุคคล' }, { key: 'chart', label: '📊 กราฟเฉลี่ย' }].map(v => (
-            <button key={v.key} onClick={() => setView(v.key)}
-              style={{ ...btnStyle, fontSize: 15, padding: '8px 18px', background: view === v.key ? `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})` : 'rgba(255,255,255,0.08)', color: view === v.key ? '#fff' : '#aaa' }}>
-              {v.label}
-            </button>
+  // ════════════════════════════════════════════════════════════════════════
+  // MANAGE VIEW
+  // ════════════════════════════════════════════════════════════════════════
+  if (view === 'manage' && classData) {
+    return <ManageView
+      code={activeCode}
+      classData={classData}
+      onBack={() => { setView('list'); setActiveCode(''); setClassData(null); }}
+      onAddStudent={addStudent}
+      onRemoveStudent={removeStudent}
+      onUpdateScore={updateScore}
+      onRefresh={() => fetchClass(activeCode)}
+    />;
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // LIST VIEW (default)
+  // ════════════════════════════════════════════════════════════════════════
+  return (
+    <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto', fontFamily: FONT }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 24, color: '#0f172a' }}>📊 ระบบบันทึกคะแนนเก็บ</h2>
+          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>โปร่งใส ตรวจสอบได้ — นักศึกษาเช็กความคืบหน้าได้เอง</p>
+        </div>
+        <button onClick={() => setView('create')} style={{
+          padding: '12px 22px', borderRadius: 12, border: 'none',
+          background: `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`,
+          color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 15,
+          boxShadow: `0 4px 16px ${CI.cyan}30`,
+        }}>+ สร้างห้องเรียนใหม่</button>
+      </div>
+
+      {/* Quick join existing class by code */}
+      <div style={{ background: '#f1f5f9', borderRadius: 12, padding: 16, marginBottom: 20, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 14, color: '#475569', fontWeight: 600 }}>📥 เปิดห้องด้วย Code:</span>
+        <input id="join-code" placeholder="C12345" maxLength={10} style={{ ...inp, width: 200, textTransform: 'uppercase', fontWeight: 800, letterSpacing: 2 }} />
+        <button onClick={() => {
+          const v = document.getElementById('join-code').value.trim().toUpperCase();
+          if (v) openClass(v);
+        }} style={{ padding: '10px 18px', borderRadius: 8, border: 'none', background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700 }}>เปิด →</button>
+      </div>
+
+      {/* Saved classes */}
+      {savedClasses.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: 16, border: '2px dashed #e2e8f0' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📚</div>
+          <h3 style={{ margin: '0 0 6px', color: '#0f172a' }}>ยังไม่มีห้องเรียน</h3>
+          <p style={{ margin: 0, color: '#64748b' }}>กด "+ สร้างห้องเรียนใหม่" เพื่อเริ่ม</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+          {savedClasses.map(c => (
+            <div key={c.code} onClick={() => openClass(c.code)} style={{
+              background: '#fff', borderRadius: 14, padding: 18, border: '1px solid #e2e8f0',
+              cursor: 'pointer', transition: 'all 0.15s',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 8px 20px ${CI.cyan}25`; e.currentTarget.style.borderColor = CI.cyan; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+            >
+              <div style={{
+                display: 'inline-block', background: `${CI.cyan}15`, color: CI.cyan,
+                padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800, letterSpacing: 1,
+                marginBottom: 8,
+              }}>{c.code}</div>
+              <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#0f172a' }}>{c.courseName}</h3>
+              <div style={{ fontSize: 13, color: '#64748b' }}>{c.course} · กลุ่ม {c.section}</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 8 }}>
+                สร้าง: {new Date(c.createdAt).toLocaleDateString('th-TH')}
+              </div>
+            </div>
           ))}
         </div>
-
-        {/* Add Student & Assignment */}
-        <div style={{ ...cardStyle, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <div style={{ flex: 1, minWidth: 150 }}>
-            <label style={{ fontSize: 14, color: '#aaa', marginBottom: 4, display: 'block' }}>ชื่อนักศึกษา</label>
-            <input style={inputStyle} placeholder="ชื่อ-นามสกุล" value={newStudent.name} onChange={e => setNewStudent({ ...newStudent, name: e.target.value })} />
-          </div>
-          <div style={{ flex: 1, minWidth: 120 }}>
-            <label style={{ fontSize: 14, color: '#aaa', marginBottom: 4, display: 'block' }}>รหัสนักศึกษา</label>
-            <input style={inputStyle} placeholder="6XXXXXXXX" value={newStudent.studentId} onChange={e => setNewStudent({ ...newStudent, studentId: e.target.value })} />
-          </div>
-          <button onClick={addStudent} style={btnStyle}>+ เพิ่มนักศึกษา</button>
-          <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <label style={{ fontSize: 14, color: '#aaa', marginBottom: 4, display: 'block' }}>ชื่องาน/Assignment</label>
-            <input style={inputStyle} placeholder="เช่น Quiz 1, Midterm" value={newAssignment} onChange={e => setNewAssignment(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addAssignment()} />
-          </div>
-          <button onClick={addAssignment} style={btnStyle}>+ เพิ่มงาน</button>
-          <DownloadDropdown
-            options={[
-              { label: 'CSV', icon: '📊', ext: 'CSV', color: '#0369a1', onClick: exportCSV },
-              { label: 'Excel', icon: '📗', ext: 'XLS', color: '#16a34a', onClick: exportExcelData },
-              { label: 'PDF', icon: '📄', ext: 'PDF', color: '#dc2626', onClick: exportPDFData },
-            ]}
-          />
-        </div>
-
-        {/* Table View */}
-        {view === 'table' && (
-          <div style={{ ...cardStyle, overflowX: 'auto' }}>
-            {students.length === 0 ? (
-              <p style={{ textAlign: 'center', color: '#888', fontSize: 16, padding: 40 }}>ยังไม่มีนักศึกษา — เพิ่มด้านบนเพื่อเริ่มต้น</p>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 15 }}>
-                <thead>
-                  <tr style={{ borderBottom: `2px solid ${CI.cyan}44` }}>
-                    <th style={{ padding: '10px 8px', textAlign: 'left', color: CI.cyan, fontSize: 15 }}>รหัส</th>
-                    <th style={{ padding: '10px 8px', textAlign: 'left', color: CI.cyan, fontSize: 15 }}>ชื่อ</th>
-                    {assignments.map(a => (
-                      <th key={a.id} style={{ padding: '10px 8px', textAlign: 'center', color: CI.gold, fontSize: 14, minWidth: 80 }}>
-                        {a.name}
-                        <button onClick={() => removeAssignment(a.id)} style={{ background: 'none', border: 'none', color: '#f44', cursor: 'pointer', fontSize: 12, marginLeft: 4 }}>✕</button>
-                      </th>
-                    ))}
-                    <th style={{ padding: '10px 8px', textAlign: 'center', color: CI.magenta, fontSize: 15 }}>เฉลี่ย</th>
-                    <th style={{ padding: '10px 8px', textAlign: 'center', fontSize: 15 }}>เกรด</th>
-                    <th style={{ padding: '10px 8px', fontSize: 15 }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map(s => {
-                    const avg = getStudentAvg(s.id);
-                    return (
-                      <tr key={s.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                        <td style={{ padding: '8px', fontSize: 15 }}>{s.studentId}</td>
-                        <td style={{ padding: '8px', fontSize: 15 }}>
-                          <span style={{ cursor: 'pointer', color: CI.cyan, textDecoration: 'underline' }} onClick={() => { setSelectedStudent(s.id); setView('individual'); }}>
-                            {s.name}
-                          </span>
-                        </td>
-                        {assignments.map(a => (
-                          <td key={a.id} style={{ padding: '4px 6px', textAlign: 'center' }}>
-                            <input
-                              type="number" min="0" max="100"
-                              value={(grades[s.id] || {})[a.id] ?? ''}
-                              onChange={e => updateGrade(s.id, a.id, e.target.value)}
-                              style={{ ...inputStyle, width: 60, textAlign: 'center', padding: '6px 4px', fontSize: 15 }}
-                            />
-                          </td>
-                        ))}
-                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: 700, fontSize: 16, color: avg !== null ? (avg >= 80 ? '#4caf50' : avg >= 50 ? CI.gold : '#f44336') : '#666' }}>
-                          {avg ?? '-'}
-                        </td>
-                        <td style={{ padding: '8px', textAlign: 'center', fontWeight: 700, fontSize: 16, color: avg !== null ? (avg >= 80 ? '#4caf50' : avg >= 50 ? CI.gold : '#f44336') : '#666' }}>
-                          {avg !== null ? getLetterGrade(Number(avg)) : '-'}
-                        </td>
-                        <td style={{ padding: '8px' }}>
-                          <button onClick={() => removeStudent(s.id)} style={{ background: 'rgba(244,67,54,0.15)', border: '1px solid #f4433644', color: '#f44', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 14 }}>ลบ</button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-                {assignments.length > 0 && (
-                  <tfoot>
-                    <tr style={{ borderTop: `2px solid ${CI.magenta}44` }}>
-                      <td colSpan={2} style={{ padding: '10px 8px', fontWeight: 700, color: CI.magenta, fontSize: 15 }}>เฉลี่ยรายงาน</td>
-                      {assignments.map(a => (
-                        <td key={a.id} style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 700, color: CI.gold, fontSize: 15 }}>
-                          {getAssignmentAvg(a.id) ?? '-'}
-                        </td>
-                      ))}
-                      <td colSpan={2}></td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                )}
-              </table>
-            )}
-          </div>
-        )}
-
-        {/* Individual View */}
-        {view === 'individual' && (
-          <div style={cardStyle}>
-            {!selectedStudentData ? (
-              <div>
-                <p style={{ fontSize: 16, color: '#aaa', marginBottom: 12 }}>เลือกนักศึกษาเพื่อดูผลการเรียน:</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {students.map(s => (
-                    <button key={s.id} onClick={() => setSelectedStudent(s.id)}
-                      style={{ ...btnStyle, fontSize: 15, padding: '8px 16px', background: 'rgba(255,255,255,0.08)' }}>
-                      {s.studentId} — {s.name}
-                    </button>
-                  ))}
-                </div>
-                {students.length === 0 && <p style={{ color: '#666', fontSize: 15, marginTop: 12 }}>ยังไม่มีนักศึกษา</p>}
-              </div>
-            ) : (
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <div>
-                    <h3 style={{ fontSize: 20, margin: 0, color: CI.cyan }}>{selectedStudentData.name}</h3>
-                    <p style={{ fontSize: 15, color: '#aaa', margin: '4px 0 0' }}>รหัส: {selectedStudentData.studentId}</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setSelectedStudent(null)} style={{ ...btnStyle, fontSize: 14, padding: '6px 14px', background: 'rgba(255,255,255,0.1)' }}>← กลับ</button>
-                  </div>
-                </div>
-
-                {/* Student Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 20 }}>
-                  {(() => {
-                    const avg = getStudentAvg(selectedStudent);
-                    const sg = grades[selectedStudent] || {};
-                    const graded = assignments.filter(a => sg[a.id] !== undefined && sg[a.id] !== '');
-                    const highest = graded.length > 0 ? Math.max(...graded.map(a => Number(sg[a.id]))) : null;
-                    const lowest = graded.length > 0 ? Math.min(...graded.map(a => Number(sg[a.id]))) : null;
-                    return [
-                      { label: 'เฉลี่ย', value: avg ?? '-', color: CI.cyan },
-                      { label: 'เกรด', value: avg ? getLetterGrade(Number(avg)) : '-', color: CI.magenta },
-                      { label: 'สูงสุด', value: highest ?? '-', color: '#4caf50' },
-                      { label: 'ต่ำสุด', value: lowest ?? '-', color: CI.gold },
-                      { label: 'งานที่ส่ง', value: `${graded.length}/${assignments.length}`, color: CI.purple },
-                    ].map((stat, i) => (
-                      <div key={i} style={{ background: `${stat.color}11`, borderRadius: 12, padding: 14, textAlign: 'center', border: `1px solid ${stat.color}33` }}>
-                        <div style={{ fontSize: 22, fontWeight: 700, color: stat.color }}>{stat.value}</div>
-                        <div style={{ fontSize: 14, color: '#aaa', marginTop: 4 }}>{stat.label}</div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-
-                {/* Grade Trend Chart */}
-                <h4 style={{ fontSize: 17, color: '#fff', marginBottom: 12 }}>📈 แนวโน้มคะแนน</h4>
-                {assignments.length === 0 ? (
-                  <p style={{ color: '#888', fontSize: 15 }}>ยังไม่มีงานที่กำหนด</p>
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 200, padding: '0 10px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                    {assignments.map(a => {
-                      const score = (grades[selectedStudent] || {})[a.id];
-                      const hasScore = score !== undefined && score !== '';
-                      const h = hasScore ? (Number(score) / 100) * 180 : 0;
-                      const color = hasScore ? (score >= 80 ? '#4caf50' : score >= 50 ? CI.gold : '#f44336') : '#333';
-                      return (
-                        <div key={a.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                          {hasScore && <span style={{ fontSize: 14, color: '#fff', marginBottom: 4 }}>{score}</span>}
-                          <div style={{ width: '100%', maxWidth: 48, height: h, background: `linear-gradient(180deg, ${color}, ${color}88)`, borderRadius: '6px 6px 0 0', transition: 'height 0.3s' }} />
-                          <span style={{ fontSize: 12, color: '#aaa', marginTop: 6, textAlign: 'center', wordBreak: 'break-all' }}>{a.name}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Class Average Chart */}
-        {view === 'chart' && (
-          <div style={cardStyle}>
-            <h3 style={{ fontSize: 18, color: CI.cyan, marginBottom: 16 }}>📊 เฉลี่ยคะแนนรวมของชั้นเรียน (แต่ละงาน)</h3>
-            {assignments.length === 0 ? (
-              <p style={{ color: '#888', fontSize: 15, textAlign: 'center', padding: 40 }}>ยังไม่มีงานที่กำหนด</p>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {assignments.map(a => {
-                  const avg = getAssignmentAvg(a.id);
-                  const w = avg ? `${avg}%` : '0%';
-                  const color = avg ? (avg >= 80 ? '#4caf50' : avg >= 50 ? CI.gold : '#f44336') : '#333';
-                  return (
-                    <div key={a.id}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15, marginBottom: 4 }}>
-                        <span>{a.name}</span>
-                        <span style={{ color, fontWeight: 700 }}>{avg ?? 'N/A'}</span>
-                      </div>
-                      <div style={{ height: 28, background: 'rgba(255,255,255,0.06)', borderRadius: 8, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: w, background: `linear-gradient(90deg, ${CI.cyan}, ${color})`, borderRadius: 8, transition: 'width 0.4s' }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Per-student averages */}
-            <h3 style={{ fontSize: 18, color: CI.magenta, margin: '28px 0 16px' }}>👥 เฉลี่ยรายบุคคล</h3>
-            {students.length === 0 ? (
-              <p style={{ color: '#888', fontSize: 15, textAlign: 'center' }}>ยังไม่มีนักศึกษา</p>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 220, padding: '0 10px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                {students.map(s => {
-                  const avg = getStudentAvg(s.id);
-                  const hasAvg = avg !== null;
-                  const h = hasAvg ? (Number(avg) / 100) * 200 : 0;
-                  const color = hasAvg ? (avg >= 80 ? '#4caf50' : avg >= 50 ? CI.gold : '#f44336') : '#333';
-                  return (
-                    <div key={s.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', maxWidth: 60 }}>
-                      {hasAvg && <span style={{ fontSize: 14, color: '#fff', marginBottom: 4, fontWeight: 600 }}>{avg}</span>}
-                      <div style={{ width: '100%', height: h, background: `linear-gradient(180deg, ${color}, ${color}66)`, borderRadius: '6px 6px 0 0', transition: 'height 0.3s' }} />
-                      <span style={{ fontSize: 12, color: '#aaa', marginTop: 6, textAlign: 'center', wordBreak: 'break-all' }}>{s.name.split(' ')[0]}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// ManageView — show roster, gradebook, audit log
+// ════════════════════════════════════════════════════════════════════════════
+function ManageView({ code, classData, onBack, onAddStudent, onRemoveStudent, onUpdateScore, onRefresh }) {
+  const [tab, setTab] = useState('grades'); // grades | roster | audit | share
+  const [newStu, setNewStu] = useState({ studentId: '', firstName: '', lastName: '' });
+  const qrRef = useRef(null);
+
+  const studentUrl = typeof window !== 'undefined' ? `${window.location.origin}/student/progress?code=${code}` : '';
+
+  useEffect(() => {
+    if (tab === 'share' && qrRef.current && studentUrl) {
+      QRCode.toCanvas(qrRef.current, studentUrl, { width: 220, margin: 2 });
+    }
+  }, [tab, studentUrl]);
+
+  const submittedCount = (compId) =>
+    (classData.students || []).filter(s => s.checklist?.[compId]?.submitted).length;
+
+  return (
+    <div style={{ padding: 20, maxWidth: 1300, margin: '0 auto', fontFamily: FONT }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <button onClick={onBack} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontFamily: FONT, color: '#64748b' }}>← กลับ</button>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700, letterSpacing: 1 }}>CODE: {code}</div>
+          <h2 style={{ margin: '2px 0 0', fontSize: 22, color: '#0f172a' }}>{classData.courseName}</h2>
+          <div style={{ fontSize: 13, color: '#64748b' }}>{classData.course} · กลุ่ม {classData.section} · {classData.teacher}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onRefresh} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontFamily: FONT, color: '#475569', fontSize: 13 }}>🔄 รีเฟรช</button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 4, background: '#f1f5f9', borderRadius: 12, padding: 5, marginBottom: 18, flexWrap: 'wrap' }}>
+        {[
+          { id: 'grades', icon: '📋', label: 'กรอกคะแนน' },
+          { id: 'roster', icon: '👥', label: 'รายชื่อ' },
+          { id: 'share',  icon: '📲', label: 'แชร์ให้นักศึกษา' },
+          { id: 'audit',  icon: '🔍', label: 'ประวัติ (โปร่งใส)' },
+        ].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{
+            flex: 1, minWidth: 140, padding: '10px 14px', borderRadius: 9, border: 'none',
+            background: tab === t.id ? `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})` : 'transparent',
+            color: tab === t.id ? '#fff' : '#475569',
+            cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
+            boxShadow: tab === t.id ? `0 3px 10px ${CI.purple}30` : 'none',
+          }}>{t.icon} {t.label}</button>
+        ))}
+      </div>
+
+      {/* TAB: GRADES */}
+      {tab === 'grades' && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: 16, overflowX: 'auto' }}>
+          {(classData.students || []).length === 0 ? (
+            <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+              ยังไม่มีนักศึกษา — แชร์ Code <strong style={{ color: CI.cyan }}>{code}</strong> ให้นักศึกษาเข้าได้
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ ...thStyle, position: 'sticky', left: 0, background: '#f8fafc', zIndex: 2, minWidth: 200 }}>นักศึกษา</th>
+                  {(classData.components || []).map(c => (
+                    <th key={c.id} style={thStyle}>
+                      <div style={{ fontSize: 12, fontWeight: 800 }}>{c.name}</div>
+                      <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500, marginTop: 2 }}>
+                        {c.weight}% • เต็ม {c.maxScore}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#16a34a', fontWeight: 700, marginTop: 2 }}>
+                        ส่งแล้ว {submittedCount(c.id)}/{(classData.students || []).length}
+                      </div>
+                    </th>
+                  ))}
+                  {(classData.bonus || []).map(b => (
+                    <th key={b.id} style={{ ...thStyle, background: '#fef9c3' }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: '#92400e' }}>🎁 {b.name}</div>
+                      <div style={{ fontSize: 10, color: '#a16207', fontWeight: 500 }}>+{b.maxScore} bonus</div>
+                    </th>
+                  ))}
+                  <th style={{ ...thStyle, minWidth: 90 }}>รวม</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(classData.students || []).map(stu => (
+                  <StudentRow key={stu.studentId}
+                    stu={stu}
+                    components={classData.components || []}
+                    bonus={classData.bonus || []}
+                    onUpdateScore={onUpdateScore}
+                    onRemove={() => onRemoveStudent(stu.studentId)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* TAB: ROSTER */}
+      {tab === 'roster' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: 18 }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#0f172a' }}>+ เพิ่มนักศึกษา (เอง)</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input placeholder="รหัสนักศึกษา *" value={newStu.studentId} onChange={e => setNewStu({...newStu, studentId: e.target.value})} style={inp} />
+              <input placeholder="ชื่อ *" value={newStu.firstName} onChange={e => setNewStu({...newStu, firstName: e.target.value})} style={inp} />
+              <input placeholder="นามสกุล" value={newStu.lastName} onChange={e => setNewStu({...newStu, lastName: e.target.value})} style={inp} />
+              <button onClick={() => {
+                if (!newStu.studentId || !newStu.firstName) { toast.error('กรอกรหัสและชื่อ'); return; }
+                onAddStudent(newStu.studentId, newStu.firstName, newStu.lastName);
+                setNewStu({ studentId: '', firstName: '', lastName: '' });
+              }} style={{ padding: '10px', borderRadius: 8, border: 'none', background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700 }}>+ เพิ่ม</button>
+            </div>
+            <div style={{ marginTop: 14, fontSize: 12, color: '#64748b', background: '#f0fdf4', borderLeft: '3px solid #22c55e', padding: '10px 12px', borderRadius: 6 }}>
+              💡 หรือให้นักศึกษาสแกน QR ในแท็บ "แชร์" เพื่อเข้าร่วมเองได้
+            </div>
+          </div>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: 18 }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#0f172a' }}>👥 รายชื่อ ({(classData.students || []).length} คน)</h3>
+            {(classData.students || []).length === 0 ? (
+              <div style={{ color: '#94a3b8', textAlign: 'center', padding: 30 }}>ยังไม่มีนักศึกษา</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {classData.students.map(s => (
+                  <div key={s.studentId} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 12px', borderRadius: 8,
+                    background: s.selfEnrolled ? '#f0fdf4' : '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                  }}>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#475569', minWidth: 90 }}>{s.studentId}</span>
+                    <span style={{ flex: 1, color: '#0f172a', fontWeight: 600 }}>{s.firstName} {s.lastName}</span>
+                    {s.selfEnrolled && <span style={{ fontSize: 10, background: '#dcfce7', color: '#166534', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>เข้าเอง</span>}
+                    <button onClick={() => onRemoveStudent(s.studentId)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: 16 }}>🗑️</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: SHARE */}
+      {tab === 'share' && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: 24, textAlign: 'center' }}>
+          <h3 style={{ margin: '0 0 6px', fontSize: 18, color: '#0f172a' }}>📲 แชร์ให้นักศึกษา</h3>
+          <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 14 }}>นักศึกษาสแกน QR หรือใช้ Code นี้เพื่อเข้าระบบเช็กคะแนนของตัวเอง</p>
+
+          <div style={{ display: 'inline-block', padding: 16, background: '#f8fafc', borderRadius: 14, border: '1px solid #e2e8f0', marginBottom: 20 }}>
+            <canvas ref={qrRef} />
+          </div>
+
+          <div style={{ background: `${CI.cyan}10`, border: `2px solid ${CI.cyan}`, borderRadius: 12, padding: '14px 28px', display: 'inline-block', marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: '#475569', marginBottom: 4 }}>รหัสห้อง</div>
+            <div style={{ fontSize: 32, fontWeight: 900, color: CI.cyan, letterSpacing: 6, fontFamily: 'monospace' }}>{code}</div>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <button onClick={() => { navigator.clipboard.writeText(studentUrl); toast.success('คัดลอกลิงก์แล้ว'); }}
+              style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontFamily: FONT, fontSize: 13, color: '#475569' }}>
+              🔗 คัดลอกลิงก์
+            </button>
+          </div>
+          <div style={{ fontSize: 12, color: '#64748b', maxWidth: 500, margin: '0 auto', lineHeight: 1.6, background: '#fef9c3', padding: '12px 16px', borderRadius: 8 }}>
+            💡 นักศึกษาแค่กรอก <strong>รหัส + ชื่อ + นามสกุล</strong> ก็เข้าระบบได้ทันที — ไม่ต้องสมัครสมาชิก
+          </div>
+        </div>
+      )}
+
+      {/* TAB: AUDIT */}
+      {tab === 'audit' && (
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #e2e8f0', padding: 18 }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: 16, color: '#0f172a' }}>🔍 ประวัติการแก้ไข ({(classData.auditLog || []).length} รายการ)</h3>
+          <p style={{ margin: '0 0 14px', color: '#64748b', fontSize: 13 }}>ทุกการเปลี่ยนแปลงคะแนน + การเช็กลิสต์ของนักศึกษา ถูกบันทึกไว้เพื่อความโปร่งใส</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 500, overflowY: 'auto' }}>
+            {[...(classData.auditLog || [])].reverse().map((log, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 10, padding: '8px 12px', borderRadius: 8,
+                background: log.type === 'update_score' ? '#eff6ff' : log.type === 'student_check' ? '#f0fdf4' : '#f8fafc',
+                fontSize: 13, alignItems: 'flex-start',
+              }}>
+                <span style={{ minWidth: 130, fontSize: 11, color: '#94a3b8' }}>
+                  {new Date(log.at).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })}
+                </span>
+                <span style={{ minWidth: 80, fontSize: 11, fontWeight: 700, color: log.by === 'teacher' ? CI.purple : '#16a34a' }}>
+                  {log.by === 'teacher' ? '👨‍🏫 อาจารย์' : `👨‍🎓 ${log.by}`}
+                </span>
+                <span style={{ flex: 1, color: '#0f172a' }}>{log.msg}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const thStyle = {
+  padding: '10px 8px', textAlign: 'center',
+  fontSize: 12, fontWeight: 700, color: '#475569',
+  borderBottom: '1px solid #e2e8f0',
+};
+
+// Single student row with editable scores
+function StudentRow({ stu, components, bonus, onUpdateScore, onRemove }) {
+  // Calculate total
+  let earned = 0, possible = 0;
+  for (const c of components) {
+    const sc = stu.scores?.[c.id];
+    if (sc != null) {
+      earned += (sc / (c.maxScore || 100)) * c.weight;
+      possible += c.weight;
+    }
+  }
+  const bonusTotal = Object.values(stu.bonus || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+  const finalScore = Math.round((earned + bonusTotal) * 10) / 10;
+
+  return (
+    <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+      <td style={{ ...tdStyle, position: 'sticky', left: 0, background: '#fff', textAlign: 'left' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{stu.firstName} {stu.lastName}</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace' }}>{stu.studentId}</div>
+          </div>
+        </div>
+      </td>
+      {components.map(c => {
+        const submitted = stu.checklist?.[c.id]?.submitted;
+        return (
+          <td key={c.id} style={tdStyle}>
+            <div style={{ position: 'relative', display: 'inline-block' }}>
+              <input
+                type="number"
+                min="0"
+                max={c.maxScore}
+                step="0.5"
+                value={stu.scores?.[c.id] ?? ''}
+                onChange={e => onUpdateScore(stu.studentId, c.id, e.target.value === '' ? null : Number(e.target.value), false)}
+                placeholder="-"
+                style={{
+                  width: 60, padding: '6px', borderRadius: 6,
+                  border: `2px solid ${submitted ? '#22c55e' : '#e2e8f0'}`,
+                  background: submitted ? '#f0fdf4' : '#fff',
+                  textAlign: 'center', fontFamily: FONT, fontSize: 13, outline: 'none',
+                }} />
+              {submitted && <span style={{ position: 'absolute', top: -6, right: -6, fontSize: 12, background: '#22c55e', color: '#fff', borderRadius: '50%', width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9 }}>✓</span>}
+            </div>
+          </td>
+        );
+      })}
+      {bonus.map(b => (
+        <td key={b.id} style={{ ...tdStyle, background: '#fffbeb' }}>
+          <input
+            type="number"
+            min="0"
+            max={b.maxScore}
+            value={stu.bonus?.[b.id] ?? ''}
+            onChange={e => onUpdateScore(stu.studentId, b.id, e.target.value === '' ? null : Number(e.target.value), true)}
+            placeholder="-"
+            style={{ width: 50, padding: '6px', borderRadius: 6, border: '2px solid #fbbf24', background: '#fffbeb', textAlign: 'center', fontFamily: FONT, fontSize: 13, outline: 'none' }} />
+        </td>
+      ))}
+      <td style={{ ...tdStyle, fontWeight: 800, fontSize: 14, color: finalScore >= 50 ? '#16a34a' : '#dc2626' }}>
+        {finalScore}
+      </td>
+    </tr>
+  );
+}
+
+const tdStyle = {
+  padding: '10px 8px', textAlign: 'center',
+  borderBottom: '1px solid #f1f5f9',
+};
