@@ -97,7 +97,7 @@ function buildMenu(lang) {
       groups: [
         { labelKey: 'group_attendance', items: [
           { id: 'attendance-tracker',   labelKey: 'tool_attendance_gps',  icon: '📍', phase: 0 },
-          { id: 'stamp-card',           labelKey: 'tool_stamp_card',      icon: '🎴', phase: 0 },
+          { id: 'stamp-card',           labelKey: 'tool_stamp_card',      icon: '🃏', phase: 0 },
           { id: 'student-progress',     labelKey: 'tool_progress',        icon: '📈', phase: 0 },
         ]},
       ],
@@ -454,30 +454,45 @@ function BusSplashScreen({ onFinish }) {
         </svg>
       </div>
 
-      {/* ===== Scattered Trees on the ground ===== */}
+      {/* ===== Scattered Trees on the ground (varied depth + spread) ===== */}
       {[
-        { left:'2%',  bottom:'4%',  size:42, emoji:'🌲' },
-        { left:'8%',  bottom:'2%',  size:32, emoji:'🌳' },
-        { left:'14%', bottom:'5%',  size:38, emoji:'🌲' },
-        { left:'20%', bottom:'2.5%',size:28, emoji:'🌳' },
-        { left:'26%', bottom:'4.5%',size:36, emoji:'🌲' },
-        { left:'33%', bottom:'2%',  size:26, emoji:'🌳' },
-        { left:'40%', bottom:'5%',  size:34, emoji:'🌲' },
-        { left:'60%', bottom:'3%',  size:30, emoji:'🌳' },
-        { left:'67%', bottom:'5.5%',size:40, emoji:'🌲' },
-        { left:'74%', bottom:'2.5%',size:30, emoji:'🌳' },
-        { left:'81%', bottom:'4.5%',size:42, emoji:'🌲' },
-        { left:'87%', bottom:'2%',  size:28, emoji:'🌳' },
-        { left:'93%', bottom:'5%',  size:36, emoji:'🌲' },
-        { left:'97%', bottom:'2.5%',size:30, emoji:'🌳' },
+        // Far layer (smaller, lighter, lower opacity — depth illusion)
+        { left:'4%',  bottom:'6%',   size:28, emoji:'🌲', op:0.55, far:true },
+        { left:'17%', bottom:'7%',   size:24, emoji:'🌳', op:0.5,  far:true },
+        { left:'30%', bottom:'6.5%', size:26, emoji:'🌲', op:0.55, far:true },
+        { left:'44%', bottom:'7%',   size:24, emoji:'🌳', op:0.5,  far:true },
+        { left:'58%', bottom:'6%',   size:28, emoji:'🌲', op:0.55, far:true },
+        { left:'71%', bottom:'7%',   size:24, emoji:'🌳', op:0.5,  far:true },
+        { left:'84%', bottom:'6.5%', size:26, emoji:'🌲', op:0.55, far:true },
+        { left:'95%', bottom:'7%',   size:24, emoji:'🌳', op:0.5,  far:true },
+
+        // Mid layer
+        { left:'1%',  bottom:'3%',   size:38, emoji:'🌲', op:0.85 },
+        { left:'10%', bottom:'2%',   size:34, emoji:'🌳', op:0.9  },
+        { left:'22%', bottom:'3.5%', size:42, emoji:'🌲', op:0.9  },
+        { left:'37%', bottom:'2.5%', size:32, emoji:'🌳', op:0.85 },
+        { left:'52%', bottom:'3%',   size:40, emoji:'🌲', op:0.9  },
+        { left:'64%', bottom:'2.5%', size:36, emoji:'🌳', op:0.85 },
+        { left:'77%', bottom:'3.5%', size:44, emoji:'🌲', op:0.9  },
+        { left:'90%', bottom:'2%',   size:34, emoji:'🌳', op:0.85 },
+
+        // Near layer (biggest, most prominent)
+        { left:'7%',  bottom:'0.5%', size:54, emoji:'🌲', op:1 },
+        { left:'27%', bottom:'1%',   size:48, emoji:'🌳', op:1 },
+        { left:'47%', bottom:'0.5%', size:56, emoji:'🌲', op:1 },
+        { left:'68%', bottom:'1%',   size:50, emoji:'🌳', op:1 },
+        { left:'88%', bottom:'0.5%', size:54, emoji:'🌲', op:1 },
       ].map((tr, i) => (
         <div key={`tree${i}`} style={{
           position:'absolute', left:tr.left, bottom:tr.bottom,
-          fontSize: tr.size, zIndex:2,
+          fontSize: tr.size, zIndex: tr.far ? 1 : 4,
           transform:'translateX(-50%)',
+          opacity: tr.op,
           animation:`treeSway ${3 + (i%3)*0.6}s ease-in-out infinite`,
-          animationDelay: `${i*0.2}s`,
-          filter:'drop-shadow(0 2px 4px rgba(50,80,40,0.18))',
+          animationDelay: `${i*0.18}s`,
+          filter: tr.far
+            ? 'drop-shadow(0 1px 2px rgba(50,80,40,0.1)) blur(0.4px) saturate(0.7)'
+            : 'drop-shadow(0 3px 6px rgba(50,80,40,0.22))',
         }}>{tr.emoji}</div>
       ))}
 

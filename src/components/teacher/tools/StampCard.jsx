@@ -86,6 +86,48 @@ export default function StampCard() {
     }
   };
 
+  // Recreate a class on the server using locally cached info
+  // (used when the original code is lost from the server)
+  const recreateMissingClass = async (oldCode) => {
+    const cached = savedClasses.find(c => c.code === oldCode);
+    if (!cached) {
+      alert('ไม่มีข้อมูลห้องเดิมในเครื่อง — กรุณาสร้างใหม่');
+      return;
+    }
+    if (!confirm(`สร้างห้องใหม่ด้วยข้อมูลเดิม:\n• ${cached.courseName}\n• ${cached.course} กลุ่ม ${cached.section || '1'}\n• ธีม ${cached.theme}\n\nรหัสเก่า ${oldCode} จะถูกลบ — รหัสใหม่จะถูกสร้างให้`)) return;
+
+    try {
+      const res = await fetch('/api/teacher/stampcard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create',
+          course: cached.course,
+          courseName: cached.courseName,
+          section: cached.section || '1',
+          teacher: cached.teacher || '',
+          theme: cached.theme || 'space',
+          totalSessions: cached.totalSessions || 15,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      // Remove old code from local list, add new one
+      const updated = [
+        { ...cached, code: data.code, createdAt: Date.now() },
+        ...savedClasses.filter(c => c.code !== oldCode),
+      ];
+      setSavedClasses(updated); saveCodes(updated);
+      setActiveCode(data.code);
+      setClassData(data.class);
+      setFetchError(null);
+      alert(`✅ สร้างห้องใหม่สำเร็จ! รหัสใหม่: ${data.code}\n\nหมายเหตุ: นักศึกษาที่เคยเข้าห้องเก่า (${oldCode}) ต้องเข้ามาใหม่ด้วยรหัสนี้`);
+    } catch (e) {
+      alert(`สร้างไม่สำเร็จ: ${e.message}`);
+    }
+  };
+
   // Render student QR for active session
   useEffect(() => {
     if (!classData?.activeSession || !qrRef.current) return;
@@ -111,7 +153,14 @@ export default function StampCard() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      const updated = [{ code: data.code, course: form.course, courseName: form.courseName, theme: form.theme, createdAt: Date.now() }, ...savedClasses];
+      // Save FULL config so we can recreate later if server loses the class
+      const updated = [{
+        code: data.code,
+        course: form.course, courseName: form.courseName,
+        section: form.section, teacher: form.teacher,
+        theme: form.theme, totalSessions: form.totalSessions,
+        createdAt: Date.now(),
+      }, ...savedClasses];
       setSavedClasses(updated); saveCodes(updated);
       setActiveCode(data.code); setClassData(data.class); setView('manage');
       toast.success(`สร้าง ${data.code} แล้ว!`);
@@ -203,29 +252,60 @@ export default function StampCard() {
       <div style={{ padding: 40, maxWidth: 700, margin: '0 auto', fontFamily: FONT, textAlign: 'center' }}>
         <button onClick={() => { setView('list'); setActiveCode(''); setFetchError(null); }} style={{ marginBottom: 24, padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', color: '#64748b', fontFamily: FONT }}>← กลับ</button>
         {fetchError ? (
-          <div style={{
-            background: '#fff', borderRadius: 16, padding: '40px 24px',
-            border: '2px solid #fecaca',
-            boxShadow: '0 4px 16px rgba(239,68,68,0.1)',
-          }}>
-            <div style={{ fontSize: 56, marginBottom: 14 }}>⚠️</div>
-            <h2 style={{ margin: '0 0 8px', color: '#991b1b', fontSize: 20 }}>เปิดห้อง <span style={{ fontFamily:'monospace', color:'#dc2626' }}>{activeCode}</span> ไม่ได้</h2>
-            <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: 14 }}>{fetchError}</p>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <button onClick={() => { setFetchError(null); fetchClass(); }} style={{
-                padding: '10px 20px', borderRadius: 10, border: 'none',
-                background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
-              }}>🔄 ลองใหม่</button>
-              <button onClick={() => removeFromLibrary(activeCode)} style={{
-                padding: '10px 20px', borderRadius: 10, border: '1px solid #fecaca',
-                background: '#fff', color: '#dc2626', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
-              }}>🗑️ ลบออกจากรายการ</button>
-              <button onClick={() => { setView('list'); setActiveCode(''); setFetchError(null); }} style={{
-                padding: '10px 20px', borderRadius: 10, border: '1px solid #e2e8f0',
-                background: '#fff', color: '#475569', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
-              }}>← กลับ</button>
-            </div>
-          </div>
+          (() => {
+            const cached = savedClasses.find(c => c.code === activeCode);
+            const canRecreate = cached && cached.courseName;
+            return (
+              <div style={{
+                background: '#fff', borderRadius: 16, padding: '36px 28px',
+                border: '2px solid #fecaca',
+                boxShadow: '0 4px 16px rgba(239,68,68,0.1)',
+                textAlign: 'left',
+              }}>
+                <div style={{ fontSize: 56, marginBottom: 14, textAlign: 'center' }}>😕</div>
+                <h2 style={{ margin: '0 0 8px', color: '#991b1b', fontSize: 20, textAlign: 'center' }}>
+                  ห้อง <span style={{ fontFamily:'monospace', color:'#dc2626' }}>{activeCode}</span> หายไปจากเซิร์ฟเวอร์
+                </h2>
+                <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 13, textAlign: 'center', lineHeight: 1.6 }}>
+                  เกิดจากเซิร์ฟเวอร์ขัดข้องชั่วคราวตอนสร้างห้อง · ข้อมูลในเครื่องคุณยังอยู่
+                </p>
+
+                {canRecreate && (
+                  <div style={{ background:'#f0fdf4', border:'1px solid #86efac', borderRadius:12, padding:'14px 16px', marginBottom: 16 }}>
+                    <div style={{ fontSize: 12, color: '#166534', fontWeight: 700, marginBottom: 6 }}>📋 ข้อมูลที่เก็บไว้:</div>
+                    <div style={{ fontSize: 13, color: '#0f172a', lineHeight: 1.7 }}>
+                      <div><strong>วิชา:</strong> {cached.courseName} ({cached.course})</div>
+                      <div><strong>กลุ่ม:</strong> {cached.section || '1'} · <strong>ครู:</strong> {cached.teacher || '—'}</div>
+                      <div><strong>ธีม:</strong> {cached.theme} · <strong>คาบ:</strong> {cached.totalSessions || 15}</div>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {canRecreate && (
+                    <button onClick={() => recreateMissingClass(activeCode)} style={{
+                      padding: '12px 22px', borderRadius: 10, border: 'none',
+                      background: 'linear-gradient(135deg, #16a34a, #22c55e)', color: '#fff',
+                      cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 14,
+                      boxShadow: '0 4px 14px rgba(34,197,94,0.4)',
+                    }}>✨ สร้างใหม่ด้วยข้อมูลเดิม</button>
+                  )}
+                  <button onClick={() => { setFetchError(null); fetchClass(); }} style={{
+                    padding: '12px 20px', borderRadius: 10, border: 'none',
+                    background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
+                  }}>🔄 ลองใหม่</button>
+                  <button onClick={() => removeFromLibrary(activeCode)} style={{
+                    padding: '12px 20px', borderRadius: 10, border: '1px solid #fecaca',
+                    background: '#fff', color: '#dc2626', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
+                  }}>🗑️ ลบออกจากรายการ</button>
+                </div>
+
+                <div style={{ marginTop: 16, padding: '10px 14px', background:'#fffbeb', borderRadius:8, fontSize: 12, color: '#92400e', textAlign: 'center' }}>
+                  💡 <strong>"สร้างใหม่ด้วยข้อมูลเดิม"</strong> จะคงค่า course/theme/sessions ไว้ — แต่จะได้ <strong>รหัสใหม่</strong> เพราะรหัสเก่าใช้ไม่ได้แล้ว
+                </div>
+              </div>
+            );
+          })()
         ) : (
           <div style={{
             background: '#fff', borderRadius: 16, padding: '60px 24px',
@@ -386,7 +466,7 @@ export default function StampCard() {
     <div style={{ padding: 24, maxWidth: 1100, margin: '0 auto', fontFamily: FONT }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 26, color: '#0f172a', fontWeight: 900 }}>🎫 Class Pass+ <span style={{ fontSize: 18, color: '#64748b', fontWeight: 600 }}>· การ์ดสะสมคะแนนเข้าเรียน</span></h2>
+          <h2 style={{ margin: 0, fontSize: 26, color: '#0f172a', fontWeight: 900 }}>🃏 Class Pass+ <span style={{ fontSize: 18, color: '#64748b', fontWeight: 600 }}>· การ์ดสะสมคะแนนเข้าเรียน</span></h2>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 14 }}>สแกนเข้าเรียน · สะสมตรา · ปลด badge — เปลี่ยนการเช็กชื่อให้นักศึกษาตื่นเต้นทุกคาบ</p>
         </div>
         <button onClick={() => setView('create')} style={{
