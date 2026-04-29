@@ -12,11 +12,12 @@ const GOLD      = '#ffc107';
 const SURFACE   = '#16163a';
 const SURFACE2  = '#1e1e4a';
 
+// Neon palette — vibrant and glowing
 const ANSWER_CFG = [
-  { color: '#e21b3c', light: '#ff4d6a', icon: '▲', label: 'A' },
-  { color: '#1368ce', light: '#3a8ee6', icon: '◆', label: 'B' },
-  { color: '#d89e00', light: '#ffc107', icon: '●', label: 'C' },
-  { color: '#26890c', light: '#36c410', icon: '■', label: 'D' },
+  { color: '#ff1744', light: '#ff5277', glow: '#ff1744', icon: '▲', label: 'A' }, // neon red/pink
+  { color: '#00e5ff', light: '#7df9ff', glow: '#00e5ff', icon: '◆', label: 'B' }, // neon cyan
+  { color: '#ffea00', light: '#fff176', glow: '#ffea00', icon: '●', label: 'C' }, // neon yellow
+  { color: '#00e676', light: '#69f0ae', glow: '#00e676', icon: '■', label: 'D' }, // neon green
 ];
 
 const DEFAULT_Q = () => ({
@@ -192,6 +193,7 @@ const GLOBAL_CSS = `
   @keyframes buss-count-pop   { 0%{transform:scale(0)} 70%{transform:scale(1.25)} 100%{transform:scale(1)} }
   @keyframes buss-star-spin   { 0%{transform:rotate(0deg) scale(1)} 50%{transform:rotate(180deg) scale(1.3)} 100%{transform:rotate(360deg) scale(1)} }
   @keyframes buss-bounce-in   { 0%{transform:translateY(40px);opacity:0} 60%{transform:translateY(-8px)} 100%{transform:translateY(0);opacity:1} }
+  @keyframes spin             { to{transform:rotate(360deg)} }
 `;
 
 // ── Main component ────────────────────────────────────────────────────────────
@@ -204,7 +206,54 @@ export default function BusSanookGame() {
   const [importing,  setImporting]  = useState(false);
   const [importText, setImportText] = useState('');
   const [importErr,  setImportErr]  = useState('');
-  const [importTab,  setImportTab]  = useState('text'); // 'text' | 'sheet'
+  const [importTab,  setImportTab]  = useState('ai');  // 'ai' | 'text' | 'sheet'
+
+  // AI generate state
+  const [aiTopic,    setAiTopic]    = useState('');
+  const [aiCount,    setAiCount]    = useState(10);
+  const [aiDiff,     setAiDiff]     = useState('ปานกลาง');
+  const [aiLoading,  setAiLoading]  = useState(false);
+
+  const aiGenerateBusSanook = async () => {
+    if (!aiTopic.trim()) { setImportErr('กรุณาใส่หัวข้อ/เนื้อหา'); return; }
+    setAiLoading(true);
+    setImportErr('');
+    try {
+      const res = await fetch('/api/teacher/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'quiz_generator',
+          payload: {
+            content: aiTopic,
+            numQuestions: aiCount,
+            difficulty: aiDiff,
+            questionTypes: ['MC'],
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI ตอบกลับผิดปกติ');
+      let raw = (data.result || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      const parsed = JSON.parse(raw);
+      const ansLetterToIdx = { A:0, B:1, C:2, D:3 };
+      const items = (parsed.questions || [])
+        .filter(q => q.type === 'MC' && q.options?.length === 4)
+        .map(q => ({
+          q: q.text || '',
+          choices: q.options || ['','','',''],
+          answer: ansLetterToIdx[(q.answer || 'A').toUpperCase()] ?? 0,
+          time: 20,
+        }));
+      if (items.length === 0) throw new Error('AI สร้างคำถามไม่ได้ ลองใหม่');
+      setParsedPreview(items);
+      setImportText(`✨ AI สร้างให้ ${items.length} ข้อ จากหัวข้อ: "${aiTopic.slice(0, 60)}${aiTopic.length>60?'...':''}"`);
+    } catch (e) {
+      setImportErr(`AI ไม่ได้ผล: ${e.message}`);
+    } finally {
+      setAiLoading(false);
+    }
+  };
   const [parsedPreview, setParsedPreview] = useState([]);
   const [barsVisible, setBarsVisible] = useState(false);
   const [globalTime, setGlobalTime] = useState(20);
@@ -565,8 +614,9 @@ export default function BusSanookGame() {
                 {/* Tabs */}
                 <div style={{ display:'flex', gap:4, background:'#080820', borderRadius:10, padding:4, marginBottom:12 }}>
                   {[
-                    { id:'text',  label:'📝 แบบข้อความ' },
-                    { id:'sheet', label:'📊 Excel / Google Sheets' },
+                    { id:'ai',    label:'🤖 AI สร้างให้' },
+                    { id:'text',  label:'📝 ข้อความ' },
+                    { id:'sheet', label:'📊 Sheet' },
                   ].map(tab => (
                     <button key={tab.id}
                       onClick={() => { setImportTab(tab.id); setImportErr(''); setImportText(''); setParsedPreview([]); }}
@@ -579,6 +629,96 @@ export default function BusSanookGame() {
                     </button>
                   ))}
                 </div>
+
+                {/* ─── AI tab ─── */}
+                {importTab === 'ai' && (
+                  <div style={{ marginBottom:12 }}>
+                    <div style={{
+                      background:`linear-gradient(135deg, ${CYAN}10, ${MAGENTA}08)`,
+                      border:`1px solid ${CYAN}33`,
+                      borderRadius:10, padding:'10px 14px', marginBottom:10,
+                      fontSize:12, color:'#aaa', lineHeight:1.6,
+                    }}>
+                      💡 พิมพ์หัวข้อหรือวางเนื้อหา → AI จะสร้างคำถาม Multiple Choice ให้อัตโนมัติ
+                    </div>
+
+                    <label style={{ fontSize:12, fontWeight:700, color:CYAN, display:'block', marginBottom:6 }}>
+                      หัวข้อ / เนื้อหา *
+                    </label>
+                    <textarea
+                      value={aiTopic}
+                      onChange={e => setAiTopic(e.target.value)}
+                      placeholder="เช่น: หลักการบริหารโครงการ Project Management 5 ขั้นตอน&#10;หรือวางเนื้อหาบทเรียน slide สรุป ฯลฯ"
+                      rows={4}
+                      style={{
+                        width:'100%', background:'#080820', color:'#ddd',
+                        border:`1px solid ${CYAN}55`, borderRadius:10, padding:12,
+                        fontFamily:FONT, fontSize:13, resize:'vertical',
+                        boxSizing:'border-box', outline:'none', marginBottom:10,
+                      }}
+                    />
+
+                    <div style={{ display:'flex', gap:10, marginBottom:10, flexWrap:'wrap' }}>
+                      <div style={{ flex:'1 1 140px' }}>
+                        <label style={{ fontSize:11, color:'#888', display:'block', marginBottom:4 }}>จำนวนข้อ</label>
+                        <div style={{ display:'flex', gap:5 }}>
+                          {[5, 10, 15, 20].map(n => (
+                            <button key={n} onClick={() => setAiCount(n)}
+                              style={{
+                                flex:1, padding:'8px 0', borderRadius:8,
+                                border:`1px solid ${aiCount===n ? CYAN : '#2a2a5a'}`,
+                                background: aiCount===n ? `${CYAN}22` : 'transparent',
+                                color: aiCount===n ? CYAN : '#888',
+                                cursor:'pointer', fontFamily:FONT, fontWeight:800, fontSize:13,
+                              }}>{n}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{ flex:'1 1 180px' }}>
+                        <label style={{ fontSize:11, color:'#888', display:'block', marginBottom:4 }}>ระดับความยาก</label>
+                        <div style={{ display:'flex', gap:5 }}>
+                          {['ง่าย', 'ปานกลาง', 'ยาก'].map(d => (
+                            <button key={d} onClick={() => setAiDiff(d)}
+                              style={{
+                                flex:1, padding:'8px 0', borderRadius:8,
+                                border:`1px solid ${aiDiff===d ? MAGENTA : '#2a2a5a'}`,
+                                background: aiDiff===d ? `${MAGENTA}22` : 'transparent',
+                                color: aiDiff===d ? MAGENTA : '#888',
+                                cursor:'pointer', fontFamily:FONT, fontWeight:700, fontSize:12,
+                              }}>{d}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={aiGenerateBusSanook}
+                      disabled={aiLoading || !aiTopic.trim()}
+                      style={{
+                        width:'100%', padding:'14px', borderRadius:12, border:'none',
+                        background: (aiLoading || !aiTopic.trim())
+                          ? '#2a2a4a'
+                          : `linear-gradient(135deg, ${CYAN}, ${MAGENTA})`,
+                        color: (aiLoading || !aiTopic.trim()) ? '#555' : '#fff',
+                        cursor: (aiLoading || !aiTopic.trim()) ? 'not-allowed' : 'pointer',
+                        fontFamily:FONT, fontWeight:900, fontSize:15,
+                        boxShadow: (aiLoading || !aiTopic.trim()) ? 'none' : `0 0 24px ${CYAN}88, 0 0 40px ${MAGENTA}44`,
+                        display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                        transition:'all 0.2s',
+                      }}>
+                      {aiLoading ? (
+                        <>
+                          <span style={{
+                            width:16, height:16, border:'2px solid rgba(255,255,255,0.3)',
+                            borderTopColor:'#fff', borderRadius:'50%',
+                            animation:'spin 0.7s linear infinite', display:'inline-block',
+                          }} />
+                          AI กำลังคิด…
+                        </>
+                      ) : `🤖 สร้างคำถาม ${aiCount} ข้อด้วย AI`}
+                    </button>
+                  </div>
+                )}
 
                 {/* ─── Text tab ─── */}
                 {importTab === 'text' && (
@@ -773,31 +913,66 @@ export default function BusSanookGame() {
                 />
               </div>
 
-              {/* Choices */}
+              {/* Choices — neon glow style */}
               <div style={{ marginBottom:16 }}>
                 <label style={labelStyle}>ตัวเลือก (เลือกข้อที่ถูกต้อง)</label>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  {[0,1,2,3].map(ci => (
-                    <div key={ci} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <input
-                        type="radio"
-                        name={`correct-${editingIdx}`}
-                        checked={editQ?.answer === ci}
-                        onChange={() => updateQuestion(editingIdx, 'answer', ci)}
-                        style={{ accentColor: ANSWER_CFG[ci].color, width:16, height:16, cursor:'pointer', flexShrink:0 }}
-                      />
-                      <div style={{ display:'flex', alignItems:'center', flex:1, gap:6, background:`${ANSWER_CFG[ci].color}22`, border:`2px solid ${editQ?.answer === ci ? ANSWER_CFG[ci].color : ANSWER_CFG[ci].color+'66'}`, borderRadius:8, padding:'6px 10px' }}>
-                        <span style={{ color: ANSWER_CFG[ci].color, fontWeight:700, minWidth:20 }}>{ANSWER_CFG[ci].icon}</span>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                  {[0,1,2,3].map(ci => {
+                    const cfg = ANSWER_CFG[ci];
+                    const isCor = editQ?.answer === ci;
+                    return (
+                      <div key={ci} style={{ display:'flex', alignItems:'center', gap:8 }}>
                         <input
-                          type="text"
-                          value={editQ?.choices?.[ci] || ''}
-                          onChange={e => updateChoice(editingIdx, ci, e.target.value)}
-                          placeholder={`ตัวเลือก ${['A','B','C','D'][ci]}`}
-                          style={{ background:'transparent', border:'none', outline:'none', color:'#fff', fontFamily:FONT, fontSize:14, flex:1, minWidth:0 }}
+                          type="radio"
+                          name={`correct-${editingIdx}`}
+                          checked={isCor}
+                          onChange={() => updateQuestion(editingIdx, 'answer', ci)}
+                          style={{ accentColor: cfg.color, width:16, height:16, cursor:'pointer', flexShrink:0 }}
                         />
+                        <div
+                          onClick={() => updateQuestion(editingIdx, 'answer', ci)}
+                          style={{
+                            display:'flex', alignItems:'center', flex:1, gap:8,
+                            background: isCor
+                              ? `linear-gradient(135deg, ${cfg.color}55, ${cfg.color}22)`
+                              : `${cfg.color}10`,
+                            border: `2px solid ${isCor ? cfg.color : cfg.color + '55'}`,
+                            borderRadius: 10, padding:'9px 12px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: isCor
+                              ? `0 0 18px ${cfg.glow}99, inset 0 0 12px ${cfg.glow}33`
+                              : `0 0 6px ${cfg.glow}22`,
+                          }}>
+                          <span style={{
+                            color: cfg.light, fontWeight:900, minWidth:20, fontSize:18,
+                            textShadow: `0 0 10px ${cfg.glow}, 0 0 18px ${cfg.glow}88`,
+                          }}>
+                            {cfg.icon}
+                          </span>
+                          <input
+                            type="text"
+                            value={editQ?.choices?.[ci] || ''}
+                            onChange={e => updateChoice(editingIdx, ci, e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            placeholder={`ตัวเลือก ${['A','B','C','D'][ci]}`}
+                            style={{
+                              background:'transparent', border:'none', outline:'none',
+                              color: isCor ? '#fff' : '#ddd',
+                              fontFamily:FONT, fontSize:14, flex:1, minWidth:0,
+                              fontWeight: isCor ? 700 : 500,
+                            }}
+                          />
+                          {isCor && (
+                            <span style={{
+                              color: cfg.light, fontWeight:900, fontSize:14,
+                              textShadow:`0 0 8px ${cfg.glow}`,
+                            }}>✓</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
