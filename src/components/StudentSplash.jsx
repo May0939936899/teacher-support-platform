@@ -136,14 +136,14 @@ export default function StudentSplash({ duration = 2200, onFinish }) {
         backgroundImage:'repeating-linear-gradient(90deg, transparent 0px, transparent 140px, #d0dbea 140px, #d0dbea 152px)',
       }} />
 
-      {/* BTS Train */}
+      {/* BTS Train — sits ON TOP of the bridge surface */}
       <div style={{
         position:'absolute',
-        bottom:'clamp(80px,13vh,150px)',
+        bottom:'clamp(95px,14vh,168px)',
         animation:`spTrain 5.5s linear infinite`,
         zIndex:3,
       }}>
-        <svg width="clamp(280,32vw,440)" height="48" viewBox="0 0 440 60" style={{
+        <svg width="clamp(280,32vw,440)" height="44" viewBox="0 0 440 52" style={{
           width:'clamp(280px,32vw,440px)', height:'auto', display:'block',
           filter:'drop-shadow(0 4px 8px rgba(0,0,0,0.12))',
         }}>
