@@ -77,15 +77,37 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           );
         })}
 
-        {/* Moon */}
+        {/* Crescent Moon — half-moon shape using overlapping circles */}
         <div style={{
-          position:'absolute', top:'14%', right:'7%',
-          width:'clamp(34px,4vw,52px)', height:'clamp(34px,4vw,52px)',
-          borderRadius:'50%',
-          background:'radial-gradient(circle at 35% 35%, #fff8e0 0%, #ffd97a 60%, #d4a64a 100%)',
-          boxShadow:'0 0 24px rgba(255,217,122,0.4), inset -6px -4px 0 rgba(0,0,0,0.1)',
+          position:'absolute', top:'12%', right:'6%',
+          width:'clamp(46px,5.2vw,72px)', height:'clamp(46px,5.2vw,72px)',
           zIndex:1,
-        }} />
+        }}>
+          <svg viewBox="0 0 100 100" style={{ width:'100%', height:'100%', display:'block', overflow:'visible' }}>
+            <defs>
+              <radialGradient id="moonGrad" cx="35%" cy="35%" r="65%">
+                <stop offset="0%"  stopColor="#fff8e0" />
+                <stop offset="55%" stopColor="#ffd97a" />
+                <stop offset="100%" stopColor="#e6b04a" />
+              </radialGradient>
+              <filter id="moonGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="3" />
+              </filter>
+            </defs>
+            {/* Soft outer halo */}
+            <circle cx="50" cy="50" r="46" fill="rgba(255,217,122,0.25)" filter="url(#moonGlow)" />
+            {/* Crescent: full moon circle minus a shifted dark circle */}
+            <mask id="crescentMask">
+              <rect width="100" height="100" fill="white" />
+              <circle cx="64" cy="44" r="38" fill="black" />
+            </mask>
+            <circle cx="50" cy="50" r="38" fill="url(#moonGrad)" mask="url(#crescentMask)" />
+            {/* Tiny stars beside crescent */}
+            <circle cx="20" cy="20" r="1.4" fill="#fff" opacity="0.85" />
+            <circle cx="14" cy="40" r="1"   fill="#ffd97a" opacity="0.7" />
+            <circle cx="28" cy="72" r="1.2" fill="#fff" opacity="0.7" />
+          </svg>
+        </div>
 
         <style>{`
           @keyframes twinkle { 0%,100%{opacity:0.25} 50%{opacity:0.95} }
@@ -148,11 +170,15 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
             </span>
           </h1>
           <p style={{
-            margin:'0 auto', fontSize:'clamp(12px,1.1vw,15px)',
-            color:'rgba(255,255,255,0.7)', maxWidth:'700px', lineHeight:1.5,
-            textShadow:'0 2px 8px rgba(0,0,0,0.5)',
+            margin:'0 auto', fontSize:'clamp(13px,1.3vw,17px)',
+            color:'rgba(255,255,255,0.85)', maxWidth:'700px', lineHeight:1.5,
+            textShadow:'0 2px 10px rgba(0,0,0,0.6)',
+            fontWeight:500, letterSpacing:'0.02em',
+            display:'inline-flex', alignItems:'center', gap:8,
           }}>
-            ✨ แพลตฟอร์ม AI เปลี่ยนห้องเรียนให้มีชีวิต · คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
+            <span style={{ fontSize:'1.1em', filter:'drop-shadow(0 0 8px rgba(255,217,122,0.6))' }}>✨</span>
+            <span>เปลี่ยนห้องเรียนให้มีชีวิต</span>
+            <span style={{ fontSize:'1.1em', filter:'drop-shadow(0 0 8px rgba(255,217,122,0.6))' }}>✨</span>
           </p>
         </div>
 
