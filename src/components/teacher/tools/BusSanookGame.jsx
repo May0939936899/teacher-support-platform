@@ -908,22 +908,36 @@ export default function BusSanookGame() {
             </div>
           </div>
 
-          {/* Right: editor — LIGHT theme for readability */}
-          <div style={{ flex:1, overflowY:'auto', padding:24, background:'#f8fafc', color:'#1e293b' }}>
-            <div style={{ maxWidth:720, margin:'0 auto' }}>
+          {/* Right: editor — DARK mode, professional palette, high-contrast text */}
+          <div style={{
+            flex:1, overflowY:'auto', padding:24,
+            background:'#0a0e1a', color:'#e2e8f0',
+          }}>
+            <div style={{ maxWidth:760, margin:'0 auto' }}>
               <div style={{
-                background:'#fff', borderRadius:18,
-                padding:'24px 26px',
-                boxShadow:'0 4px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)',
-                border:'1px solid #e2e8f0',
+                background:'#141a2e',
+                borderRadius:18,
+                padding:'26px 28px',
+                boxShadow:'0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+                border:'1px solid #232a44',
               }}>
-                <div style={{ fontWeight:800, fontSize:18, marginBottom:18, color:'#0f172a', letterSpacing:'0.02em' }}>
-                  ✏️ แก้ไขข้อ {editingIdx + 1}
+                {/* Section title */}
+                <div style={{
+                  fontWeight:800, fontSize:19, marginBottom:22,
+                  color:'#f8fafc', letterSpacing:'0.03em',
+                  display:'flex', alignItems:'center', gap:8,
+                }}>
+                  <span style={{ fontSize:22 }}>✏️</span>
+                  <span>แก้ไขข้อ {editingIdx + 1}</span>
                 </div>
 
                 {/* Question text */}
-                <div style={{ marginBottom:20 }}>
-                  <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#475569', marginBottom:8, letterSpacing:0.5 }}>
+                <div style={{ marginBottom:22 }}>
+                  <label style={{
+                    display:'block', fontSize:13, fontWeight:700,
+                    color:'#cbd5e1', marginBottom:9, letterSpacing:0.6,
+                    textTransform:'uppercase',
+                  }}>
                     คำถาม
                   </label>
                   <textarea
@@ -933,20 +947,38 @@ export default function BusSanookGame() {
                     rows={3}
                     style={{
                       width:'100%', boxSizing:'border-box', resize:'vertical',
-                      background:'#fff', color:'#0f172a',
-                      border:'2px solid #e2e8f0', borderRadius:12,
-                      padding:'12px 14px', fontFamily:FONT, fontSize:15,
-                      outline:'none', transition:'border-color 0.15s',
+                      background:'#0a0e1a', color:'#f1f5f9',
+                      border:'2px solid #2a3050', borderRadius:12,
+                      padding:'13px 16px',
+                      fontFamily:FONT, fontSize:15.5, lineHeight:1.5,
+                      outline:'none', transition:'all 0.18s',
+                      boxShadow:'inset 0 1px 2px rgba(0,0,0,0.3)',
                     }}
-                    onFocus={e => e.target.style.borderColor = CYAN}
-                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                    onFocus={e => {
+                      e.target.style.borderColor = CYAN;
+                      e.target.style.boxShadow = `inset 0 1px 2px rgba(0,0,0,0.3), 0 0 0 3px ${CYAN}25`;
+                    }}
+                    onBlur={e => {
+                      e.target.style.borderColor = '#2a3050';
+                      e.target.style.boxShadow = 'inset 0 1px 2px rgba(0,0,0,0.3)';
+                    }}
                   />
                 </div>
 
-                {/* Choices — neon glow on white bg */}
-                <div style={{ marginBottom:20 }}>
-                  <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#475569', marginBottom:10, letterSpacing:0.5 }}>
-                    ตัวเลือก <span style={{ color:'#94a3b8', fontWeight:500 }}>(คลิกที่การ์ดเพื่อเลือกข้อที่ถูกต้อง)</span>
+                {/* Choices — neon on dark, high contrast */}
+                <div style={{ marginBottom:22 }}>
+                  <label style={{
+                    display:'block', fontSize:13, fontWeight:700,
+                    color:'#cbd5e1', marginBottom:10, letterSpacing:0.6,
+                    textTransform:'uppercase',
+                  }}>
+                    ตัวเลือก
+                    <span style={{
+                      color:'#64748b', fontWeight:500, fontSize:11,
+                      marginLeft:8, textTransform:'none', letterSpacing:0,
+                    }}>
+                      (คลิกที่การ์ดเพื่อเลือกข้อที่ถูกต้อง)
+                    </span>
                   </label>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                     {[0,1,2,3].map(ci => {
@@ -957,24 +989,24 @@ export default function BusSanookGame() {
                           key={ci}
                           onClick={() => updateQuestion(editingIdx, 'answer', ci)}
                           style={{
-                            display:'flex', alignItems:'center', gap:10,
+                            display:'flex', alignItems:'center', gap:11,
                             background: isCor
-                              ? `linear-gradient(135deg, ${cfg.color}, ${cfg.color}cc)`
-                              : '#fff',
-                            border: `2px solid ${isCor ? cfg.color : '#e2e8f0'}`,
-                            borderRadius: 12, padding:'12px 14px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
+                              ? `linear-gradient(135deg, ${cfg.color}ee, ${cfg.color}aa)`
+                              : '#0a0e1a',
+                            border: `2px solid ${isCor ? cfg.color : '#2a3050'}`,
+                            borderRadius: 12, padding:'13px 15px',
+                            cursor:'pointer',
+                            transition:'all 0.2s',
                             boxShadow: isCor
-                              ? `0 0 0 3px ${cfg.color}33, 0 4px 16px ${cfg.glow}55`
-                              : '0 1px 3px rgba(0,0,0,0.04)',
+                              ? `0 0 0 3px ${cfg.color}33, 0 6px 22px ${cfg.glow}66`
+                              : 'inset 0 1px 2px rgba(0,0,0,0.3)',
                           }}>
                           <span style={{
-                            color: isCor ? '#fff' : cfg.color,
-                            fontWeight:900, minWidth:24, fontSize:20, lineHeight:1,
+                            color: isCor ? '#fff' : cfg.light,
+                            fontWeight:900, minWidth:24, fontSize:22, lineHeight:1,
                             textShadow: isCor
-                              ? `0 0 12px rgba(255,255,255,0.6)`
-                              : 'none',
+                              ? '0 0 12px rgba(255,255,255,0.6)'
+                              : `0 0 12px ${cfg.glow}aa`,
                           }}>
                             {cfg.icon}
                           </span>
@@ -986,17 +1018,16 @@ export default function BusSanookGame() {
                             placeholder={`ตัวเลือก ${['A','B','C','D'][ci]}`}
                             style={{
                               background:'transparent', border:'none', outline:'none',
-                              color: isCor ? '#fff' : '#1e293b',
+                              color: isCor ? '#fff' : '#f1f5f9',
                               fontFamily:FONT, fontSize:15, flex:1, minWidth:0,
                               fontWeight: isCor ? 800 : 500,
-                              '::placeholder': { color: isCor ? 'rgba(255,255,255,0.7)' : '#94a3b8' },
                             }}
                           />
                           {isCor && (
                             <span style={{
-                              color: '#fff', fontWeight:900, fontSize:18, lineHeight:1,
-                              background:'rgba(255,255,255,0.2)', borderRadius:8,
-                              padding:'2px 8px',
+                              color:'#fff', fontWeight:900, fontSize:16, lineHeight:1,
+                              background:'rgba(255,255,255,0.22)', borderRadius:8,
+                              padding:'3px 9px',
                             }}>✓</span>
                           )}
                         </div>
@@ -1005,9 +1036,13 @@ export default function BusSanookGame() {
                   </div>
                 </div>
 
-                {/* Time — light theme */}
+                {/* Time — dark pill style */}
                 <div>
-                  <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#475569', marginBottom:10, letterSpacing:0.5 }}>
+                  <label style={{
+                    display:'block', fontSize:13, fontWeight:700,
+                    color:'#cbd5e1', marginBottom:10, letterSpacing:0.6,
+                    textTransform:'uppercase',
+                  }}>
                     ⏱️ เวลา (วินาที)
                   </label>
                   <div style={{ display:'flex', gap:10 }}>
@@ -1018,12 +1053,15 @@ export default function BusSanookGame() {
                           key={t}
                           onClick={() => updateQuestion(editingIdx, 'time', t)}
                           style={{
-                            padding:'10px 22px', borderRadius:10,
-                            border:`2px solid ${sel ? CYAN : '#e2e8f0'}`,
-                            background: sel ? `${CYAN}15` : '#fff',
-                            color: sel ? CYAN : '#64748b',
-                            cursor:'pointer', fontFamily:FONT, fontWeight:800, fontSize:15,
-                            boxShadow: sel ? `0 2px 8px ${CYAN}30` : '0 1px 2px rgba(0,0,0,0.04)',
+                            padding:'11px 24px', borderRadius:10,
+                            border:`2px solid ${sel ? CYAN : '#2a3050'}`,
+                            background: sel ? `${CYAN}22` : '#0a0e1a',
+                            color: sel ? CYAN : '#94a3b8',
+                            cursor:'pointer', fontFamily:FONT,
+                            fontWeight:800, fontSize:15, letterSpacing:0.5,
+                            boxShadow: sel
+                              ? `0 0 0 3px ${CYAN}22, 0 0 16px ${CYAN}55`
+                              : 'inset 0 1px 2px rgba(0,0,0,0.3)',
                             transition:'all 0.15s',
                           }}
                         >{t}s</button>
