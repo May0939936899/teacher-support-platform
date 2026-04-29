@@ -6,25 +6,27 @@ import AntiCheatGuard from './AntiCheatGuard';
 // ============================================================
 // CLIENT-SIDE QUIZ PARSER — no API cost
 // รองรับรูปแบบ: ก/ข/ค/ง, A/B/C/D, 1/2/3/4, เฉลย/คำตอบ/Answer
+// ── Question numbers are OPTIONAL — separate by blank line OR ---
 // ============================================================
 function parseQuizFromText(rawText) {
-  const questions = [];
   const thaiToLatin = { 'ก': 'A', 'ข': 'B', 'ค': 'C', 'ง': 'D' };
-  const numToLatin = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
+  const numToLatin  = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
 
-  const isOptionLine = (line) => /^[A-Da-dก-ง1-4][.)]\s+\S/.test(line);
-  const isAnswerLine = (line) => /^(?:เฉลย|คำตอบ|ตอบ|answer|ans|key|เฉลย้อ)\s*[:\s]/i.test(line);
-  const isQuestionLine = (line) => /^\d+[.)]\s*\S/.test(line) || /^ข้อ(?:ที่)?\s*\d+/.test(line);
+  const isOptionLine    = (line) => /^[A-Da-dก-ง1-4][.)]\s+\S/.test(line);
+  const isAnswerLine    = (line) => /^(?:เฉลย|คำตอบ|ตอบ|answer|ans|key|เฉลย้อ)\s*[:\s]/i.test(line);
+  const isNumberedQLine = (line) => /^\d+[.)]\s*\S/.test(line) || /^ข้อ(?:ที่)?\s*\d+/.test(line);
 
-  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+  const stripQuestionNum = (line) => line.replace(/^(?:ข้อ(?:ที่)?\s*)?\d+[.)]\s*/, '');
 
-  let qText = '';
-  let opts = [];
-  let ans = '';
-  let inQuestion = false;
+  // ── Step 1: split into BLOCKS first (blank line OR --- separator)
+  // Each block is a self-contained question.
+  const blocks = rawText
+    .split(/\n[ \t]*\n+|---+/)
+    .map(b => b.trim())
+    .filter(Boolean);
 
-  const pushQuestion = () => {
-    if (!qText.trim()) return;
+  const buildQ = (qText, opts, ans) => {
+    if (!qText.trim()) return null;
     const optsFilled = opts.filter(o => o.trim());
     let type = 'SHORT';
     if (optsFilled.length >= 2 && optsFilled.length <= 4) {
@@ -35,7 +37,6 @@ function parseQuizFromText(rawText) {
         type = 'MC';
       }
     }
-
     let finalAns = '';
     if (ans) {
       const raw = ans.trim();
@@ -48,37 +49,79 @@ function parseQuizFromText(rawText) {
         finalAns = raw;
       }
     }
-
     const padded = [...opts];
     while (type === 'MC' && padded.length < 4) padded.push('');
-
-    questions.push({
-      id: Date.now().toString() + '_' + questions.length + '_' + Math.random().toString(36).slice(2, 5),
+    return {
+      id: Date.now().toString() + '_' + Math.random().toString(36).slice(2, 7),
       type,
       text: qText.trim(),
       options: type === 'MC' ? padded.slice(0, 4) : [],
       answer: finalAns,
       points: 1,
       explanation: '',
-    });
+    };
   };
 
-  for (const line of lines) {
-    if (isQuestionLine(line)) {
-      if (inQuestion) pushQuestion();
-      qText = line.replace(/^(?:ข้อ(?:ที่)?\s*)?\d+[.)]\s*/, '');
-      opts = []; ans = ''; inQuestion = true;
-    } else if (isAnswerLine(line) && inQuestion) {
-      ans = line.replace(/^(?:เฉลย|คำตอบ|ตอบ|answer|ans|key|เฉลย้อ)\s*[:\s]*/i, '').trim();
-    } else if (isOptionLine(line) && inQuestion) {
-      opts.push(line.replace(/^[A-Da-dก-ง1-4][.)]\s*/, ''));
-    } else if (inQuestion && opts.length === 0) {
-      qText += ' ' + line;
+  const questions = [];
+
+  for (const block of blocks) {
+    const lines = block.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) continue;
+
+    // ── Path 1: block has numbered question(s) inside — use legacy line-by-line
+    if (lines.some(l => isNumberedQLine(l))) {
+      let qText = '', opts = [], ans = '', inQ = false;
+      for (const line of lines) {
+        if (isNumberedQLine(line)) {
+          if (inQ) {
+            const q = buildQ(qText, opts, ans);
+            if (q) questions.push(q);
+          }
+          qText = stripQuestionNum(line);
+          opts = []; ans = ''; inQ = true;
+        } else if (isAnswerLine(line) && inQ) {
+          ans = line.replace(/^(?:เฉลย|คำตอบ|ตอบ|answer|ans|key|เฉลย้อ)\s*[:\s]*/i, '').trim();
+        } else if (isOptionLine(line) && inQ) {
+          opts.push(line.replace(/^[A-Da-dก-ง1-4][.)]\s*/, ''));
+        } else if (inQ && opts.length === 0) {
+          qText += ' ' + line;
+        }
+      }
+      if (inQ) {
+        const q = buildQ(qText, opts, ans);
+        if (q) questions.push(q);
+      }
+      continue;
     }
+
+    // ── Path 2: block has NO question numbers — first non-option/non-answer
+    //           line(s) are the question text, then options, then answer.
+    let qText = '', opts = [], ans = '';
+    for (const line of lines) {
+      if (isAnswerLine(line)) {
+        ans = line.replace(/^(?:เฉลย|คำตอบ|ตอบ|answer|ans|key|เฉลย้อ)\s*[:\s]*/i, '').trim();
+      } else if (isOptionLine(line)) {
+        opts.push(line.replace(/^[A-Da-dก-ง1-4][.)]\s*/, ''));
+      } else {
+        // Question text (multi-line allowed before first option)
+        if (opts.length === 0 && !ans) qText = qText ? qText + ' ' + line : line;
+      }
+    }
+    const q = buildQ(qText, opts, ans);
+    if (q) questions.push(q);
   }
-  if (inQuestion) pushQuestion();
 
   return questions;
+}
+
+// Fisher-Yates shuffle (returns new array)
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
@@ -259,7 +302,7 @@ function ResultsModal({ session, onClose }) {
 export default function SmartQuiz() {
   const [mode, setMode] = useState('teacher');
   const [isStudentLocked, setIsStudentLocked] = useState(false);
-  const [quiz, setQuiz] = useState({ title: '', description: '', timeLimit: 30, questions: [], scheduleType: 'now', openAt: '', closeAt: '' });
+  const [quiz, setQuiz] = useState({ title: '', description: '', timeLimit: 30, questions: [], scheduleType: 'now', openAt: '', closeAt: '', randomize: false });
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
   const [studentView, setStudentView] = useState({ sessionCode: '', step: 'join', answers: {}, submitted: false, studentId: '', firstName: '', lastName: '' });
@@ -337,7 +380,7 @@ export default function SmartQuiz() {
   };
 
   const clearQuiz = () => {
-    setQuiz({ title: '', description: '', timeLimit: 30, questions: [], scheduleType: 'now', openAt: '', closeAt: '' });
+    setQuiz({ title: '', description: '', timeLimit: 30, questions: [], scheduleType: 'now', openAt: '', closeAt: '', randomize: false });
     setAiText(''); setAiFile(null); setAiFilePreview(null); setExtractedText(''); setAiSummary('');
     setImportText(''); setImportParsed(null);
     toast('เริ่มใหม่แล้ว');
@@ -669,11 +712,15 @@ export default function SmartQuiz() {
       if (closeTs <= openTs) { toast.error('เวลาปิดต้องหลังเวลาเปิด'); return; }
     }
 
+    // Apply randomization if enabled — shuffle once at session creation
+    const finalQuestions = quiz.randomize ? shuffleArray(quiz.questions) : quiz.questions;
+    const quizPayload = { ...quiz, questions: finalQuestions };
+
     try {
       const res = await fetch(QUIZ_API, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quiz: { ...quiz }, timeLimit: quiz.timeLimit, openAt: openTs, closeAt: closeTs }),
+        body: JSON.stringify({ quiz: quizPayload, timeLimit: quiz.timeLimit, openAt: openTs, closeAt: closeTs }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -872,6 +919,48 @@ export default function SmartQuiz() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <input placeholder="ชื่อ Quiz *" value={quiz.title} onChange={e => setQuiz(q => ({ ...q, title: e.target.value }))} style={inp} />
                   <input placeholder="คำอธิบาย (ไม่บังคับ)" value={quiz.description} onChange={e => setQuiz(q => ({ ...q, description: e.target.value }))} style={inp} />
+                </div>
+
+                {/* Random toggle */}
+                <div
+                  onClick={() => setQuiz(q => ({ ...q, randomize: !q.randomize }))}
+                  style={{
+                    marginTop: '12px',
+                    display: 'flex', alignItems: 'center', gap: '12px',
+                    background: quiz.randomize ? `${CI.purple}10` : '#f8fafc',
+                    border: `2px solid ${quiz.randomize ? CI.purple : '#e2e8f0'}`,
+                    borderRadius: '12px',
+                    padding: '11px 16px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{
+                    width: 44, height: 24, borderRadius: 12,
+                    background: quiz.randomize ? CI.purple : '#cbd5e1',
+                    position: 'relative',
+                    transition: 'background 0.2s',
+                    flexShrink: 0,
+                  }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%',
+                      background: '#fff',
+                      position: 'absolute',
+                      top: 3, left: quiz.randomize ? 23 : 3,
+                      transition: 'left 0.2s',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 700, color: quiz.randomize ? CI.purple : '#374151' }}>
+                      🎲 สลับลำดับข้อแบบสุ่ม (Random)
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                      {quiz.randomize
+                        ? '✅ ระบบจะสุ่มลำดับข้อให้นักศึกษาแต่ละ Session'
+                        : 'นักศึกษาจะเห็นข้อตามลำดับที่อาจารย์เขียน'}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Schedule toggle */}
@@ -1153,18 +1242,22 @@ export default function SmartQuiz() {
 
                 {/* Format hint */}
                 <div style={{ background: '#fef9c3', borderRadius: '10px', padding: '12px 14px', marginBottom: '14px', fontSize: '12px', color: '#92400e', lineHeight: 1.8 }}>
-                  <strong>รูปแบบที่รองรับ:</strong>{' '}
-                  <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>1. คำถาม</code>{' '}
-                  ตามด้วยตัวเลือก{' '}
-                  <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>A. / ก.</code>{' '}
-                  แล้วบรรทัดเฉลย{' '}
-                  <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>เฉลย: A</code>{' '}
-                  หรือ{' '}
-                  <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>คำตอบ: ก</code>
+                  <strong>รูปแบบที่รองรับ (เลือกได้ 2 แบบ):</strong>
+                  <div style={{ marginTop: 4 }}>
+                    <strong>แบบที่ 1 — ไม่มีเลขข้อ:</strong> เขียนคำถาม → ตัวเลือก{' '}
+                    <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>A./ก.</code> →{' '}
+                    <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>เฉลย: B</code>{' '}
+                    <em>คั่นแต่ละข้อด้วย 1 บรรทัดว่าง</em>
+                  </div>
+                  <div>
+                    <strong>แบบที่ 2 — มีเลขข้อ:</strong>{' '}
+                    <code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>1. คำถาม</code>,
+                    {' '}<code style={{ background: '#fef3c7', padding: '1px 5px', borderRadius: 3 }}>2. คำถาม</code>...
+                  </div>
                 </div>
 
                 <textarea
-                  placeholder={`ตัวอย่าง:\n\n1. ข้อใดคือเมืองหลวงของไทย\nA. เชียงใหม่\nB. กรุงเทพมหานคร\nC. ภูเก็ต\nD. ขอนแก่น\nเฉลย: B\n\n2. 7 × 8 มีค่าเท่าใด\nก. 54\nข. 56\nค. 58\nง. 60\nคำตอบ: ข`}
+                  placeholder={`ตัวอย่าง (ไม่ต้องใส่เลขข้อก็ได้ — แค่เว้น 1 บรรทัดระหว่างข้อ):\n\nข้อใดคือเมืองหลวงของไทย\nA. เชียงใหม่\nB. กรุงเทพมหานคร\nC. ภูเก็ต\nD. ขอนแก่น\nเฉลย: B\n\n7 × 8 มีค่าเท่าใด\nก. 54\nข. 56\nค. 58\nง. 60\nคำตอบ: ข`}
                   value={importText}
                   onChange={e => { setImportText(e.target.value); setImportParsed(null); }}
                   style={{ ...inp, minHeight: '220px', resize: 'vertical', lineHeight: 1.8, fontSize: '13px', fontFamily: "'Courier New', monospace" }}
