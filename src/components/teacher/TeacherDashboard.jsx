@@ -97,8 +97,8 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           @keyframes cloudDrift2   { 0%{left:115%}                     100%{left:-15%} }
           @keyframes headlightPulse{ 0%,100%{opacity:0.6}              50%{opacity:1} }
           @keyframes rainbowShift  { 0%{background-position:0% 50%}    100%{background-position:300% 50%} }
-          @keyframes titleBob      { 0%,100%{transform:translateY(0)}  50%{transform:translateY(-5px)} }
-          @keyframes titleGlow     { 0%,100%{filter:drop-shadow(0 0 10px rgba(0,180,230,0.5))} 50%{filter:drop-shadow(0 0 22px rgba(230,0,126,0.7)) drop-shadow(0 0 8px rgba(255,193,7,0.4))} }
+          @keyframes titleBob      { 0%,100%{transform:translateY(0)}  50%{transform:translateY(-4px)} }
+          @keyframes titleGlow     { 0%,100%{filter:drop-shadow(0 0 12px rgba(0,180,230,0.5))} 50%{filter:drop-shadow(0 0 22px rgba(124,77,255,0.6)) drop-shadow(0 0 12px rgba(230,0,126,0.5))} }
           @keyframes auroraShift   { 0%{transform:translateX(-30%) skewX(-15deg)} 100%{transform:translateX(130%) skewX(-15deg)} }
         `}</style>
 
@@ -119,26 +119,27 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           <div style={{ position:'absolute', top:'80%', animation:'cloudDrift 44s linear infinite', animationDelay:'-22s', fontSize:'clamp(22px,2.8vw,36px)', opacity:0.18, filter:'blur(0.5px)' }}>☁️</div>
         </div>
 
-        {/* Title — animated rainbow gradient + gentle bounce + glow */}
+        {/* Title — animated cyan/purple/magenta gradient, centered */}
         <div style={{
           position:'relative', zIndex:3, marginBottom:'clamp(10px,1.4vw,18px)',
           maxWidth:'1200px', margin:'0 auto clamp(10px,1.4vw,18px)',
+          textAlign:'center',
         }}>
           <h1 style={{
             margin:'0 0 6px',
             fontSize:'clamp(28px,4vw,52px)',
             fontWeight:900, letterSpacing:'0.04em', lineHeight:1.05,
             display:'inline-block',
-            animation:'titleBob 3s ease-in-out infinite, titleGlow 4s ease-in-out infinite',
+            animation:'titleBob 4.5s ease-in-out infinite, titleGlow 6s ease-in-out infinite',
           }}>
             <span style={{
-              background: `linear-gradient(90deg, ${CI.cyan} 0%, ${CI.purple} 18%, ${CI.magenta} 36%, ${CI.gold} 54%, ${CI.cyan} 72%, ${CI.purple} 90%, ${CI.magenta} 100%)`,
-              backgroundSize: '300% 100%',
+              background: `linear-gradient(90deg, ${CI.cyan} 0%, ${CI.purple} 33%, ${CI.magenta} 66%, ${CI.purple} 83%, ${CI.cyan} 100%)`,
+              backgroundSize: '250% 100%',
               WebkitBackgroundClip: 'text',
               backgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               color: 'transparent',
-              animation: 'rainbowShift 5s linear infinite',
+              animation: 'rainbowShift 9s linear infinite',
               display: 'inline-block',
               fontWeight:900,
               textShadow:'0 4px 20px rgba(0,0,0,0.4)',
@@ -147,8 +148,8 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
             </span>
           </h1>
           <p style={{
-            margin:0, fontSize:'clamp(12px,1.1vw,15px)',
-            color:'rgba(255,255,255,0.7)', maxWidth:'600px', lineHeight:1.5,
+            margin:'0 auto', fontSize:'clamp(12px,1.1vw,15px)',
+            color:'rgba(255,255,255,0.7)', maxWidth:'700px', lineHeight:1.5,
             textShadow:'0 2px 8px rgba(0,0,0,0.5)',
           }}>
             ✨ แพลตฟอร์ม AI เปลี่ยนห้องเรียนให้มีชีวิต · คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
