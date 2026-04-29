@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { t } from '@/lib/teacher/i18n';
 
 const CI = {
@@ -36,6 +36,62 @@ const CATEGORY_DESC = {
 export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, lang = 'th', selectedCategory: controlledCategory, onCategoryChange }) {
   const [localCategory, setLocalCategory] = useState(null);
 
+  // ── Time-of-day theme + live clock ─────────────────────────────────────────
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const itv = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(itv);
+  }, []);
+  const localHour = now.getHours();
+  const isDay = localHour >= 6 && localHour < 18; // 06:00–17:59 = day
+  const pad = n => String(n).padStart(2, '0');
+  const localTime = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const utcTime   = `${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
+  const dateStr   = now.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
+
+  // ── Theme palette per time of day ─────────────────────────────────────────
+  const T = isDay ? {
+    bg: 'linear-gradient(170deg,#7ec8ee 0%,#a5dcfa 45%,#cbecff 100%)',
+    glowA: 'rgba(255,235,180,0.6)',  // warm sun glow
+    glowB: 'rgba(255,200,140,0.4)',
+    cityFill: '#7795ad',
+    cityOpacity: 0.32,
+    mtnGradStart: '#a8c5dd',
+    mtnGradEnd: '#7795ad',
+    starsHidden: true,
+    cloudOpacity: 0.85,
+    bridgeColor: '#dfe9f4',
+    bridgeShadow: '#c5d3e3',
+    roadDark: '#365266',
+    roadMain: '#587590',
+    titleShadow: '0 2px 12px rgba(15,23,42,0.18)',
+    subColor: '#1e3a5f',
+    subShadow: '0 1px 4px rgba(255,255,255,0.6)',
+    clockBg: 'rgba(255,255,255,0.55)',
+    clockBorder: 'rgba(255,255,255,0.8)',
+    clockText: '#0f172a',
+  } : {
+    bg: 'linear-gradient(145deg,#0b0b24 0%,#111145 45%,#1f1f6e 100%)',
+    glowA: `${CI.cyan}1c`,
+    glowB: `${CI.magenta}10`,
+    cityFill: '#0a0a2e',
+    cityOpacity: 0.55,
+    mtnGradStart: '#3535a8',
+    mtnGradEnd: '#0a0a2a',
+    starsHidden: false,
+    cloudOpacity: 0.22,
+    bridgeColor: '#0a0e2a',
+    bridgeShadow: '#040818',
+    roadDark: '#0a0a1e',
+    roadMain: '#1a1a3e',
+    titleShadow: '0 4px 20px rgba(0,0,0,0.4)',
+    subColor: 'rgba(255,255,255,0.85)',
+    subShadow: '0 2px 10px rgba(0,0,0,0.6)',
+    clockBg: 'rgba(15,23,42,0.55)',
+    clockBorder: 'rgba(255,255,255,0.18)',
+    clockText: '#f8fafc',
+  };
+
   // Support both controlled (from parent) and uncontrolled modes
   const selectedCategory = controlledCategory !== undefined ? controlledCategory : localCategory;
   const setSelectedCategory = (val) => {
@@ -48,20 +104,44 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
   return (
     <div style={{ fontFamily: FONT }}>
 
-      {/* ===== BANNER (full-bleed scenic hero) ===== */}
+      {/* ===== BANNER (full-bleed scenic hero) — auto day/night ===== */}
       <div style={{
-        background: `linear-gradient(145deg,${CI.dark} 0%,#111145 45%,#1f1f6e 100%)`,
-        padding: 'clamp(16px,2.4vw,28px) clamp(20px,3vw,40px) 0', color: '#fff',
+        background: T.bg,
+        padding: 'clamp(16px,2.4vw,28px) clamp(20px,3vw,40px) 0',
+        color: '#fff',
         position: 'relative', overflow: 'hidden',
-        minHeight: 'clamp(170px,18vw,240px)',
+        minHeight: 'clamp(180px,19vw,250px)',
         width: '100%',
+        transition: 'background 1s ease',
       }}>
-        {/* Background glows */}
-        <div style={{ position:'absolute', top:'-40%', right:'-15%', width:'60%', height:'180%', background:`radial-gradient(ellipse,${CI.cyan}1c 0%,transparent 70%)`, pointerEvents:'none' }} />
-        <div style={{ position:'absolute', bottom:'-30%', left:'-10%', width:'50%', height:'130%', background:`radial-gradient(ellipse,${CI.magenta}10 0%,transparent 70%)`, pointerEvents:'none' }} />
+        {/* Live clock — top-right corner */}
+        <div style={{
+          position: 'absolute', top: 12, right: 16, zIndex: 10,
+          background: T.clockBg, backdropFilter: 'blur(8px)',
+          border: `1px solid ${T.clockBorder}`,
+          borderRadius: 12, padding: '6px 14px',
+          fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+          color: T.clockText, fontSize: 'clamp(11px,1vw,13px)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          minWidth: 180, textAlign: 'right',
+          transition: 'all 0.5s ease',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, fontWeight: 700, fontSize: 'clamp(13px,1.1vw,15px)', letterSpacing: 0.5 }}>
+            <span>{isDay ? '☀️' : '🌙'}</span>
+            <span>{localTime}</span>
+            <span style={{ fontSize: '0.7em', opacity: 0.7 }}>(เวลาไทย)</span>
+          </div>
+          <div style={{ fontSize: 'clamp(10px,0.85vw,11px)', opacity: 0.75, marginTop: 2, fontWeight: 500 }}>
+            🌐 UTC {utcTime} · {dateStr}
+          </div>
+        </div>
 
-        {/* Stars */}
-        {[...Array(28)].map((_,i) => {
+        {/* Background glows */}
+        <div style={{ position:'absolute', top:'-40%', right:'-15%', width:'60%', height:'180%', background:`radial-gradient(ellipse,${T.glowA} 0%,transparent 70%)`, pointerEvents:'none', transition:'background 1s ease' }} />
+        <div style={{ position:'absolute', bottom:'-30%', left:'-10%', width:'50%', height:'130%', background:`radial-gradient(ellipse,${T.glowB} 0%,transparent 70%)`, pointerEvents:'none', transition:'background 1s ease' }} />
+
+        {/* Stars — only at night */}
+        {!T.starsHidden && [...Array(28)].map((_,i) => {
           const s = (i%4===0)?3:(i%3===0)?2:1.5;
           return (
             <div key={i} style={{
@@ -77,36 +157,90 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           );
         })}
 
-        {/* Crescent Moon — half-moon shape using overlapping circles */}
+        {/* ☀️/🌙 Sky body — kawaii sun (day) or kawaii crescent moon (night) */}
         <div style={{
-          position:'absolute', top:'12%', right:'6%',
-          width:'clamp(46px,5.2vw,72px)', height:'clamp(46px,5.2vw,72px)',
-          zIndex:1,
+          position:'absolute', top:'14%', right:'7%',
+          width:'clamp(58px,6.5vw,90px)', height:'clamp(58px,6.5vw,90px)',
+          zIndex: 2, animation: 'skyBob 4s ease-in-out infinite',
         }}>
-          <svg viewBox="0 0 100 100" style={{ width:'100%', height:'100%', display:'block', overflow:'visible' }}>
-            <defs>
-              <radialGradient id="moonGrad" cx="35%" cy="35%" r="65%">
-                <stop offset="0%"  stopColor="#fff8e0" />
-                <stop offset="55%" stopColor="#ffd97a" />
-                <stop offset="100%" stopColor="#e6b04a" />
-              </radialGradient>
-              <filter id="moonGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="3" />
-              </filter>
-            </defs>
-            {/* Soft outer halo */}
-            <circle cx="50" cy="50" r="46" fill="rgba(255,217,122,0.25)" filter="url(#moonGlow)" />
-            {/* Crescent: full moon circle minus a shifted dark circle */}
-            <mask id="crescentMask">
-              <rect width="100" height="100" fill="white" />
-              <circle cx="64" cy="44" r="38" fill="black" />
-            </mask>
-            <circle cx="50" cy="50" r="38" fill="url(#moonGrad)" mask="url(#crescentMask)" />
-            {/* Tiny stars beside crescent */}
-            <circle cx="20" cy="20" r="1.4" fill="#fff" opacity="0.85" />
-            <circle cx="14" cy="40" r="1"   fill="#ffd97a" opacity="0.7" />
-            <circle cx="28" cy="72" r="1.2" fill="#fff" opacity="0.7" />
-          </svg>
+          {isDay ? (
+            // ── Cute Sun ─────────────────────────────────────────────────
+            <svg viewBox="0 0 120 120" style={{ width:'100%', height:'100%', display:'block', overflow:'visible' }}>
+              <defs>
+                <radialGradient id="sunGrad" cx="40%" cy="40%" r="60%">
+                  <stop offset="0%"  stopColor="#fff7c2" />
+                  <stop offset="60%" stopColor="#ffe066" />
+                  <stop offset="100%" stopColor="#fbb02d" />
+                </radialGradient>
+                <filter id="sunGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4" />
+                </filter>
+              </defs>
+              {/* Outer halo */}
+              <circle cx="60" cy="60" r="56" fill="rgba(255,224,102,0.35)" filter="url(#sunGlow)" />
+              {/* Sun rays — rotating */}
+              <g style={{ transformOrigin: '60px 60px', animation: 'sunSpin 28s linear infinite' }}>
+                {[0, 45, 90, 135, 180, 225, 270, 315].map(deg => (
+                  <g key={deg} transform={`rotate(${deg} 60 60)`}>
+                    <path d="M60,4 L64,16 L56,16 Z" fill="#ffd54f" />
+                  </g>
+                ))}
+                {[22.5, 67.5, 112.5, 157.5, 202.5, 247.5, 292.5, 337.5].map(deg => (
+                  <g key={deg} transform={`rotate(${deg} 60 60)`}>
+                    <path d="M60,12 L62,20 L58,20 Z" fill="#ffe066" />
+                  </g>
+                ))}
+              </g>
+              {/* Sun body */}
+              <circle cx="60" cy="60" r="32" fill="url(#sunGrad)" stroke="#f9a825" strokeWidth="1.5" />
+              {/* Eyes */}
+              <ellipse cx="51" cy="58" rx="2.6" ry="3.4" fill="#3a2c0a" />
+              <ellipse cx="69" cy="58" rx="2.6" ry="3.4" fill="#3a2c0a" />
+              <circle cx="52" cy="56.5" r="0.9" fill="#fff" />
+              <circle cx="70" cy="56.5" r="0.9" fill="#fff" />
+              {/* Rosy cheeks */}
+              <ellipse cx="48" cy="66" rx="3.5" ry="2.2" fill="#ff8aa8" opacity="0.6" />
+              <ellipse cx="72" cy="66" rx="3.5" ry="2.2" fill="#ff8aa8" opacity="0.6" />
+              {/* Smile */}
+              <path d="M53,66 Q60,72 67,66" stroke="#3a2c0a" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+            </svg>
+          ) : (
+            // ── Cute Crescent Moon ───────────────────────────────────────
+            <svg viewBox="0 0 120 120" style={{ width:'100%', height:'100%', display:'block', overflow:'visible' }}>
+              <defs>
+                <radialGradient id="moonGrad" cx="38%" cy="38%" r="62%">
+                  <stop offset="0%"  stopColor="#fff8e0" />
+                  <stop offset="55%" stopColor="#ffd97a" />
+                  <stop offset="100%" stopColor="#e6b04a" />
+                </radialGradient>
+                <filter id="moonGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="4" />
+                </filter>
+                <mask id="crescentMask">
+                  <rect width="120" height="120" fill="white" />
+                  <circle cx="78" cy="50" r="42" fill="black" />
+                </mask>
+              </defs>
+              {/* Outer halo */}
+              <circle cx="60" cy="60" r="54" fill="rgba(255,217,122,0.3)" filter="url(#moonGlow)" />
+              {/* Crescent body */}
+              <circle cx="60" cy="60" r="42" fill="url(#moonGrad)" stroke="#d4a64a" strokeWidth="1.5" mask="url(#crescentMask)" />
+              {/* Eye on visible side */}
+              <ellipse cx="50" cy="60" rx="2.6" ry="3.4" fill="#3a2c0a" />
+              <circle cx="50.8" cy="58.5" r="0.9" fill="#fff" />
+              {/* Rosy cheek */}
+              <ellipse cx="46" cy="68" rx="3.2" ry="2" fill="#ff8aa8" opacity="0.55" />
+              {/* Tiny smile */}
+              <path d="M44,68 Q49,72 53,68" stroke="#3a2c0a" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+              {/* Decorative stars */}
+              <g style={{ animation: 'twinkle 2s ease infinite' }}>
+                <path d="M18,18 L20,22 L24,22 L21,25 L22,30 L18,27 L14,30 L15,25 L12,22 L16,22 Z" fill="#ffd97a" opacity="0.85" />
+              </g>
+              <g style={{ animation: 'twinkle 2.6s ease infinite', animationDelay: '0.5s' }}>
+                <path d="M14,80 L15.4,83 L18.5,83 L16,85 L17,88 L14,86 L11,88 L12,85 L9.5,83 L12.6,83 Z" fill="#fff" opacity="0.8" />
+              </g>
+            </svg>
+          )}
         </div>
 
         <style>{`
@@ -122,6 +256,8 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           @keyframes titleBob      { 0%,100%{transform:translateY(0)}  50%{transform:translateY(-4px)} }
           @keyframes titleGlow     { 0%,100%{filter:drop-shadow(0 0 12px rgba(0,180,230,0.5))} 50%{filter:drop-shadow(0 0 22px rgba(124,77,255,0.6)) drop-shadow(0 0 12px rgba(230,0,126,0.5))} }
           @keyframes auroraShift   { 0%{transform:translateX(-30%) skewX(-15deg)} 100%{transform:translateX(130%) skewX(-15deg)} }
+          @keyframes skyBob        { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px) rotate(-2deg)} }
+          @keyframes sunSpin       { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         `}</style>
 
         {/* Aurora light beam (decorative) */}
@@ -170,15 +306,13 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
             </span>
           </h1>
           <p style={{
-            margin:'0 auto', fontSize:'clamp(13px,1.3vw,17px)',
-            color:'rgba(255,255,255,0.85)', maxWidth:'700px', lineHeight:1.5,
-            textShadow:'0 2px 10px rgba(0,0,0,0.6)',
-            fontWeight:500, letterSpacing:'0.02em',
-            display:'inline-flex', alignItems:'center', gap:8,
+            margin:'0 auto', fontSize:'clamp(14px,1.4vw,19px)',
+            color: T.subColor, maxWidth:'700px', lineHeight:1.5,
+            textShadow: T.subShadow,
+            fontWeight: 600, letterSpacing:'0.04em',
+            transition: 'color 0.5s ease',
           }}>
-            <span style={{ fontSize:'1.1em', filter:'drop-shadow(0 0 8px rgba(255,217,122,0.6))' }}>✨</span>
-            <span>เปลี่ยนห้องเรียนให้มีชีวิต</span>
-            <span style={{ fontSize:'1.1em', filter:'drop-shadow(0 0 8px rgba(255,217,122,0.6))' }}>✨</span>
+            เปลี่ยนห้องเรียนให้มีชีวิต
           </p>
         </div>
 
@@ -198,8 +332,8 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           }}>
             <defs>
               <linearGradient id="mtnGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3535a8" />
-                <stop offset="100%" stopColor="#0a0a2a" />
+                <stop offset="0%" stopColor={T.mtnGradStart} />
+                <stop offset="100%" stopColor={T.mtnGradEnd} />
               </linearGradient>
             </defs>
             <path fill="url(#mtnGrad)"
@@ -210,13 +344,14 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           <svg viewBox="0 0 1200 80" preserveAspectRatio="none" style={{
             position:'absolute', bottom:'30%', left:0,
             width:'100%', height:'clamp(34px,4.5vw,60px)',
-            opacity:0.55, zIndex:1, pointerEvents:'none',
+            opacity: T.cityOpacity, zIndex:1, pointerEvents:'none',
+            transition: 'opacity 0.5s',
           }}>
             <path
-              fill="#0a0a2e"
+              fill={T.cityFill}
               d="M0,80 L0,60 L60,60 L60,38 L100,38 L100,52 L160,52 L160,28 L210,28 L210,18 L260,18 L260,42 L320,42 L320,32 L370,32 L370,52 L420,52 L420,34 L480,34 L480,46 L540,46 L540,22 L600,22 L600,40 L660,40 L660,52 L720,52 L720,30 L780,30 L780,42 L850,42 L850,28 L910,28 L910,48 L980,48 L980,34 L1040,34 L1040,52 L1100,52 L1100,38 L1160,38 L1160,55 L1200,55 L1200,80 Z"
             />
-            {[80, 175, 230, 285, 395, 505, 575, 695, 800, 935, 1010, 1115].map((x, i) => (
+            {!T.starsHidden && [80, 175, 230, 285, 395, 505, 575, 695, 800, 935, 1010, 1115].map((x, i) => (
               <rect key={i} x={x} y={i%2===0?34:25} width="3.5" height="3.5" fill={CI.gold}
                 style={{ animation:`twinkle ${2+(i%4)*0.5}s ease infinite`, animationDelay:`${i*0.4}s` }} />
             ))}
@@ -226,8 +361,8 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           <svg width="100%" height="100%" viewBox="0 0 1200 100" preserveAspectRatio="none" style={{
             position:'absolute', bottom:0, left:0,
           }}>
-            <path d="M-50,72 Q300,68 600,72 T1250,72 L1250,100 L-50,100 Z" fill="#0a0a1e" />
-            <path d="M-50,55 Q300,48 600,55 T1250,55 L1250,80 L-50,80 Z" fill="#1a1a3e" />
+            <path d="M-50,72 Q300,68 600,72 T1250,72 L1250,100 L-50,100 Z" fill={T.roadDark} />
+            <path d="M-50,55 Q300,48 600,55 T1250,55 L1250,80 L-50,80 Z" fill={T.roadMain} />
             <path d="M-50,67 Q300,60 600,67 T1250,67"
               stroke={CI.gold} strokeWidth="2" fill="none"
               strokeDasharray="14 10" opacity="0.75"
