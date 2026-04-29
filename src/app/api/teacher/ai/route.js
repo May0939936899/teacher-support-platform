@@ -254,10 +254,13 @@ ${payload.notes}
         const numQ = payload.numQuestions || 3;
         const durationMin = payload.duration || 20;
         const durationSec = durationMin * 60;
-        // Distribute timestamps across video (avoid 0% and 100%)
+        // Distribute timestamps at 30%, 50%, 80% of video for 3 questions
+        // For other counts: evenly across 25-85% range
+        const PCTS_3 = [0.30, 0.50, 0.80];
         const tsHints = [];
-        for (let i = 1; i <= numQ; i++) {
-          const sec = Math.floor((durationSec * i) / (numQ + 1));
+        for (let i = 0; i < numQ; i++) {
+          const pct = numQ === 3 ? PCTS_3[i] : 0.25 + (i * 0.6) / Math.max(1, numQ - 1);
+          const sec = Math.floor(durationSec * pct);
           const m = Math.floor(sec / 60), s = sec % 60;
           tsHints.push(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
         }

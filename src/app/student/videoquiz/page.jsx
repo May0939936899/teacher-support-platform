@@ -218,17 +218,20 @@ function VideoQuizStudentInner() {
               setVideoFinished(false);
 
               // ── Auto-rescale question timestamps to fit actual video duration
-              // (AI may have generated timestamps based on quiz time-limit, not video length)
+              // Default distribution: 30%, 50%, 80% for 3 questions
               try {
                 const dur = playerRef.current.getDuration?.() || 0;
                 if (dur > 0 && quizRef.current?.questions) {
                   const qs = quizRef.current.questions;
                   const maxQ = Math.max(...qs.map(q => parseTimestamp(q.timestamp) || 0));
                   if (maxQ > dur - 5) {
-                    // Redistribute evenly across video (25%, 50%, 75%, ...)
                     const sorted = [...qs].sort((a, b) => parseTimestamp(a.timestamp) - parseTimestamp(b.timestamp));
+                    const PCTS_3 = [0.30, 0.50, 0.80];
                     sorted.forEach((q, i) => {
-                      const sec = Math.floor((dur * (i + 1)) / (sorted.length + 1));
+                      const pct = sorted.length === 3
+                        ? PCTS_3[i]
+                        : 0.25 + (i * 0.6) / Math.max(1, sorted.length - 1);
+                      const sec = Math.floor(dur * pct);
                       const m = Math.floor(sec / 60);
                       const s = sec % 60;
                       q.timestamp = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
