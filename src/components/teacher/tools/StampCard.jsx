@@ -51,18 +51,39 @@ export default function StampCard() {
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
+    setFetchError(null);
+    setClassData(null);
     fetchClass();
     pollRef.current = setInterval(fetchClass, 5000);
     return () => clearInterval(pollRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCode, view]);
 
+  const [fetchError, setFetchError] = useState(null);
   const fetchClass = async () => {
+    if (!activeCode) return;
     try {
       const res = await fetch(`/api/teacher/stampcard?code=${activeCode}`);
       const data = await res.json();
-      if (res.ok) setClassData(data);
-    } catch {}
+      if (res.ok) {
+        setClassData(data);
+        setFetchError(null);
+      } else {
+        setFetchError(data.error || 'ไม่พบห้องเรียน');
+      }
+    } catch {
+      setFetchError('เชื่อมต่อไม่ได้');
+    }
+  };
+
+  // Remove a class from the local saved list (when room is gone from server)
+  const removeFromLibrary = (code) => {
+    if (!confirm(`ลบ ${code} ออกจากรายการเครื่องนี้?\n(ห้องในเซิร์ฟเวอร์ไม่ถูกลบ)`)) return;
+    const updated = savedClasses.filter(c => c.code !== code);
+    setSavedClasses(updated); saveCodes(updated);
+    if (activeCode === code) {
+      setActiveCode(''); setClassData(null); setView('list');
+    }
   };
 
   // Render student QR for active session
@@ -176,6 +197,50 @@ export default function StampCard() {
   // ════════════════════════════════════════════════════════════════════════
   // MANAGE VIEW
   // ════════════════════════════════════════════════════════════════════════
+  // ── MANAGE: loading state ─────────────────────────────────────────────────
+  if (view === 'manage' && !classData) {
+    return (
+      <div style={{ padding: 40, maxWidth: 700, margin: '0 auto', fontFamily: FONT, textAlign: 'center' }}>
+        <button onClick={() => { setView('list'); setActiveCode(''); setFetchError(null); }} style={{ marginBottom: 24, padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', color: '#64748b', fontFamily: FONT }}>← กลับ</button>
+        {fetchError ? (
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: '40px 24px',
+            border: '2px solid #fecaca',
+            boxShadow: '0 4px 16px rgba(239,68,68,0.1)',
+          }}>
+            <div style={{ fontSize: 56, marginBottom: 14 }}>⚠️</div>
+            <h2 style={{ margin: '0 0 8px', color: '#991b1b', fontSize: 20 }}>เปิดห้อง <span style={{ fontFamily:'monospace', color:'#dc2626' }}>{activeCode}</span> ไม่ได้</h2>
+            <p style={{ margin: '0 0 24px', color: '#64748b', fontSize: 14 }}>{fetchError}</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={() => { setFetchError(null); fetchClass(); }} style={{
+                padding: '10px 20px', borderRadius: 10, border: 'none',
+                background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
+              }}>🔄 ลองใหม่</button>
+              <button onClick={() => removeFromLibrary(activeCode)} style={{
+                padding: '10px 20px', borderRadius: 10, border: '1px solid #fecaca',
+                background: '#fff', color: '#dc2626', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
+              }}>🗑️ ลบออกจากรายการ</button>
+              <button onClick={() => { setView('list'); setActiveCode(''); setFetchError(null); }} style={{
+                padding: '10px 20px', borderRadius: 10, border: '1px solid #e2e8f0',
+                background: '#fff', color: '#475569', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
+              }}>← กลับ</button>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            background: '#fff', borderRadius: 16, padding: '60px 24px',
+            border: '1px solid #e2e8f0',
+          }}>
+            <div style={{ fontSize: 56, marginBottom: 14, animation: 'pulse 1.6s ease infinite' }}>🎫</div>
+            <style>{`@keyframes pulse { 0%,100%{opacity:0.5;transform:scale(0.95)} 50%{opacity:1;transform:scale(1.05)} }`}</style>
+            <h2 style={{ margin: '0 0 8px', color: '#0f172a', fontSize: 18 }}>กำลังเปิดห้อง <span style={{ fontFamily:'monospace', color: CI.cyan }}>{activeCode}</span>...</h2>
+            <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>กรุณารอสักครู่</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (view === 'manage' && classData) {
     const isOpen = classData.activeSession && new Date(classData.activeSession.openUntil) > new Date();
     const minutesLeft = isOpen ? Math.ceil((new Date(classData.activeSession.openUntil) - new Date()) / 60000) : 0;
@@ -343,16 +408,42 @@ export default function StampCard() {
           {savedClasses.map(c => {
             const t = THEME_PREVIEW[c.theme] || THEME_PREVIEW.space;
             return (
-              <div key={c.code} onClick={() => { setActiveCode(c.code); setView('manage'); }} style={{
+              <div key={c.code} style={{
+                position: 'relative',
                 background: `linear-gradient(135deg, ${t.color}10, ${t.color}05)`,
-                borderRadius: 14, padding: 18, border: `2px solid ${t.color}40`, cursor: 'pointer', transition: 'all 0.15s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = `0 10px 24px ${t.color}30`; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-                <div style={{ display: 'inline-block', background: `${t.color}22`, color: t.color, padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>{c.code}</div>
-                <h3 style={{ margin: '0 0 4px', color: '#0f172a', fontSize: 16 }}>{c.courseName}</h3>
-                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>{c.course} · {t.name}</div>
-                <div style={{ fontSize: 22, letterSpacing: 4 }}>{t.samples.slice(0,4).join(' ')}</div>
+                borderRadius: 14, padding: 18, border: `2px solid ${t.color}40`, transition: 'all 0.15s',
+              }}>
+                {/* Click area (excluding delete button) */}
+                <div onClick={() => { setActiveCode(c.code); setView('manage'); }}
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.parentElement.style.transform = 'translateY(-3px)'; e.currentTarget.parentElement.style.boxShadow = `0 10px 24px ${t.color}30`; e.currentTarget.parentElement.style.borderColor = t.color; }}
+                  onMouseLeave={e => { e.currentTarget.parentElement.style.transform = 'translateY(0)'; e.currentTarget.parentElement.style.boxShadow = 'none'; e.currentTarget.parentElement.style.borderColor = `${t.color}40`; }}>
+                  <div style={{ display: 'inline-block', background: `${t.color}22`, color: t.color, padding: '3px 10px', borderRadius: 6, fontSize: 11, fontWeight: 800, letterSpacing: 1, marginBottom: 8 }}>{c.code}</div>
+                  <h3 style={{ margin: '0 0 4px', color: '#0f172a', fontSize: 16 }}>{c.courseName}</h3>
+                  <div style={{ fontSize: 13, color: '#64748b', marginBottom: 10 }}>{c.course} · {t.name}</div>
+                  <div style={{ fontSize: 22, letterSpacing: 4 }}>{t.samples.slice(0,4).join(' ')}</div>
+                  <div style={{
+                    marginTop: 12, fontSize: 12, color: t.color, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}>
+                    เปิดห้อง →
+                  </div>
+                </div>
+
+                {/* Delete button — top-right corner */}
+                <button onClick={e => { e.stopPropagation(); removeFromLibrary(c.code); }}
+                  title="ลบออกจากรายการ"
+                  style={{
+                    position: 'absolute', top: 10, right: 10,
+                    background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(0,0,0,0.08)',
+                    borderRadius: 8, width: 28, height: 28,
+                    cursor: 'pointer', fontSize: 13,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#fee2e2'; e.currentTarget.style.color = '#dc2626'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.7)'; e.currentTarget.style.color = ''; }}>
+                  🗑️
+                </button>
               </div>
             );
           })}
