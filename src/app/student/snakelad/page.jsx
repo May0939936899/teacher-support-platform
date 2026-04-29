@@ -96,6 +96,10 @@ function playSound(type) {
       // Mystery card appear
       tone(440, 0, 0.15, 'triangle', 0.1);
       tone(554, 0.08, 0.12, 'triangle', 0.08);
+    } else if (type === 'step') {
+      // Soft footstep / tap on each square
+      tone(380, 0, 0.04, 'sine', 0.07);
+      tone(190, 0, 0.05, 'triangle', 0.04);
     }
     setTimeout(() => { try { ac.close(); } catch {} }, 3500);
   } catch { /* Web Audio not supported */ }
@@ -107,10 +111,10 @@ function createBgMusic(theme) {
     const ac = new (window.AudioContext || window.webkitAudioContext)();
     let stopped = false;
     const MELODIES = {
-      funpark: { notes:[523,659,784,880,784,659,523,440], tempo:0.32, vol:0.07, wave:'triangle' },
-      snow:    { notes:[440,494,523,494,440,415,370,415], tempo:0.58, vol:0.06, wave:'sine' },
-      japan:   { notes:[330,370,415,494,415,370,330,294], tempo:0.48, vol:0.065, wave:'triangle' },
-      forest:  { notes:[220,247,294,247,220,196,220,247], tempo:0.65, vol:0.055, wave:'sine' },
+      funpark: { notes:[523,659,784,880,784,659,523,440], tempo:0.36, vol:0.025, wave:'triangle' },
+      snow:    { notes:[440,494,523,494,440,415,370,415], tempo:0.62, vol:0.022, wave:'sine' },
+      japan:   { notes:[330,370,415,494,415,370,330,294], tempo:0.52, vol:0.024, wave:'triangle' },
+      forest:  { notes:[220,247,294,247,220,196,220,247], tempo:0.68, vol:0.020, wave:'sine' },
     };
     const m = MELODIES[theme] || MELODIES.funpark;
     let idx = 0;
@@ -190,6 +194,72 @@ function DiceFace({ value, size = 100, color = '#6366f1' }) {
       ))}
     </svg>
   );
+}
+
+// ── Animated step-by-step movement hook ──────────────────────────────────────
+// Walks each player's display position toward their real position, one square
+// at a time, with `interval` ms between steps. Calls onStep on each tick.
+function useAnimatedPositions(players, interval = 200, onStep) {
+  const [, forceRender] = useState(0);
+  const displayRef = useRef({});
+  const timerRef   = useRef(null);
+
+  useEffect(() => {
+    // Initialize new players to their current position
+    let initialized = false;
+    players.forEach(p => {
+      if (displayRef.current[p.id] === undefined) {
+        displayRef.current[p.id] = p.position;
+        initialized = true;
+      }
+    });
+    if (initialized) forceRender(n => n + 1);
+
+    // Check if any player needs animating
+    const needsAnim = players.some(p => displayRef.current[p.id] !== p.position);
+    if (!needsAnim || timerRef.current) return;
+
+    const tick = () => {
+      let stepped = false;
+      let stillAnimating = false;
+      players.forEach(p => {
+        const cur = displayRef.current[p.id];
+        if (cur !== undefined && cur !== p.position) {
+          // Snake/ladder big jumps move 2 squares per tick (faster slide)
+          const diff = Math.abs(p.position - cur);
+          const stride = diff > 6 ? 2 : 1;
+          const step = stride * (p.position > cur ? 1 : -1);
+          let next = cur + step;
+          if ((step > 0 && next > p.position) || (step < 0 && next < p.position)) {
+            next = p.position;
+          }
+          displayRef.current[p.id] = next;
+          stepped = true;
+          if (next !== p.position) stillAnimating = true;
+        }
+      });
+      if (stepped && onStep) onStep();
+      forceRender(n => n + 1);
+
+      if (stillAnimating) {
+        timerRef.current = setTimeout(tick, interval);
+      } else {
+        timerRef.current = null;
+      }
+    };
+
+    timerRef.current = setTimeout(tick, interval);
+    return () => {
+      if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    };
+  }, [players, interval, onStep]);
+
+  // Cleanup on unmount
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
+
+  return displayRef.current;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -299,6 +369,15 @@ function StudentSnakeLadderInner() {
       clearInterval(pollRef.current);
     }
   }, [session, screen]);
+
+  // Auto-enable background music when entering playing screen
+  useEffect(() => {
+    if (screen === 'playing' && !musicOn) {
+      // Slight delay so it doesn't compete with join sound
+      const t = setTimeout(() => setMusicOn(true), 600);
+      return () => clearTimeout(t);
+    }
+  }, [screen]); // eslint-disable-line
 
   // ── Step 1: go to character screen ───────────────────────────────────────
   const goToCharacter = () => {
@@ -421,6 +500,10 @@ function StudentSnakeLadderInner() {
   const curPlayer = players[curIdx] || null;
   const myPlayer  = players.find(p => p.id === myPlayerId);
   const isMyTurn  = curPlayer?.id === myPlayerId;
+
+  // ── Animated step-by-step positions for race track ───────────────────────
+  const onStep = useCallback(() => playSound('step'), []);
+  const animatedPositions = useAnimatedPositions(players, 200, onStep);
 
   const cardBg = () => {
     if (!rollResult?.event) return 'linear-gradient(160deg,#1e1b4b,#312e81)';
@@ -989,18 +1072,20 @@ function StudentSnakeLadderInner() {
           <div style={{ position:'absolute', left:4, top:'50%', transform:'translateY(-50%)', fontSize:10, color:'rgba(255,255,255,0.25)', fontWeight:700 }}>S</div>
           {/* GOAL */}
           <div style={{ position:'absolute', right:3, top:'50%', transform:'translateY(-50%)', fontSize:16 }}>🏁</div>
-          {/* Player tokens on track */}
-          {players.map((p, i) => {
-            const pct = Math.max(2, Math.min(90, (p.position / 100) * 90));
+          {/* Player tokens on track — animated position */}
+          {players.map((p) => {
+            const animPos = animatedPositions[p.id] ?? p.position;
+            const pct = Math.max(2, Math.min(90, (animPos / 100) * 90));
             const isMine = p.id === myPlayerId;
+            const isMoving = animPos !== p.position;
             return (
               <div key={p.id} style={{
                 position:'absolute',
                 left:`${pct}%`,
                 top:'50%',
-                transform:'translate(-50%,-50%)',
+                transform: `translate(-50%,-50%) ${isMoving ? 'translateY(-3px)' : ''}`,
                 fontSize: isMine ? 22 : 18,
-                transition:'left 1.3s cubic-bezier(0.34,1.56,0.64,1)',
+                transition:'left 0.18s linear, transform 0.15s ease',
                 zIndex: isMine ? 3 : 2,
                 filter: isMine
                   ? `drop-shadow(0 0 8px ${p.color}) drop-shadow(0 0 3px ${p.color})`

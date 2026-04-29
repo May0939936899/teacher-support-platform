@@ -150,10 +150,73 @@ function DiceFace({ value, size = 60, color = '#6366f1' }) {
   );
 }
 
+// ── Step sound (Web Audio API, soft tap) ──────────────────────────────────
+function playStepSound() {
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(); const g = ac.createGain();
+    o.connect(g); g.connect(ac.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(380, ac.currentTime);
+    g.gain.setValueAtTime(0.05, ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + 0.05);
+    o.start(ac.currentTime); o.stop(ac.currentTime + 0.06);
+    setTimeout(() => { try { ac.close(); } catch {} }, 200);
+  } catch {}
+}
+
+// ── Animated step-by-step positions (one square per `interval` ms) ─────────
+function useAnimatedPlayerPositions(players, interval = 200, onStep) {
+  const [, forceRender] = useState(0);
+  const displayRef = useRef({});
+  const timerRef   = useRef(null);
+
+  useEffect(() => {
+    let initialized = false;
+    players.forEach(p => {
+      if (displayRef.current[p.id] === undefined) {
+        displayRef.current[p.id] = p.position;
+        initialized = true;
+      }
+    });
+    if (initialized) forceRender(n => n + 1);
+
+    const needsAnim = players.some(p => displayRef.current[p.id] !== p.position);
+    if (!needsAnim || timerRef.current) return;
+
+    const tick = () => {
+      let stepped = false, stillAnimating = false;
+      players.forEach(p => {
+        const cur = displayRef.current[p.id];
+        if (cur !== undefined && cur !== p.position) {
+          const diff = Math.abs(p.position - cur);
+          const stride = diff > 6 ? 2 : 1;
+          const step = stride * (p.position > cur ? 1 : -1);
+          let next = cur + step;
+          if ((step > 0 && next > p.position) || (step < 0 && next < p.position)) next = p.position;
+          displayRef.current[p.id] = next;
+          stepped = true;
+          if (next !== p.position) stillAnimating = true;
+        }
+      });
+      if (stepped && onStep) onStep();
+      forceRender(n => n + 1);
+      if (stillAnimating) timerRef.current = setTimeout(tick, interval);
+      else timerRef.current = null;
+    };
+    timerRef.current = setTimeout(tick, interval);
+    return () => { if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; } };
+  }, [players, interval, onStep]);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  return displayRef.current;
+}
+
 // ── SVG Board ─────────────────────────────────────────────────────────────────
-function SnakeAndLadderBoard({ players, theme, currentPlayerIdx = 0 }) {
+function SnakeAndLadderBoard({ players, theme, currentPlayerIdx = 0, onStep }) {
   const t = THEMES[theme] || THEMES.funpark;
   const size = CELL * 10;
+  const animatedPositions = useAnimatedPlayerPositions(players, 200, onStep);
 
   // Build cells
   const cells = [];
@@ -291,11 +354,12 @@ function SnakeAndLadderBoard({ players, theme, currentPlayerIdx = 0 }) {
     );
   });
 
-  // Player tokens
+  // Player tokens — group by ANIMATED position
   const posBySquare = {};
   (players || []).forEach(p => {
-    if (!posBySquare[p.position]) posBySquare[p.position] = [];
-    posBySquare[p.position].push(p);
+    const pos = animatedPositions[p.id] ?? p.position;
+    if (!posBySquare[pos]) posBySquare[pos] = [];
+    posBySquare[pos].push(p);
   });
 
   const tokens = [];
@@ -312,57 +376,136 @@ function SnakeAndLadderBoard({ players, theme, currentPlayerIdx = 0 }) {
       const isCurrent = players.indexOf(p) === currentPlayerIdx;
       tokens.push(
         <g key={`tk-${p.id}`}>
+          {/* Ground shadow ellipse */}
+          <ellipse cx={cx} cy={cy + 9} rx={11} ry={3} fill="rgba(0,0,0,0.35)" />
+          {/* Glow ring for current player */}
           {isCurrent && (
-            <>
-              <circle cx={cx} cy={cy} r={18} fill="none" stroke={p.color} strokeWidth={2} opacity={0.35}>
-                <animate attributeName="r" values="16;22;16" dur="1.6s" repeatCount="indefinite" />
-                <animate attributeName="opacity" values="0.5;0.08;0.5" dur="1.6s" repeatCount="indefinite" />
-              </circle>
-            </>
+            <circle cx={cx} cy={cy} r={18} fill="none" stroke={p.color} strokeWidth={2.5} opacity={0.4}>
+              <animate attributeName="r" values="16;24;16" dur="1.5s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.6;0.05;0.6" dur="1.5s" repeatCount="indefinite" />
+            </circle>
           )}
-          <circle cx={cx} cy={cy} r={12} fill={p.color}
-            stroke="#fff" strokeWidth={isCurrent ? 2 : 1.5} opacity={0.95} />
-          <text x={cx} y={cy+1} textAnchor="middle" dominantBaseline="middle" fontSize={13}>
-            {p.avatar}
-          </text>
+          {/* Token group with bounce animation if current */}
+          <g>
+            {isCurrent && (
+              <animateTransform attributeName="transform" type="translate"
+                values="0 0; 0 -4; 0 0" dur="0.9s" repeatCount="indefinite" />
+            )}
+            {/* Token base shadow */}
+            <circle cx={cx+0.5} cy={cy+1} r={13} fill="rgba(0,0,0,0.4)" />
+            {/* Token */}
+            <circle cx={cx} cy={cy} r={13} fill={p.color}
+              stroke="#fff" strokeWidth={isCurrent ? 2.5 : 1.5} opacity={1} />
+            {/* Highlight (top-left shine) */}
+            <ellipse cx={cx-3} cy={cy-3} rx={4} ry={3} fill="rgba(255,255,255,0.4)" />
+            {/* Avatar */}
+            <text x={cx} y={cy+1} textAnchor="middle" dominantBaseline="middle" fontSize={14}
+              style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}>
+              {p.avatar}
+            </text>
+          </g>
         </g>
       );
     });
   });
 
   return (
+    <div style={{
+      perspective: '1400px',
+      perspectiveOrigin: '50% 30%',
+      padding: '8px 0',
+      width: 'fit-content',
+      maxWidth: '100%',
+      margin: '0 auto',
+    }}>
+      <div style={{
+        transform: 'rotateX(18deg) rotateZ(-1deg)',
+        transformStyle: 'preserve-3d',
+        filter: `drop-shadow(0 18px 18px rgba(0,0,0,0.55)) drop-shadow(0 0 32px ${t.border}44)`,
+        borderRadius: 14,
+      }}>
     <svg
       width={size} height={size}
       viewBox={`0 0 ${size} ${size}`}
       style={{
         borderRadius: 14, border: `2.5px solid ${t.border}`,
-        boxShadow: `0 0 40px ${t.border}44, inset 0 0 0 1px rgba(255,255,255,0.1)`,
+        boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.15)`,
         background: t.boardBg,
         maxWidth: '100%', display: 'block',
       }}
     >
-      {/* Grid */}
+      <defs>
+        {/* Cell depth gradient */}
+        <linearGradient id="cellShine" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%"  stopColor="rgba(255,255,255,0.35)" />
+          <stop offset="50%" stopColor="rgba(255,255,255,0.05)" />
+          <stop offset="100%" stopColor="rgba(0,0,0,0.10)" />
+        </linearGradient>
+        {/* Event sparkle gradient */}
+        <radialGradient id="eventGlow">
+          <stop offset="0%" stopColor="rgba(251,191,36,0.6)" />
+          <stop offset="100%" stopColor="rgba(251,191,36,0)" />
+        </radialGradient>
+      </defs>
+
+      {/* Grid with depth */}
       {cells.map(cell => (
         <g key={cell.n}>
+          {/* Cell base */}
           <rect x={cell.x} y={cell.y} width={CELL} height={CELL}
-            fill={cell.fill} stroke="rgba(0,0,0,0.1)" strokeWidth={0.5} />
-          <text x={cell.x+3} y={cell.y+10} fontSize={7.5} fill="rgba(0,0,0,0.35)"
+            fill={cell.fill} stroke="rgba(0,0,0,0.12)" strokeWidth={0.5} rx={1.5} />
+          {/* Depth shine (top to bottom) */}
+          <rect x={cell.x} y={cell.y} width={CELL} height={CELL}
+            fill="url(#cellShine)" rx={1.5} pointerEvents="none" />
+          {/* Number */}
+          <text x={cell.x+3} y={cell.y+10} fontSize={7.5} fill="rgba(0,0,0,0.4)"
             fontFamily={FONT} fontWeight={700}>{cell.n}</text>
+          {/* Special icons */}
           {cell.isStart && (
-            <text x={cell.x+CELL/2} y={cell.y+CELL/2+8} textAnchor="middle" fontSize={16}>🏁</text>
+            <text x={cell.x+CELL/2} y={cell.y+CELL/2+8} textAnchor="middle" fontSize={18}>
+              🏁
+            </text>
           )}
           {cell.isEnd && (
-            <text x={cell.x+CELL/2} y={cell.y+CELL/2+8} textAnchor="middle" fontSize={16}>🏆</text>
+            <g>
+              <circle cx={cell.x+CELL/2} cy={cell.y+CELL/2} r={CELL*0.45}
+                fill="url(#eventGlow)">
+                <animate attributeName="r" values={`${CELL*0.4};${CELL*0.55};${CELL*0.4}`} dur="2s" repeatCount="indefinite" />
+              </circle>
+              <text x={cell.x+CELL/2} y={cell.y+CELL/2+8} textAnchor="middle" fontSize={20}>🏆</text>
+            </g>
           )}
           {cell.isEvent && !cell.isStart && !cell.isEnd && (
-            <text x={cell.x+CELL/2} y={cell.y+CELL/2+8} textAnchor="middle" fontSize={11} opacity={0.4}>🎯</text>
+            <g>
+              <circle cx={cell.x+CELL/2} cy={cell.y+CELL/2} r={CELL*0.32}
+                fill="url(#eventGlow)" opacity={0.5}>
+                <animate attributeName="opacity" values="0.2;0.7;0.2" dur="1.8s" repeatCount="indefinite" />
+              </circle>
+              <text x={cell.x+CELL/2} y={cell.y+CELL/2+5} textAnchor="middle" fontSize={14}>
+                ❓
+              </text>
+            </g>
           )}
         </g>
       ))}
-      {ladderElems}
-      {snakeElems}
+
+      {/* Ladders with shimmer */}
+      <g>
+        {ladderElems}
+      </g>
+
+      {/* Snakes with subtle slither */}
+      <g>
+        <animateTransform attributeName="transform" type="translate"
+          values="0 0; 0 -1.2; 0 0; 0 1.2; 0 0" dur="3.2s" repeatCount="indefinite" />
+        {snakeElems}
+      </g>
+
+      {/* Player tokens */}
       {tokens}
     </svg>
+      </div>
+    </div>
   );
 }
 
@@ -937,6 +1080,7 @@ export default function SnakeLadderGame() {
             players={players}
             theme={session?.theme || 'funpark'}
             currentPlayerIdx={curIdx}
+            onStep={playStepSound}
           />
         </div>
 
