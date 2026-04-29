@@ -39,55 +39,61 @@ export default function StudentSplash({ duration = 2200, onFinish }) {
       animation: done ? 'spfade 0.3s ease forwards' : 'none',
     }}>
       <style>{`
-        @keyframes spfade   { to { opacity: 0; visibility: hidden; } }
-        @keyframes spTrain  { 0% { left: -260px; }           100% { left: calc(100% + 260px); } }
-        @keyframes spWheel  { to { transform: rotate(360deg); } }
-        @keyframes spRoad   { to { background-position: -60px 0; } }
-        @keyframes spSparkle{ 0%,100%{ opacity:0.3; transform:scale(0.8) } 50%{ opacity:1; transform:scale(1.15) } }
-        @keyframes spFloat  { 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-6px) } }
-        @keyframes spTitleIn{ from{opacity:0; transform: translateY(20px) scale(0.95)} to{opacity:1; transform: translateY(0) scale(1)} }
-        @keyframes spRainbow{ 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+        @keyframes spfade    { to { opacity: 0; visibility: hidden; } }
+        @keyframes spTrain   { 0% { left: -260px; }           100% { left: calc(100% + 260px); } }
+        @keyframes spWheel   { to { transform: rotate(360deg); } }
+        @keyframes spRoad    { to { background-position: -60px 0; } }
+        @keyframes spFloat   { 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-6px) } }
+        @keyframes spTitleIn { from{opacity:0; transform: translateY(20px) scale(0.95)} to{opacity:1; transform: translateY(0) scale(1)} }
+        @keyframes spRainbow { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+        @keyframes spCloud1  { 0%{ left:-12%; }  100%{ left:108%; } }
+        @keyframes spCloud2  { 0%{ left:108%; opacity:0.55 }  100%{ left:-12%; opacity:0.55 } }
+        @keyframes spCloud3  { 0%{ left:-15%; }  100%{ left:115%; } }
+        @keyframes spSubGlow { 0%,100%{ text-shadow: 0 1px 0 rgba(255,255,255,0.5); } 50%{ text-shadow: 0 1px 0 rgba(255,255,255,0.5), 0 0 12px rgba(124,77,255,0.18); } }
       `}</style>
 
-      {/* Sparkles around title */}
-      {[
-        {l:'42%',t:'30%',d:0,   s:18, c:'#7c4dff'},
-        {l:'60%',t:'29%',d:0.4, s:14, c:'#ffc107'},
-        {l:'48%',t:'42%',d:0.8, s:12, c:'#00b4e6'},
-        {l:'58%',t:'42%',d:1.2, s:14, c:'#e6007e'},
-      ].map((s,i) => (
-        <div key={i} style={{
-          position:'absolute', left:s.l, top:s.t, fontSize:s.s,
-          color:s.c, animation:`spSparkle 1.6s ${s.d}s ease infinite`,
-          textShadow:`0 0 8px ${s.c}88`,
-          zIndex: 3,
-        }}>✦</div>
-      ))}
+      {/* ── Drifting clouds (gentle, full-width) ─────────────────── */}
+      <Cloud style={{ top:'8%',  size:'clamp(56px,8vw,110px)', opacity:0.85, animation:'spCloud1 38s linear infinite' }} />
+      <Cloud style={{ top:'14%', size:'clamp(40px,5.5vw,76px)',  opacity:0.7,  animation:'spCloud2 52s linear infinite', animationDelay:'-15s' }} />
+      <Cloud style={{ top:'22%', size:'clamp(72px,10vw,140px)', opacity:0.92, animation:'spCloud1 60s linear infinite', animationDelay:'-30s' }} />
+      <Cloud style={{ top:'5%',  size:'clamp(34px,4.5vw,60px)',  opacity:0.6,  animation:'spCloud3 44s linear infinite', animationDelay:'-22s' }} />
+      <Cloud style={{ top:'30%', size:'clamp(50px,7vw,96px)',   opacity:0.75, animation:'spCloud2 56s linear infinite', animationDelay:'-8s' }} />
 
-      {/* Logo + Title */}
+      {/* ── Logo + Title (no sparkles, prettier subtitle pill) ───── */}
       <div style={{
-        zIndex:3, textAlign:'center',
-        animation:'spTitleIn 0.7s ease both, spFloat 4s ease-in-out infinite',
+        zIndex:3, textAlign:'center', position:'relative',
+        animation:'spTitleIn 0.7s ease both, spFloat 5s ease-in-out infinite',
         marginBottom: 'clamp(40px,8vh,80px)',
       }}>
         <h1 style={{
-          margin:0, fontSize:'clamp(38px,7vw,76px)',
-          fontWeight:900, letterSpacing:'0.02em',
-          background: 'linear-gradient(90deg,#1976d2 0%,#1565c0 28%,#c2185b 50%,#7c4dff 78%,#1976d2 100%)',
-          backgroundSize: '200% 100%',
+          margin:0, fontSize:'clamp(40px,7.5vw,84px)',
+          fontWeight:900, letterSpacing:'0.03em',
+          background: 'linear-gradient(90deg,#1976d2 0%,#1565c0 22%,#c2185b 50%,#7c4dff 78%,#1976d2 100%)',
+          backgroundSize: '220% 100%',
           WebkitBackgroundClip:'text', backgroundClip:'text',
           WebkitTextFillColor:'transparent', color:'transparent',
-          animation:'spRainbow 5s linear infinite',
-          filter:'drop-shadow(0 4px 18px rgba(124,77,255,0.25))',
+          animation:'spRainbow 7s linear infinite',
+          filter:'drop-shadow(0 6px 24px rgba(124,77,255,0.28)) drop-shadow(0 2px 8px rgba(25,118,210,0.18))',
           lineHeight: 1.05,
         }}>
           SPUBUS MAGIC
         </h1>
+
+        {/* Subtle decorative line under title */}
+        <div style={{
+          width: 'min(60%, 240px)', height: 3, margin: '14px auto 0',
+          borderRadius: 99,
+          background: 'linear-gradient(90deg, transparent, #7c4dff66, #c2185b66, #1976d266, transparent)',
+        }} />
+
         <p style={{
-          margin:'10px 0 0', fontSize:'clamp(13px,1.4vw,16px)',
-          color:'#475569', fontWeight:500, letterSpacing:'0.04em',
+          margin:'14px auto 0',
+          fontSize:'clamp(13px,1.4vw,17px)',
+          color:'#3a4a6e', fontWeight:600, letterSpacing:'0.05em',
+          animation:'spSubGlow 3.5s ease infinite',
+          fontFamily: FONT,
         }}>
-          คณะบริหารธุรกิจ &nbsp; มหาวิทยาลัยศรีปทุม
+          คณะบริหารธุรกิจ&nbsp; · &nbsp;มหาวิทยาลัยศรีปทุม
         </p>
       </div>
 
@@ -172,19 +178,34 @@ export default function StudentSplash({ duration = 2200, onFinish }) {
         </svg>
       </div>
 
-      {/* Trees (left + right of the bridge) */}
-      <div style={{ position:'absolute', left:'clamp(30px,5vw,80px)', bottom:'clamp(28px,5vh,68px)', zIndex:2 }}>
-        <span style={{ fontSize:'clamp(28px,3.5vw,44px)', display:'inline-block' }}>🌲</span>
-      </div>
-      <div style={{ position:'absolute', left:'clamp(80px,8vw,140px)', bottom:'clamp(20px,4vh,55px)', zIndex:2 }}>
-        <span style={{ fontSize:'clamp(22px,3vw,34px)', display:'inline-block' }}>🌳</span>
-      </div>
-      {[ '70%','78%','86%','92%' ].map((l,i)=>(
+      {/* Trees — scattered along the ground (more spread out) */}
+      {[
+        { left: '3%',  bottom: '7vh', size: 'clamp(34px,4.2vw,52px)',  emoji: '🌲' },
+        { left: '8%',  bottom: '4vh', size: 'clamp(26px,3.4vw,40px)',  emoji: '🌳' },
+        { left: '14%', bottom: '6vh', size: 'clamp(30px,3.8vw,46px)',  emoji: '🌲' },
+        { left: '20%', bottom: '3vh', size: 'clamp(22px,3vw,34px)',    emoji: '🌳' },
+        { left: '26%', bottom: '5.5vh', size: 'clamp(28px,3.4vw,42px)', emoji: '🌲' },
+        { left: '33%', bottom: '3.5vh', size: 'clamp(20px,2.6vw,30px)', emoji: '🌳' },
+        { left: '40%', bottom: '6vh', size: 'clamp(24px,3vw,36px)',    emoji: '🌲' },
+        { left: '60%', bottom: '4vh', size: 'clamp(22px,2.8vw,34px)',  emoji: '🌳' },
+        { left: '67%', bottom: '6.5vh', size: 'clamp(30px,3.8vw,46px)', emoji: '🌲' },
+        { left: '73%', bottom: '4vh', size: 'clamp(24px,3vw,36px)',    emoji: '🌳' },
+        { left: '80%', bottom: '7vh', size: 'clamp(34px,4.2vw,52px)',  emoji: '🌲' },
+        { left: '86%', bottom: '3.5vh', size: 'clamp(22px,2.8vw,34px)', emoji: '🌳' },
+        { left: '92%', bottom: '5.5vh', size: 'clamp(28px,3.6vw,44px)', emoji: '🌲' },
+        { left: '97%', bottom: '4vh', size: 'clamp(24px,3vw,36px)',    emoji: '🌳' },
+      ].map((tree, i) => (
         <div key={i} style={{
-          position:'absolute', left:l,
-          bottom:`clamp(${20+(i%2)*6}px, ${4+(i%2)*1}vh, ${55+(i%2)*8}px)`,
-          fontSize:'clamp(22px,2.8vw,38px)', zIndex:2,
-        }}>{i%2===0?'🌲':'🌳'}</div>
+          position: 'absolute',
+          left: tree.left,
+          bottom: tree.bottom,
+          fontSize: tree.size,
+          zIndex: 2,
+          filter: 'drop-shadow(0 2px 4px rgba(50,80,40,0.15))',
+          transform: 'translateX(-50%)',
+        }}>
+          {tree.emoji}
+        </div>
       ))}
 
       {/* Progress bar (bottom) */}
@@ -206,6 +227,43 @@ export default function StudentSplash({ duration = 2200, onFinish }) {
           }} />
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Soft fluffy cloud — pure SVG, drifts gently across the sky ─────────────
+function Cloud({ style }) {
+  const { size, opacity, animation, animationDelay, top } = style;
+  return (
+    <div style={{
+      position: 'absolute',
+      top,
+      left: '-15%',
+      width: size,
+      opacity,
+      animation,
+      animationDelay,
+      zIndex: 0,
+      pointerEvents: 'none',
+    }}>
+      <svg viewBox="0 0 120 60" style={{ width: '100%', height: 'auto', display: 'block' }}>
+        <defs>
+          <radialGradient id={`cloudGrad${size}`} cx="40%" cy="35%" r="65%">
+            <stop offset="0%"  stopColor="#ffffff" />
+            <stop offset="80%" stopColor="#f0f7ff" />
+            <stop offset="100%" stopColor="#dbeafe" />
+          </radialGradient>
+        </defs>
+        <g fill={`url(#cloudGrad${size})`}>
+          <ellipse cx="40" cy="38" rx="22" ry="14" />
+          <ellipse cx="62" cy="32" rx="26" ry="18" />
+          <ellipse cx="84" cy="38" rx="20" ry="13" />
+          <ellipse cx="50" cy="42" rx="14" ry="10" />
+          <ellipse cx="74" cy="44" rx="16" ry="9" />
+        </g>
+        {/* Subtle inner highlight */}
+        <ellipse cx="55" cy="28" rx="14" ry="6" fill="#ffffff" opacity="0.6" />
+      </svg>
     </div>
   );
 }
