@@ -59,20 +59,27 @@ const EVENTS  = {
 const PLAYER_COLORS  = ['#FF6B9D','#4ECDC4','#FFE66D','#A8E6CF','#DDA0DD','#87CEEB','#FFA07A','#98FB98','#F0E68C','#E6A8D7'];
 const PLAYER_AVATARS = ['🐶','🐱','🐻','🦊','🐸','🦁','🐯','🐺','🦝','🐨'];
 
-// ── CRUD helpers — same schema as bussanook: session_id / session_data / updated_at ──
+// ── CRUD helpers (resilient: always try DB, fall back to memory) ──
 async function getRoom(code) {
   const key = PREFIX + code;
-  if (await checkSb()) {
+  try {
     const sb = createAdminClient();
-    const { data } = await sb
-      .from('scoreboard_sessions')
-      .select('session_data, updated_at')
-      .eq('session_id', key)
-      .single();
-    if (!data?.session_data) return null;
-    const updatedMs = new Date(data.updated_at).getTime();
-    if (Date.now() - updatedMs > TTL_MS) return null;
-    return data.session_data;
+    if (sb) {
+      const { data, error } = await sb
+        .from('scoreboard_sessions')
+        .select('session_data, updated_at')
+        .eq('session_id', key)
+        .maybeSingle();
+      if (!error && data?.session_data) {
+        const updatedMs = new Date(data.updated_at).getTime();
+        if (Date.now() - updatedMs <= TTL_MS) {
+          memRooms.set(code, data.session_data);
+          return data.session_data;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[snakelad] getRoom DB:', e?.message);
   }
   const r = memRooms.get(code);
   if (!r) return null;
@@ -82,36 +89,45 @@ async function getRoom(code) {
 
 async function saveRoom(code, room) {
   const key = PREFIX + code;
-  if (await checkSb()) {
-    const sb = createAdminClient();
-    await sb.from('scoreboard_sessions').upsert({
-      session_id:   key,
-      session_data: room,
-      updated_at:   new Date().toISOString(),
-    });
-    return;
-  }
   memRooms.set(code, room);
+  try {
+    const sb = createAdminClient();
+    if (sb) {
+      await sb.from('scoreboard_sessions').upsert({
+        session_id:   key,
+        session_data: room,
+        updated_at:   new Date().toISOString(),
+      });
+    }
+  } catch (e) {
+    console.warn('[snakelad] saveRoom DB:', e?.message);
+  }
 }
 
 async function mutateRoom(code, mutator) {
   const key = PREFIX + code;
-  if (await checkSb()) {
+  try {
     const sb = createAdminClient();
-    const { data } = await sb
-      .from('scoreboard_sessions')
-      .select('session_data')
-      .eq('session_id', key)
-      .single();
-    if (!data?.session_data) return null;
-    const room = data.session_data;
-    const result = mutator(room);
-    if (result === false) return room;
-    await sb
-      .from('scoreboard_sessions')
-      .update({ session_data: room, updated_at: new Date().toISOString() })
-      .eq('session_id', key);
-    return room;
+    if (sb) {
+      const { data, error } = await sb
+        .from('scoreboard_sessions')
+        .select('session_data')
+        .eq('session_id', key)
+        .maybeSingle();
+      if (!error && data?.session_data) {
+        const room = data.session_data;
+        const result = mutator(room);
+        if (result === false) return room;
+        await sb
+          .from('scoreboard_sessions')
+          .update({ session_data: room, updated_at: new Date().toISOString() })
+          .eq('session_id', key);
+        memRooms.set(code, room);
+        return room;
+      }
+    }
+  } catch (e) {
+    console.warn('[snakelad] mutateRoom DB:', e?.message);
   }
   const r = memRooms.get(code);
   if (!r) return null;

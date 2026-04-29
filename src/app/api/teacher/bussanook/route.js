@@ -41,10 +41,10 @@ const PREFIX = 'BUSS_';
 const TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 
 async function getRoom(code) {
-  // Try Supabase first
-  if (await checkSb()) {
-    try {
-      const sb = createAdminClient();
+  // Always try Supabase first (no stale gate)
+  try {
+    const sb = createAdminClient();
+    if (sb) {
       const { data, error } = await sb
         .from('scoreboard_sessions')
         .select('session_data, updated_at')
@@ -52,14 +52,16 @@ async function getRoom(code) {
         .maybeSingle();
       if (!error && data?.session_data) {
         const updatedMs = new Date(data.updated_at).getTime();
-        if (Date.now() - updatedMs <= TTL_MS) return data.session_data;
+        if (Date.now() - updatedMs <= TTL_MS) {
+          memRooms.set(code, data.session_data);
+          return data.session_data;
+        }
       }
-    } catch (e) {
-      // Transient DB error — fall through to in-memory
-      console.warn('[bussanook] getRoom DB error → fallback to memory:', e?.message || e);
     }
+  } catch (e) {
+    console.warn('[bussanook] getRoom DB:', e?.message || e);
   }
-  // In-memory fallback (also serves as cache when DB is down)
+  // In-memory fallback
   const r = memRooms.get(code);
   if (!r) return null;
   if (Date.now() - (r.createdAt || 0) > TTL_MS) { memRooms.delete(code); return null; }
@@ -67,27 +69,25 @@ async function getRoom(code) {
 }
 
 async function saveRoom(code, state) {
-  // Always also keep a memory copy as fallback during DB outages
   memRooms.set(code, state);
-  if (await checkSb()) {
-    try {
-      const sb = createAdminClient();
+  try {
+    const sb = createAdminClient();
+    if (sb) {
       await sb.from('scoreboard_sessions').upsert({
         session_id:   PREFIX + code,
         session_data: state,
         updated_at:   new Date().toISOString(),
       });
-    } catch (e) {
-      console.warn('[bussanook] saveRoom DB error (kept memory copy):', e?.message || e);
     }
+  } catch (e) {
+    console.warn('[bussanook] saveRoom DB:', e?.message || e);
   }
 }
 
 async function mutateRoom(code, mutator) {
-  // Try Supabase first
-  if (await checkSb()) {
-    try {
-      const sb = createAdminClient();
+  try {
+    const sb = createAdminClient();
+    if (sb) {
       const { data, error: selErr } = await sb
         .from('scoreboard_sessions')
         .select('session_data')
@@ -100,13 +100,12 @@ async function mutateRoom(code, mutator) {
           .from('scoreboard_sessions')
           .update({ session_data: state, updated_at: new Date().toISOString() })
           .eq('session_id', PREFIX + code);
-        // Sync memory cache
         memRooms.set(code, state);
         return state;
       }
-    } catch (e) {
-      console.warn('[bussanook] mutateRoom DB error → fallback to memory:', e?.message || e);
     }
+  } catch (e) {
+    console.warn('[bussanook] mutateRoom DB:', e?.message || e);
   }
   // In-memory fallback
   const r = memRooms.get(code);
