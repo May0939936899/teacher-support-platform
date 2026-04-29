@@ -33,10 +33,11 @@ async function checkSb() {
 const PREFIX = 'GB_';
 const TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year — gradebooks should persist a semester
 
+// ── ALWAYS try Supabase first, no stale gate. Same robust pattern as stampcard.
 async function getClass(code) {
-  if (await checkSb()) {
-    try {
-      const sb = createAdminClient();
+  try {
+    const sb = createAdminClient();
+    if (sb) {
       const { data, error } = await sb
         .from('scoreboard_sessions')
         .select('session_data, updated_at')
@@ -44,35 +45,45 @@ async function getClass(code) {
         .maybeSingle();
       if (!error && data?.session_data) {
         const updatedMs = new Date(data.updated_at).getTime();
-        if (Date.now() - updatedMs <= TTL_MS) return data.session_data;
+        if (Date.now() - updatedMs <= TTL_MS) {
+          memRooms.set(code, data.session_data);
+          return data.session_data;
+        }
       }
-    } catch (e) {
-      console.warn('[gradebook] getClass DB error → memory fallback:', e?.message);
     }
+  } catch (e) {
+    console.warn('[gradebook] getClass DB:', e?.message);
   }
   return memRooms.get(code) || null;
 }
 
-async function saveClass(code, state) {
+async function saveClass(code, state, { strict = false } = {}) {
   memRooms.set(code, state);
-  if (await checkSb()) {
-    try {
-      const sb = createAdminClient();
-      await sb.from('scoreboard_sessions').upsert({
-        session_id: PREFIX + code,
-        session_data: state,
-        updated_at: new Date().toISOString(),
-      });
-    } catch (e) {
-      console.warn('[gradebook] saveClass DB error (kept memory):', e?.message);
+  try {
+    const sb = createAdminClient();
+    if (!sb) {
+      if (strict) throw new Error('Supabase client unavailable');
+      return;
     }
+    const { error } = await sb.from('scoreboard_sessions').upsert({
+      session_id: PREFIX + code,
+      session_data: state,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      if (strict) throw new Error(error.message || 'DB write failed');
+      console.warn('[gradebook] saveClass DB error:', error.message);
+    }
+  } catch (e) {
+    if (strict) throw e;
+    console.warn('[gradebook] saveClass DB:', e?.message);
   }
 }
 
 async function mutateClass(code, mutator) {
-  if (await checkSb()) {
-    try {
-      const sb = createAdminClient();
+  try {
+    const sb = createAdminClient();
+    if (sb) {
       const { data, error } = await sb
         .from('scoreboard_sessions')
         .select('session_data')
@@ -80,21 +91,24 @@ async function mutateClass(code, mutator) {
         .maybeSingle();
       if (!error && data?.session_data) {
         const state = data.session_data;
-        mutator(state);
-        await sb
+        const result = mutator(state);
+        if (result === false) return state;
+        const { error: updErr } = await sb
           .from('scoreboard_sessions')
           .update({ session_data: state, updated_at: new Date().toISOString() })
           .eq('session_id', PREFIX + code);
+        if (updErr) console.warn('[gradebook] mutate update:', updErr.message);
         memRooms.set(code, state);
         return state;
       }
-    } catch (e) {
-      console.warn('[gradebook] mutateClass DB error → memory:', e?.message);
     }
+  } catch (e) {
+    console.warn('[gradebook] mutateClass DB:', e?.message);
   }
   const r = memRooms.get(code);
   if (!r) return null;
-  mutator(r);
+  const result = mutator(r);
+  if (result === false) return r;
   return r;
 }
 
@@ -214,7 +228,21 @@ export async function POST(req) {
       ],
       createdAt: Date.now(),
     };
-    await saveClass(code, state);
+    try {
+      // STRICT: must persist to Supabase before reporting success
+      await saveClass(code, state, { strict: true });
+    } catch (e) {
+      console.error('[gradebook] create persist failed:', e?.message);
+      return json({
+        error: 'ไม่สามารถบันทึกห้องเรียนลงเซิร์ฟเวอร์ได้ — กรุณาลองใหม่',
+        details: e?.message,
+      }, 503);
+    }
+    // Verify by reading back
+    const verified = await getClass(code);
+    if (!verified) {
+      return json({ error: 'บันทึกไม่ครบถ้วน กรุณาลองใหม่' }, 503);
+    }
     return json({ success: true, code, class: state });
   }
 

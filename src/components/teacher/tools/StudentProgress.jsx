@@ -90,11 +90,15 @@ export default function GradeBook() {
   useEffect(() => { setSavedClasses(loadCodes()); }, []);
 
   // Polling for live updates while managing a class
+  const [fetchError, setFetchError] = useState(null);
+
   useEffect(() => {
     if (!activeCode || view !== 'manage') {
       if (pollRef.current) clearInterval(pollRef.current);
       return;
     }
+    setFetchError(null);
+    setClassData(null);
     fetchClass(activeCode);
     pollRef.current = setInterval(() => fetchClass(activeCode), 6000);
     return () => clearInterval(pollRef.current);
@@ -102,11 +106,57 @@ export default function GradeBook() {
   }, [activeCode, view]);
 
   const fetchClass = async (code) => {
+    if (!code) return;
     try {
       const res = await fetch(`/api/teacher/gradebook?code=${code.toUpperCase()}`);
       const data = await res.json();
-      if (res.ok) setClassData(data);
-    } catch {}
+      if (res.ok) {
+        setClassData(data);
+        setFetchError(null);
+      } else {
+        setFetchError(data.error || 'ไม่พบห้องเรียน');
+      }
+    } catch {
+      setFetchError('เชื่อมต่อไม่ได้');
+    }
+  };
+
+  const removeFromLocal = (code) => {
+    if (!confirm(`ลบ ${code} ออกจากรายการเครื่องนี้?\n(ห้องในเซิร์ฟเวอร์ไม่ถูกลบ)`)) return;
+    const updated = savedClasses.filter(c => c.code !== code);
+    setSavedClasses(updated); saveCodes(updated);
+    if (activeCode === code) {
+      setActiveCode(''); setClassData(null); setView('list');
+    }
+  };
+
+  // Recreate a class with same components/bonus when server lost it
+  const recreateMissingClass = async (oldCode) => {
+    const cached = savedClasses.find(c => c.code === oldCode);
+    if (!cached || !cached.fullForm) {
+      alert('ไม่มีข้อมูลห้องเดิมในเครื่อง — กรุณาสร้างใหม่เอง');
+      return;
+    }
+    const f = cached.fullForm;
+    if (!confirm(`สร้างห้องใหม่ด้วยข้อมูลเดิม:\n• ${f.courseName} (${f.course} กลุ่ม ${f.section})\n• ${f.components.length} ชิ้นงาน + ${f.bonus.length} คะแนนพิเศษ\n\nรหัสเก่า ${oldCode} จะถูกแทนที่ด้วยรหัสใหม่`)) return;
+    try {
+      const res = await fetch('/api/teacher/gradebook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', ...f }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const updated = [
+        { code: data.code, course: f.course, courseName: f.courseName, section: f.section, createdAt: Date.now(), fullForm: f },
+        ...savedClasses.filter(c => c.code !== oldCode),
+      ];
+      setSavedClasses(updated); saveCodes(updated);
+      setActiveCode(data.code); setClassData(data.class); setFetchError(null);
+      toast.success(`✅ สร้างห้องใหม่: ${data.code}`);
+    } catch (e) {
+      toast.error(`สร้างไม่สำเร็จ: ${e.message}`);
+    }
   };
 
   const totalWeight = form.components.reduce((s, c) => s + (Number(c.weight) || 0), 0);
@@ -126,9 +176,12 @@ export default function GradeBook() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      // Cache FULL form (course/components/bonus) so we can recreate if
+      // server ever loses the class
       const updated = [{
         code: data.code, course: form.course, courseName: form.courseName,
         section: form.section, createdAt: Date.now(),
+        fullForm: { ...form },  // ← full payload for recreation
       }, ...savedClasses];
       setSavedClasses(updated); saveCodes(updated);
       setActiveCode(data.code); setClassData(data.class); setView('manage');
@@ -366,6 +419,68 @@ export default function GradeBook() {
   // ════════════════════════════════════════════════════════════════════════
   // MANAGE VIEW
   // ════════════════════════════════════════════════════════════════════════
+  // ── MANAGE: loading / error state ────────────────────────────────────────
+  if (view === 'manage' && !classData) {
+    return (
+      <div style={{ padding: 40, maxWidth: 700, margin: '0 auto', fontFamily: FONT, textAlign: 'center' }}>
+        <button onClick={() => { setView('list'); setActiveCode(''); setFetchError(null); }} style={{ marginBottom: 24, padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', color: '#64748b', fontFamily: FONT }}>← กลับ</button>
+        {fetchError ? (() => {
+          const cached = savedClasses.find(c => c.code === activeCode);
+          const canRecreate = cached && cached.fullForm;
+          return (
+            <div style={{ background: '#fff', borderRadius: 16, padding: '36px 28px', border: '2px solid #fecaca', boxShadow: '0 4px 16px rgba(239,68,68,0.1)', textAlign: 'left' }}>
+              <div style={{ fontSize: 56, marginBottom: 14, textAlign: 'center' }}>😕</div>
+              <h2 style={{ margin: '0 0 8px', color: '#991b1b', fontSize: 20, textAlign: 'center' }}>
+                ห้อง <span style={{ fontFamily: 'monospace', color: '#dc2626' }}>{activeCode}</span> หายจากเซิร์ฟเวอร์
+              </h2>
+              <p style={{ margin: '0 0 20px', color: '#64748b', fontSize: 13, textAlign: 'center' }}>
+                ข้อมูลที่คุณตั้งค่าไว้ในเครื่องยังครบถ้วน · คลิกปุ่มเขียวเพื่อสร้างใหม่ทันที
+              </p>
+              {canRecreate && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 12, padding: '14px 16px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 12, color: '#166534', fontWeight: 700, marginBottom: 6 }}>📋 ข้อมูลที่เก็บไว้:</div>
+                  <div style={{ fontSize: 13, color: '#0f172a', lineHeight: 1.7 }}>
+                    <div><strong>วิชา:</strong> {cached.fullForm.courseName} ({cached.fullForm.course})</div>
+                    <div><strong>กลุ่ม:</strong> {cached.fullForm.section} · <strong>ครู:</strong> {cached.fullForm.teacher || '—'}</div>
+                    <div><strong>ชิ้นงาน:</strong> {cached.fullForm.components.length} ชิ้น · <strong>คะแนนพิเศษ:</strong> {cached.fullForm.bonus.length} รายการ</div>
+                  </div>
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {canRecreate && (
+                  <button onClick={() => recreateMissingClass(activeCode)} style={{
+                    padding: '12px 22px', borderRadius: 10, border: 'none',
+                    background: 'linear-gradient(135deg, #16a34a, #22c55e)', color: '#fff',
+                    cursor: 'pointer', fontFamily: FONT, fontWeight: 800, fontSize: 14,
+                    boxShadow: '0 4px 14px rgba(34,197,94,0.4)',
+                  }}>✨ สร้างใหม่ด้วยข้อมูลเดิม</button>
+                )}
+                <button onClick={() => { setFetchError(null); fetchClass(activeCode); }} style={{
+                  padding: '12px 20px', borderRadius: 10, border: 'none',
+                  background: CI.cyan, color: '#fff', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
+                }}>🔄 ลองใหม่</button>
+                <button onClick={() => removeFromLocal(activeCode)} style={{
+                  padding: '12px 20px', borderRadius: 10, border: '1px solid #fecaca',
+                  background: '#fff', color: '#dc2626', cursor: 'pointer', fontFamily: FONT, fontWeight: 700, fontSize: 14,
+                }}>🗑️ ลบออกจากรายการ</button>
+              </div>
+              <div style={{ marginTop: 16, padding: '10px 14px', background: '#fffbeb', borderRadius: 8, fontSize: 12, color: '#92400e', textAlign: 'center' }}>
+                💡 รหัสห้องใหม่จะแทนที่ของเก่า · นักศึกษาที่เคย enroll จะต้องเข้าใหม่ (ถ้ามี)
+              </div>
+            </div>
+          );
+        })() : (
+          <div style={{ background: '#fff', borderRadius: 16, padding: '60px 24px', border: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: 56, marginBottom: 14, animation: 'pulse 1.6s ease infinite' }}>📊</div>
+            <style>{`@keyframes pulse { 0%,100%{opacity:0.5;transform:scale(0.95)} 50%{opacity:1;transform:scale(1.05)} }`}</style>
+            <h2 style={{ margin: '0 0 8px', color: '#0f172a', fontSize: 18 }}>กำลังเปิดห้อง <span style={{ fontFamily: 'monospace', color: CI.cyan }}>{activeCode}</span>...</h2>
+            <p style={{ margin: 0, color: '#64748b', fontSize: 13 }}>กรุณารอสักครู่</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   if (view === 'manage' && classData) {
     return <ManageView
       code={activeCode}

@@ -31,10 +31,11 @@ async function checkSb() {
 const PREFIX = 'SC_';
 const TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 
+// ── ALWAYS try Supabase first, no stale gate. Fail loudly on create. ────────
 async function getClass(code) {
-  if (await checkSb()) {
-    try {
-      const sb = createAdminClient();
+  try {
+    const sb = createAdminClient();
+    if (sb) {
       const { data, error } = await sb
         .from('scoreboard_sessions')
         .select('session_data, updated_at')
@@ -42,31 +43,49 @@ async function getClass(code) {
         .maybeSingle();
       if (!error && data?.session_data) {
         const updatedMs = new Date(data.updated_at).getTime();
-        if (Date.now() - updatedMs <= TTL_MS) return data.session_data;
+        if (Date.now() - updatedMs <= TTL_MS) {
+          // Warm memory cache so subsequent reads are faster
+          memRooms.set(code, data.session_data);
+          return data.session_data;
+        }
       }
-    } catch (e) { console.warn('[stampcard] getClass DB:', e?.message); }
+    }
+  } catch (e) {
+    console.warn('[stampcard] getClass DB:', e?.message);
   }
+  // Memory fallback — only useful within same Lambda's lifetime
   return memRooms.get(code) || null;
 }
 
-async function saveClass(code, state) {
+// strict: throws if DB write fails (caller can decide to surface error)
+async function saveClass(code, state, { strict = false } = {}) {
   memRooms.set(code, state);
-  if (await checkSb()) {
-    try {
-      const sb = createAdminClient();
-      await sb.from('scoreboard_sessions').upsert({
-        session_id: PREFIX + code,
-        session_data: state,
-        updated_at: new Date().toISOString(),
-      });
-    } catch (e) { console.warn('[stampcard] saveClass DB:', e?.message); }
+  try {
+    const sb = createAdminClient();
+    if (!sb) {
+      if (strict) throw new Error('Supabase client unavailable');
+      console.warn('[stampcard] no Supabase client — memory only');
+      return;
+    }
+    const { error } = await sb.from('scoreboard_sessions').upsert({
+      session_id: PREFIX + code,
+      session_data: state,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) {
+      if (strict) throw new Error(error.message || 'DB write failed');
+      console.warn('[stampcard] saveClass DB error:', error.message);
+    }
+  } catch (e) {
+    if (strict) throw e;
+    console.warn('[stampcard] saveClass DB:', e?.message);
   }
 }
 
 async function mutateClass(code, mutator) {
-  if (await checkSb()) {
-    try {
-      const sb = createAdminClient();
+  try {
+    const sb = createAdminClient();
+    if (sb) {
       const { data, error } = await sb
         .from('scoreboard_sessions')
         .select('session_data')
@@ -74,19 +93,24 @@ async function mutateClass(code, mutator) {
         .maybeSingle();
       if (!error && data?.session_data) {
         const state = data.session_data;
-        mutator(state);
-        await sb
+        const result = mutator(state);
+        if (result === false) return state; // mutator can abort
+        const { error: updErr } = await sb
           .from('scoreboard_sessions')
           .update({ session_data: state, updated_at: new Date().toISOString() })
           .eq('session_id', PREFIX + code);
+        if (updErr) console.warn('[stampcard] mutateClass DB update:', updErr.message);
         memRooms.set(code, state);
         return state;
       }
-    } catch (e) { console.warn('[stampcard] mutateClass DB:', e?.message); }
+    }
+  } catch (e) {
+    console.warn('[stampcard] mutateClass DB:', e?.message);
   }
   const r = memRooms.get(code);
   if (!r) return null;
-  mutator(r);
+  const result = mutator(r);
+  if (result === false) return r;
   return r;
 }
 
@@ -233,7 +257,25 @@ export async function POST(req) {
       activeSession: null,
       createdAt: Date.now(),
     };
-    await saveClass(code, state);
+    try {
+      // STRICT: must persist to Supabase before we report success — otherwise
+      // the user gets a code that may vanish when the Lambda recycles.
+      await saveClass(code, state, { strict: true });
+    } catch (e) {
+      console.error('[stampcard] create persist failed:', e?.message);
+      return json({
+        error: 'ไม่สามารถบันทึกข้อมูลห้องลงเซิร์ฟเวอร์ได้ — กรุณาลองใหม่อีกครั้ง',
+        details: e?.message,
+      }, 503);
+    }
+    // Verify by reading back (paranoia check — confirms write succeeded)
+    const verified = await getClass(code);
+    if (!verified) {
+      console.error('[stampcard] create verification failed — class missing after save');
+      return json({
+        error: 'บันทึกไม่ครบถ้วน กรุณาลองใหม่',
+      }, 503);
+    }
     return json({ success: true, code, class: state });
   }
 
