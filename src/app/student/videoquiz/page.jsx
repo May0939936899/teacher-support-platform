@@ -95,6 +95,9 @@ function VideoQuizStudentInner() {
   const [popupFeedback,  setPopupFeedback]  = useState(null);  // 'correct' | 'wrong' | null
   const [askedQIds,      setAskedQIds]      = useState({});    // {id: true} — already asked
   const [ytReady,        setYtReady]        = useState(false);
+  const [videoFinished,  setVideoFinished]  = useState(false);
+  const [watchProgress,  setWatchProgress]  = useState(0);     // 0..1
+  const [skipToast,      setSkipToast]      = useState(false);
 
   const timerRef    = useRef(null);
   const answersRef  = useRef({});
@@ -102,8 +105,9 @@ function VideoQuizStudentInner() {
   const codeRef     = useRef('');
   const playerRef   = useRef(null);
   const playerDivId = useRef('yt-player-' + Math.random().toString(36).slice(2, 8));
-  const watchRef    = useRef(null);   // currentTime poll interval
+  const watchRef    = useRef(null);
   const askedRef    = useRef({});
+  const maxWatchedRef = useRef(0);   // highest currentTime user has reached
 
   // Keep refs in sync for use inside timer callback
   useEffect(() => { answersRef.current = studentAnswers; }, [studentAnswers]);
@@ -206,21 +210,43 @@ function VideoQuizStudentInner() {
       try {
         playerRef.current = new window.YT.Player(playerDivId.current, {
           videoId: ytIdForInit,
-          playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+          // disablekb prevents keyboard seeking; controls=0 hides timeline so click-seeking is harder
+          playerVars: { rel: 0, modestbranding: 1, playsinline: 1, disablekb: 1, controls: 0, fs: 0 },
           events: {
             onReady: () => {
-              // Start polling currentTime every 250ms
+              maxWatchedRef.current = 0;
+              setVideoFinished(false);
               clearInterval(watchRef.current);
               watchRef.current = setInterval(() => {
                 if (!playerRef.current?.getCurrentTime) return;
                 const t = playerRef.current.getCurrentTime();
-                // Find any unasked question whose timestamp ≤ t
+                const dur = playerRef.current.getDuration?.() || 0;
+
+                // ── Anti-skip: if user seeked forward beyond what they've watched, snap back
+                const ALLOW = 2.0;  // 2s grace
+                if (t > maxWatchedRef.current + ALLOW + 0.5) {
+                  try { playerRef.current.seekTo(maxWatchedRef.current, true); } catch {}
+                  setSkipToast(true);
+                  clearTimeout(window.__skipTimer);
+                  window.__skipTimer = setTimeout(() => setSkipToast(false), 2200);
+                  return;
+                }
+                if (t > maxWatchedRef.current) maxWatchedRef.current = t;
+
+                // ── Watch progress display
+                if (dur > 0) setWatchProgress(Math.min(1, t / dur));
+
+                // ── Detect finish (within 1s of end)
+                if (dur > 0 && t >= dur - 1.2 && !videoFinished) {
+                  setVideoFinished(true);
+                }
+
+                // ── Trigger question pop-up
                 const qs = quizRef.current?.questions || [];
                 for (const q of qs) {
                   const qSec = parseTimestamp(q.timestamp);
                   if (askedRef.current[q.id]) continue;
                   if (qSec > 0 && t >= qSec - 0.4 && t <= qSec + 1.5) {
-                    // trigger pop-up
                     askedRef.current = { ...askedRef.current, [q.id]: true };
                     setAskedQIds(askedRef.current);
                     try { playerRef.current.pauseVideo(); } catch {}
@@ -234,16 +260,12 @@ function VideoQuizStudentInner() {
               }, 250);
             },
             onStateChange: (e) => {
-              // 0 = ended → auto-submit
+              // 0 = ended → mark finished, play fanfare, auto-submit
               if (e.data === 0) {
-                const remaining = (quizRef.current?.questions || []).filter(q => !askedRef.current[q.id]);
-                if (remaining.length > 0) {
-                  // auto-show remaining unasked questions one after another
-                  // For simplicity, just submit
-                }
+                setVideoFinished(true);
+                playSfx('finish');
                 if (!studentSubmitted) {
                   doSubmit(answersRef.current, quizRef.current, codeRef.current, studentName, studentId, false);
-                  playSfx('finish');
                 }
               }
             },
@@ -581,6 +603,20 @@ function VideoQuizStudentInner() {
           </div>
         )}
 
+        {/* Skip-blocked floating toast */}
+        {skipToast && (
+          <div style={{
+            position: 'fixed', top: 80, left: '50%', transform: 'translateX(-50%)',
+            background: '#ef4444', color: '#fff',
+            padding: '12px 22px', borderRadius: '14px',
+            boxShadow: '0 8px 24px rgba(239,68,68,0.5)',
+            fontSize: '14px', fontWeight: 800, zIndex: 250,
+            animation: 'popupBounce 0.4s ease',
+          }}>
+            🚫 ห้ามข้าม! ต้องดูตามลำดับ
+          </div>
+        )}
+
         {/* Hint banner about timed pop-ups */}
         {studentQuiz.questions.some(q => parseTimestamp(q.timestamp) > 0) && !studentSubmitted && (
           <div style={{
@@ -798,8 +834,17 @@ function VideoQuizStudentInner() {
           </div>
         </div>
 
-        {/* Questions */}
-        {studentQuiz.questions.map((q, idx) => {
+        {/* Questions — only show ones already triggered (askedQIds) */}
+        {studentQuiz.questions.filter(q => askedQIds[q.id]).length > 0 && (
+          <div style={{
+            fontSize: '13px', color: '#94a3b8', fontWeight: 700,
+            marginBottom: '10px', letterSpacing: '0.05em',
+          }}>
+            ✅ คำถามที่ตอบแล้ว ({studentQuiz.questions.filter(q => askedQIds[q.id]).length}/{totalQ})
+          </div>
+        )}
+        {studentQuiz.questions.filter(q => askedQIds[q.id]).map((q) => {
+          const idx = studentQuiz.questions.indexOf(q);
           const answered = studentAnswers[q.id] !== undefined;
           return (
             <div key={q.id} style={{
@@ -896,24 +941,55 @@ function VideoQuizStudentInner() {
           );
         })}
 
-        {/* Submit button */}
+        {/* Watch progress badge */}
+        <div style={{
+          background: videoFinished ? '#dcfce7' : '#fef3c7',
+          border: `2px solid ${videoFinished ? '#22c55e' : '#fbbf24'}`,
+          borderRadius: '14px', padding: '12px 16px', marginTop: '12px', marginBottom: '12px',
+          display: 'flex', alignItems: 'center', gap: '12px',
+        }}>
+          <span style={{ fontSize: '22px' }}>{videoFinished ? '✅' : '🎬'}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontSize: '14px', fontWeight: 800,
+              color: videoFinished ? '#166534' : '#92400e',
+            }}>
+              {videoFinished ? 'ดูจบแล้ว — ส่งคำตอบได้' : `ดูคลิป ${Math.round(watchProgress*100)}% — ต้องดูจบก่อนส่งคำตอบ`}
+            </div>
+            <div style={{
+              marginTop: 6, height: 6, background: 'rgba(0,0,0,0.08)',
+              borderRadius: 3, overflow: 'hidden',
+            }}>
+              <div style={{
+                height: '100%',
+                width: `${Math.round(watchProgress*100)}%`,
+                background: videoFinished ? '#22c55e' : '#fbbf24',
+                transition: 'width 0.3s linear',
+              }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Submit button — locked until video finishes */}
         <button
           onClick={submitQuiz}
-          disabled={answeredCount === 0}
+          disabled={!videoFinished || answeredCount === 0}
           style={{
             width: '100%', padding: '20px', borderRadius: '18px', border: 'none',
-            background: answeredCount > 0
+            background: (videoFinished && answeredCount > 0)
               ? `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`
               : '#e2e8f0',
-            color: answeredCount > 0 ? '#fff' : '#94a3b8',
-            cursor: answeredCount > 0 ? 'pointer' : 'not-allowed',
+            color: (videoFinished && answeredCount > 0) ? '#fff' : '#94a3b8',
+            cursor: (videoFinished && answeredCount > 0) ? 'pointer' : 'not-allowed',
             fontWeight: 900, fontSize: '20px', fontFamily: FONT, marginTop: '8px',
-            boxShadow: answeredCount > 0 ? `0 6px 24px ${CI.cyan}35` : 'none',
+            boxShadow: (videoFinished && answeredCount > 0) ? `0 6px 24px ${CI.cyan}35` : 'none',
             transition: 'all 0.2s',
             letterSpacing: '1px',
           }}
         >
-          ส่งคำตอบ ({answeredCount}/{totalQ} ข้อ)
+          {!videoFinished
+            ? `🔒 ดูคลิปให้จบก่อน (${Math.round(watchProgress*100)}%)`
+            : `ส่งคำตอบ (${answeredCount}/${totalQ} ข้อ)`}
         </button>
 
         <div style={{ height: '32px' }} />

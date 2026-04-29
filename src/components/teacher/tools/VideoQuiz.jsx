@@ -152,10 +152,38 @@ export default function VideoQuiz() {
       let raw = (data.result || '').trim();
       raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
       const parsed = JSON.parse(raw);
+      // Strip "จากข้อมูล/ตามวิดีโอ/ในนาที..." preamble before first comma
+      const PREAMBLE_KEYWORDS = [
+        'จากข้อมูล', 'จากเนื้อหา', 'จากคลิป', 'จากวิดีโอ',
+        'ตามที่วิดีโอ', 'ตามที่คลิป', 'ตามวิดีโอ', 'ตามคลิป',
+        'ในวิดีโอ', 'ในคลิป', 'ในนาทีที่',
+        'ณ เวลา', 'ที่เวลา',
+      ];
+      const stripPreamble = (s) => {
+        if (!s) return s;
+        let t = s.trim();
+        // Up to 3 passes — handle nested preambles
+        for (let pass = 0; pass < 3; pass++) {
+          let matched = false;
+          for (const kw of PREAMBLE_KEYWORDS) {
+            if (t.startsWith(kw)) {
+              const commaIdx = t.indexOf(',');
+              if (commaIdx > 0 && commaIdx < 80) {
+                t = t.slice(commaIdx + 1).trim();
+                matched = true;
+                break;
+              }
+            }
+          }
+          if (!matched) break;
+        }
+        return t;
+      };
+
       const items = (parsed.questions || []).map((q) => ({
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         timestamp: q.timestamp || '00:00',
-        text: q.text || '',
+        text: stripPreamble(q.text || ''),
         type: 'mc',
         options: (q.options || ['', '', '', '']).slice(0, 4).concat(['', '', '', '']).slice(0, 4),
         answer: typeof q.answer === 'number' ? q.answer : 0,
