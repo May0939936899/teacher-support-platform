@@ -413,25 +413,33 @@ function SnakeAndLadderBoard({ players, theme, currentPlayerIdx = 0, onStep }) {
     <div style={{
       perspective: '1400px',
       perspectiveOrigin: '50% 30%',
-      padding: '8px 0',
-      width: 'fit-content',
+      padding: '4px 0',
+      width: '100%',
+      height: '100%',
       maxWidth: '100%',
       margin: '0 auto',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     }}>
       <div style={{
-        transform: 'rotateX(18deg) rotateZ(-1deg)',
+        transform: 'rotateX(15deg) rotateZ(-1deg)',
         transformStyle: 'preserve-3d',
         filter: `drop-shadow(0 18px 18px rgba(0,0,0,0.55)) drop-shadow(0 0 32px ${t.border}44)`,
         borderRadius: 14,
+        width: '100%',
+        maxWidth: 'min(86vh, 100%)',
+        aspectRatio: '1 / 1',
       }}>
     <svg
-      width={size} height={size}
+      width="100%" height="100%"
       viewBox={`0 0 ${size} ${size}`}
+      preserveAspectRatio="xMidYMid meet"
       style={{
         borderRadius: 14, border: `2.5px solid ${t.border}`,
         boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.15)`,
         background: t.boardBg,
-        maxWidth: '100%', display: 'block',
+        display: 'block',
       }}
     >
       <defs>
@@ -1072,10 +1080,14 @@ export default function SnakeLadderGame() {
         >{tx.endGame}</button>
       </div>
 
-      {/* Main layout */}
-      <div style={{ display:'flex', gap:14, flex:1, minHeight:0, alignItems:'flex-start' }}>
-        {/* Board */}
-        <div style={{ flex:'0 0 60%', maxWidth:'60%', display:'flex', justifyContent:'center' }}>
+      {/* Main layout — board fills available space, side panel fixed-narrow */}
+      <div style={{ display:'flex', gap:12, flex:1, minHeight:0, alignItems:'stretch' }}>
+        {/* Board — flex-grow to fill, square aspect */}
+        <div style={{
+          flex:'1 1 auto', minWidth:0,
+          display:'flex', justifyContent:'center', alignItems:'center',
+          height:'100%',
+        }}>
           <SnakeAndLadderBoard
             players={players}
             theme={session?.theme || 'funpark'}
@@ -1084,8 +1096,8 @@ export default function SnakeLadderGame() {
           />
         </div>
 
-        {/* Side panel */}
-        <div style={{ flex:1, display:'flex', flexDirection:'column', gap:10, minWidth:0, overflow:'auto', maxHeight:'calc(100vh - 80px)' }}>
+        {/* Side panel — fixed narrow column */}
+        <div style={{ flex:'0 0 280px', width:280, display:'flex', flexDirection:'column', gap:10, minWidth:0, overflow:'auto', maxHeight:'calc(100vh - 80px)' }}>
 
           {curPlayer && (
             <div style={{
