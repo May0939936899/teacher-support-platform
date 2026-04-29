@@ -507,11 +507,38 @@ export default function BusSanookGame() {
 
   // ── Actions ──────────────────────────────────────────────────────────────
   async function handleCreateRoom() {
-    const validQs = questions.filter(q => q.q.trim() && q.choices.every(c => c.trim()));
+    // Relaxed validation: question text required + answer's choice non-empty
+    // + at least 2 non-empty choices total (don't force all 4)
+    const problems = [];
+    const validQs = [];
+    questions.forEach((q, idx) => {
+      const filledChoices = (q.choices || []).map(c => (c || '').trim());
+      const filledCount = filledChoices.filter(Boolean).length;
+      const hasQ = (q.q || '').trim();
+      const correctChoice = filledChoices[q.answer || 0];
+
+      if (!hasQ) { problems.push(`ข้อ ${idx+1}: ยังไม่ได้กรอกคำถาม`); return; }
+      if (filledCount < 2) { problems.push(`ข้อ ${idx+1}: ต้องมีตัวเลือกอย่างน้อย 2 ข้อ (ตอนนี้ ${filledCount})`); return; }
+      if (!correctChoice) { problems.push(`ข้อ ${idx+1}: ตัวเลือกที่ถูก (${'ABCD'[q.answer || 0]}) ว่างอยู่`); return; }
+
+      // Replace empty choices with placeholder so server doesn't choke
+      const safeChoices = filledChoices.map(c => c || '—');
+      validQs.push({ ...q, choices: safeChoices });
+    });
+
     if (validQs.length === 0) {
-      setCreateErr('กรุณาเพิ่มคำถามให้ครบก่อนเปิดห้อง');
+      const msg = problems.length > 0
+        ? 'พบปัญหาในข้อสอบ:\n\n• ' + problems.slice(0, 8).join('\n• ') + (problems.length > 8 ? `\n... และอีก ${problems.length - 8} ข้อ` : '')
+        : 'กรุณาเพิ่มคำถามและตัวเลือกอย่างน้อย 2 ตัวเลือกก่อนเปิดห้อง';
+      setCreateErr(msg);
+      alert(msg);
       return;
     }
+    if (problems.length > 0) {
+      const ok = confirm(`⚠️ พบปัญหา ${problems.length} ข้อที่ยังไม่ครบ — จะเปิดห้องด้วย ${validQs.length} ข้อที่พร้อมเล่น?\n\n${problems.slice(0, 5).join('\n')}${problems.length > 5 ? `\n... และอีก ${problems.length - 5}` : ''}`);
+      if (!ok) { setCreating(false); return; }
+    }
+
     setCreating(true);
     setCreateErr('');
     const code = genCode();
@@ -528,11 +555,17 @@ export default function BusSanookGame() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setCreateErr(data.error || 'เกิดข้อผิดพลาด'); setCreating(false); return; }
+      if (!res.ok) {
+        setCreateErr(data.error || 'เกิดข้อผิดพลาด');
+        alert(`❌ ${data.error || 'เปิดห้องไม่สำเร็จ'}`);
+        setCreating(false);
+        return;
+      }
       setRoom(code);
       setPhase('lobby');
-    } catch {
+    } catch (e) {
       setCreateErr('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+      alert('❌ เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     }
     setCreating(false);
   }
