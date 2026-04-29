@@ -104,7 +104,7 @@ const GLOBAL_CSS = `
 `;
 
 // ── Board helpers ─────────────────────────────────────────────────────────────
-const CELL = 54;
+const CELL = 62;
 
 function squareToXY(n) {
   const idx = n - 1;

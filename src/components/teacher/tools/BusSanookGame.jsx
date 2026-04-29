@@ -247,9 +247,11 @@ export default function BusSanookGame() {
         }));
       if (items.length === 0) throw new Error('AI สร้างคำถามไม่ได้ ลองใหม่');
       setParsedPreview(items);
-      setImportText(`✨ AI สร้างให้ ${items.length} ข้อ จากหัวข้อ: "${aiTopic.slice(0, 60)}${aiTopic.length>60?'...':''}"`);
+      setImportErr('');
+      // Don't pollute importText — AI tab manages preview itself
     } catch (e) {
       setImportErr(`AI ไม่ได้ผล: ${e.message}`);
+      setParsedPreview([]);
     } finally {
       setAiLoading(false);
     }
@@ -392,8 +394,10 @@ export default function BusSanookGame() {
   }, [phase, gameState?.currentQ]);
 
   // Auto-parse import text → live preview cards
+  // Skip when on AI tab — AI flow sets parsedPreview directly without using importText
   useEffect(() => {
     if (!importing) { setParsedPreview([]); return; }
+    if (importTab === 'ai') return; // AI tab manages parsedPreview itself
     if (!importText.trim()) { setParsedPreview([]); setImportErr(''); return; }
     const parsed = importTab === 'sheet' ? parseSheetText(importText) : parseImportText(importText);
     setParsedPreview(parsed);
@@ -833,10 +837,17 @@ export default function BusSanookGame() {
                   </div>
                 )}
 
-                {/* No match warning */}
-                {importText.trim() && parsedPreview.length === 0 && (
+                {/* No match warning — only on text/sheet tabs */}
+                {importTab !== 'ai' && importText.trim() && parsedPreview.length === 0 && (
                   <div style={{ background:'#180808', color:'#ff8080', borderRadius:10, padding:'12px 16px', fontSize:13, border:'1px solid #ff333322', textAlign:'center', marginTop:8 }}>
                     ⚠️ ไม่พบคำถามที่ถูกรูปแบบ — ลองกด "ดูตัวอย่าง" แล้ว copy รูปแบบนั้น
+                  </div>
+                )}
+
+                {/* AI error display */}
+                {importTab === 'ai' && importErr && (
+                  <div style={{ background:'#180808', color:'#ff8080', borderRadius:10, padding:'12px 16px', fontSize:13, border:'1px solid #ff333322', textAlign:'center', marginTop:8 }}>
+                    ⚠️ {importErr}
                   </div>
                 )}
               </div>
@@ -851,7 +862,7 @@ export default function BusSanookGame() {
                 </button>
                 <button onClick={handleImport} disabled={parsedPreview.length === 0}
                   style={{ ...btnStyle(parsedPreview.length > 0 ? CYAN : '#333', parsedPreview.length > 0 ? '#000' : '#555'), opacity: parsedPreview.length > 0 ? 1 : 0.45, fontWeight:900 }}>
-                  ✅ นำเข้า {parsedPreview.length > 0 ? `${parsedPreview.length} ข้อ` : '(วางข้อมูลก่อน)'}
+                  ✅ นำเข้า {parsedPreview.length > 0 ? `${parsedPreview.length} ข้อ` : (importTab === 'ai' ? '(สร้างก่อน)' : '(วางข้อมูลก่อน)')}
                 </button>
               </div>
             </div>
@@ -897,57 +908,73 @@ export default function BusSanookGame() {
             </div>
           </div>
 
-          {/* Right: editor */}
-          <div style={{ flex:1, overflowY:'auto', padding:20 }}>
-            <div style={{ maxWidth:680 }}>
-              <div style={{ fontWeight:700, fontSize:16, marginBottom:12, color:CYAN }}>แก้ไขข้อ {editingIdx + 1}</div>
+          {/* Right: editor — LIGHT theme for readability */}
+          <div style={{ flex:1, overflowY:'auto', padding:24, background:'#f8fafc', color:'#1e293b' }}>
+            <div style={{ maxWidth:720, margin:'0 auto' }}>
+              <div style={{
+                background:'#fff', borderRadius:18,
+                padding:'24px 26px',
+                boxShadow:'0 4px 20px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)',
+                border:'1px solid #e2e8f0',
+              }}>
+                <div style={{ fontWeight:800, fontSize:18, marginBottom:18, color:'#0f172a', letterSpacing:'0.02em' }}>
+                  ✏️ แก้ไขข้อ {editingIdx + 1}
+                </div>
 
-              {/* Question text */}
-              <div style={{ marginBottom:16 }}>
-                <label style={labelStyle}>คำถาม</label>
-                <textarea
-                  value={editQ?.q || ''}
-                  onChange={e => updateQuestion(editingIdx, 'q', e.target.value)}
-                  placeholder="พิมพ์คำถามที่นี่..."
-                  rows={3}
-                  style={{ ...inputStyle, width:'100%', resize:'vertical' }}
-                />
-              </div>
+                {/* Question text */}
+                <div style={{ marginBottom:20 }}>
+                  <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#475569', marginBottom:8, letterSpacing:0.5 }}>
+                    คำถาม
+                  </label>
+                  <textarea
+                    value={editQ?.q || ''}
+                    onChange={e => updateQuestion(editingIdx, 'q', e.target.value)}
+                    placeholder="พิมพ์คำถามที่นี่..."
+                    rows={3}
+                    style={{
+                      width:'100%', boxSizing:'border-box', resize:'vertical',
+                      background:'#fff', color:'#0f172a',
+                      border:'2px solid #e2e8f0', borderRadius:12,
+                      padding:'12px 14px', fontFamily:FONT, fontSize:15,
+                      outline:'none', transition:'border-color 0.15s',
+                    }}
+                    onFocus={e => e.target.style.borderColor = CYAN}
+                    onBlur={e => e.target.style.borderColor = '#e2e8f0'}
+                  />
+                </div>
 
-              {/* Choices — neon glow style */}
-              <div style={{ marginBottom:16 }}>
-                <label style={labelStyle}>ตัวเลือก (เลือกข้อที่ถูกต้อง)</label>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                  {[0,1,2,3].map(ci => {
-                    const cfg = ANSWER_CFG[ci];
-                    const isCor = editQ?.answer === ci;
-                    return (
-                      <div key={ci} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <input
-                          type="radio"
-                          name={`correct-${editingIdx}`}
-                          checked={isCor}
-                          onChange={() => updateQuestion(editingIdx, 'answer', ci)}
-                          style={{ accentColor: cfg.color, width:16, height:16, cursor:'pointer', flexShrink:0 }}
-                        />
+                {/* Choices — neon glow on white bg */}
+                <div style={{ marginBottom:20 }}>
+                  <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#475569', marginBottom:10, letterSpacing:0.5 }}>
+                    ตัวเลือก <span style={{ color:'#94a3b8', fontWeight:500 }}>(คลิกที่การ์ดเพื่อเลือกข้อที่ถูกต้อง)</span>
+                  </label>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                    {[0,1,2,3].map(ci => {
+                      const cfg = ANSWER_CFG[ci];
+                      const isCor = editQ?.answer === ci;
+                      return (
                         <div
+                          key={ci}
                           onClick={() => updateQuestion(editingIdx, 'answer', ci)}
                           style={{
-                            display:'flex', alignItems:'center', flex:1, gap:8,
+                            display:'flex', alignItems:'center', gap:10,
                             background: isCor
-                              ? `linear-gradient(135deg, ${cfg.color}55, ${cfg.color}22)`
-                              : `${cfg.color}10`,
-                            border: `2px solid ${isCor ? cfg.color : cfg.color + '55'}`,
-                            borderRadius: 10, padding:'9px 12px',
+                              ? `linear-gradient(135deg, ${cfg.color}, ${cfg.color}cc)`
+                              : '#fff',
+                            border: `2px solid ${isCor ? cfg.color : '#e2e8f0'}`,
+                            borderRadius: 12, padding:'12px 14px',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
                             boxShadow: isCor
-                              ? `0 0 18px ${cfg.glow}99, inset 0 0 12px ${cfg.glow}33`
-                              : `0 0 6px ${cfg.glow}22`,
+                              ? `0 0 0 3px ${cfg.color}33, 0 4px 16px ${cfg.glow}55`
+                              : '0 1px 3px rgba(0,0,0,0.04)',
                           }}>
                           <span style={{
-                            color: cfg.light, fontWeight:900, minWidth:20, fontSize:18,
-                            textShadow: `0 0 10px ${cfg.glow}, 0 0 18px ${cfg.glow}88`,
+                            color: isCor ? '#fff' : cfg.color,
+                            fontWeight:900, minWidth:24, fontSize:20, lineHeight:1,
+                            textShadow: isCor
+                              ? `0 0 12px rgba(255,255,255,0.6)`
+                              : 'none',
                           }}>
                             {cfg.icon}
                           </span>
@@ -959,39 +986,50 @@ export default function BusSanookGame() {
                             placeholder={`ตัวเลือก ${['A','B','C','D'][ci]}`}
                             style={{
                               background:'transparent', border:'none', outline:'none',
-                              color: isCor ? '#fff' : '#ddd',
-                              fontFamily:FONT, fontSize:14, flex:1, minWidth:0,
-                              fontWeight: isCor ? 700 : 500,
+                              color: isCor ? '#fff' : '#1e293b',
+                              fontFamily:FONT, fontSize:15, flex:1, minWidth:0,
+                              fontWeight: isCor ? 800 : 500,
+                              '::placeholder': { color: isCor ? 'rgba(255,255,255,0.7)' : '#94a3b8' },
                             }}
                           />
                           {isCor && (
                             <span style={{
-                              color: cfg.light, fontWeight:900, fontSize:14,
-                              textShadow:`0 0 8px ${cfg.glow}`,
+                              color: '#fff', fontWeight:900, fontSize:18, lineHeight:1,
+                              background:'rgba(255,255,255,0.2)', borderRadius:8,
+                              padding:'2px 8px',
                             }}>✓</span>
                           )}
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              {/* Time */}
-              <div style={{ marginBottom:8 }}>
-                <label style={labelStyle}>เวลา (วินาที)</label>
-                <div style={{ display:'flex', gap:8 }}>
-                  {[10, 20, 30].map(t => (
-                    <button
-                      key={t}
-                      onClick={() => updateQuestion(editingIdx, 'time', t)}
-                      style={{
-                        padding:'6px 18px', borderRadius:8, border:`2px solid ${editQ?.time === t ? CYAN : '#444'}`,
-                        background: editQ?.time === t ? CYAN + '33' : 'transparent',
-                        color: editQ?.time === t ? CYAN : '#aaa', cursor:'pointer', fontFamily:FONT, fontWeight:700, fontSize:14,
-                      }}
-                    >{t}s</button>
-                  ))}
+                {/* Time — light theme */}
+                <div>
+                  <label style={{ display:'block', fontSize:13, fontWeight:700, color:'#475569', marginBottom:10, letterSpacing:0.5 }}>
+                    ⏱️ เวลา (วินาที)
+                  </label>
+                  <div style={{ display:'flex', gap:10 }}>
+                    {[10, 20, 30].map(t => {
+                      const sel = editQ?.time === t;
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => updateQuestion(editingIdx, 'time', t)}
+                          style={{
+                            padding:'10px 22px', borderRadius:10,
+                            border:`2px solid ${sel ? CYAN : '#e2e8f0'}`,
+                            background: sel ? `${CYAN}15` : '#fff',
+                            color: sel ? CYAN : '#64748b',
+                            cursor:'pointer', fontFamily:FONT, fontWeight:800, fontSize:15,
+                            boxShadow: sel ? `0 2px 8px ${CYAN}30` : '0 1px 2px rgba(0,0,0,0.04)',
+                            transition:'all 0.15s',
+                          }}
+                        >{t}s</button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
