@@ -258,10 +258,17 @@ export default function SpinWheel() {
     } catch {}
   }, [items]);
 
-  // Redraw wheel whenever items or rotation changes
+  // Redraw wheel whenever items / rotation / mode changes
+  // mode in deps so canvas re-mount after mode toggle re-fires the draw
   useEffect(() => {
-    drawWheel(canvasRef.current, items, rotationAngle);
-  }, [items, rotationAngle]);
+    if (mode !== 'wheel') return;
+    // Small delay so the canvas DOM node is fully mounted after a mode swap
+    const t = setTimeout(() => {
+      if (canvasRef.current) drawWheel(canvasRef.current, items, rotationAngle);
+    }, 30);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, rotationAngle, mode]);
 
   // Parse textarea into items
   const applyItems = useCallback(() => {
