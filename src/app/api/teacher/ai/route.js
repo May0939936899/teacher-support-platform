@@ -250,6 +250,48 @@ ${payload.notes}
 }`;
         break;
 
+      case 'video_quiz_generator': {
+        const numQ = payload.numQuestions || 3;
+        const durationMin = payload.duration || 20;
+        const durationSec = durationMin * 60;
+        // Distribute timestamps across video (avoid 0% and 100%)
+        const tsHints = [];
+        for (let i = 1; i <= numQ; i++) {
+          const sec = Math.floor((durationSec * i) / (numQ + 1));
+          const m = Math.floor(sec / 60), s = sec % 60;
+          tsHints.push(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+        }
+        prompt = `คุณเป็นผู้เชี่ยวชาญด้านการออกข้อสอบ Video Quiz ระดับอุดมศึกษา
+
+จากวิดีโอ:
+- ชื่อ/หัวข้อ: ${payload.videoTitle || payload.topic || 'วิดีโอการศึกษา'}
+- ระยะเวลา: ${durationMin} นาที (${durationSec} วินาที)
+- จำนวนข้อสอบ: ${numQ} ข้อ
+
+สร้างคำถามแบบ multiple choice ${numQ} ข้อ ที่เกี่ยวข้องกับเนื้อหาในวิดีโอ
+แต่ละข้อให้ใช้ timestamp ที่กระจายตลอดวิดีโอ — แนะนำที่: ${tsHints.join(', ')}
+
+ตอบเป็น JSON เท่านั้น (ไม่มี markdown):
+{
+  "questions": [
+    {
+      "timestamp": "MM:SS",
+      "text": "คำถามที่เกี่ยวข้องกับเนื้อหาวิดีโอ",
+      "options": ["ตัวเลือก A", "ตัวเลือก B", "ตัวเลือก C", "ตัวเลือก D"],
+      "answer": 0,
+      "explanation": "เฉลยพร้อมคำอธิบายสั้นๆ"
+    }
+  ]
+}
+
+สำคัญ:
+- คำถามต้องเป็นภาษาไทย เกี่ยวข้องกับหัวข้อวิดีโอ
+- 4 ตัวเลือก answer เป็น index 0-3 (0=A, 1=B, 2=C, 3=D)
+- timestamps ต้องเป็น MM:SS (หรือ HH:MM:SS ถ้าวิดีโอยาว)
+- เฉลยต้องสอดคล้องกับเนื้อหา`;
+        break;
+      }
+
       case 'quiz_generator':
         prompt = `คุณเป็นผู้เชี่ยวชาญด้านการออกข้อสอบระดับอุดมศึกษา
 

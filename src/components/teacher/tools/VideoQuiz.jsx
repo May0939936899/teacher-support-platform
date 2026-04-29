@@ -123,6 +123,53 @@ export default function VideoQuiz() {
   const [quizTitle, setQuizTitle] = useState('');
   const [timeLimit, setTimeLimit] = useState(20);
   const [questions, setQuestions] = useState([]);
+  const [aiGenerating, setAiGenerating] = useState(false);
+
+  // ===== AI Generate Questions =====
+  const aiGenerateQuestions = async () => {
+    if (!videoUrl) { toast.error('กรุณาใส่ URL วิดีโอก่อน'); return; }
+    const ytId = getYouTubeId(videoUrl);
+    if (!ytId) { toast.error('URL ไม่ถูกต้อง'); return; }
+    setAiGenerating(true);
+    const tid = toast.loading('🤖 AI กำลังสร้างข้อสอบ 3 ข้อ...');
+    try {
+      const res = await fetch('/api/teacher/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tool: 'video_quiz_generator',
+          payload: {
+            videoTitle: quizTitle || 'วิดีโอการศึกษา',
+            topic: quizTitle,
+            duration: timeLimit || 20,
+            numQuestions: 3,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI ตอบกลับผิดปกติ');
+      // Strip code fences if present
+      let raw = (data.result || '').trim();
+      raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+      const parsed = JSON.parse(raw);
+      const items = (parsed.questions || []).map((q) => ({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: q.timestamp || '00:00',
+        text: q.text || '',
+        type: 'mc',
+        options: (q.options || ['', '', '', '']).slice(0, 4).concat(['', '', '', '']).slice(0, 4),
+        answer: typeof q.answer === 'number' ? q.answer : 0,
+        explanation: q.explanation || '',
+      }));
+      if (items.length === 0) throw new Error('AI สร้างข้อสอบไม่ได้');
+      setQuestions(prev => [...prev, ...items]);
+      toast.success(`✨ เพิ่ม ${items.length} ข้อจาก AI แล้ว`, { id: tid });
+    } catch (e) {
+      toast.error(`AI ไม่ได้ผล: ${e.message}`, { id: tid });
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   // Published
   const [publishedCode, setPublishedCode] = useState('');
@@ -729,6 +776,7 @@ export default function VideoQuiz() {
   // ===== CREATE / EDIT VIEW =====
   return (
     <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto', fontFamily: FONT }}>
+      <style>{`@keyframes spin { to{transform:rotate(360deg)} }`}</style>
       {showScheduleModal && <ScheduleModal />}
 
       <button onClick={() => setView('library')} style={{ marginBottom: '20px', padding: '8px 18px', borderRadius: '10px', border: `2px solid #e2e8f0`, background: '#fff', color: '#64748b', cursor: 'pointer', fontSize: '14px', fontWeight: 700, fontFamily: FONT }}>
@@ -844,8 +892,34 @@ export default function VideoQuiz() {
           ))}
 
           <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-            <button onClick={addQuestion} style={{ flex: 1, minWidth: '160px', padding: '16px', borderRadius: '14px', border: `2px dashed ${CI.cyan}30`, background: `${CI.cyan}04`, color: CI.cyan, cursor: 'pointer', fontWeight: 700, fontSize: '16px', fontFamily: FONT }}>
-              + เพิ่มคำถาม
+            <button
+              onClick={aiGenerateQuestions}
+              disabled={aiGenerating || !videoUrl}
+              style={{
+                flex: 1, minWidth: '160px', padding: '16px', borderRadius: '14px', border: 'none',
+                background: aiGenerating
+                  ? '#e2e8f0'
+                  : (videoUrl ? `linear-gradient(135deg, ${CI.purple}, ${CI.magenta})` : '#e2e8f0'),
+                color: (aiGenerating || !videoUrl) ? '#94a3b8' : '#fff',
+                cursor: (aiGenerating || !videoUrl) ? 'not-allowed' : 'pointer',
+                fontWeight: 800, fontSize: '15px', fontFamily: FONT,
+                boxShadow: (videoUrl && !aiGenerating) ? `0 4px 16px ${CI.purple}40` : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              }}
+            >
+              {aiGenerating ? (
+                <>
+                  <span style={{
+                    width: 16, height: 16, border: '2px solid rgba(255,255,255,0.3)',
+                    borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block',
+                    animation: 'spin 0.7s linear infinite',
+                  }} />
+                  กำลังสร้าง...
+                </>
+              ) : '🤖 AI สร้างข้อสอบ 3 ข้ออัตโนมัติ'}
+            </button>
+            <button onClick={addQuestion} style={{ flex: '0 0 auto', minWidth: '120px', padding: '16px', borderRadius: '14px', border: `2px dashed ${CI.cyan}30`, background: `${CI.cyan}04`, color: CI.cyan, cursor: 'pointer', fontWeight: 700, fontSize: '15px', fontFamily: FONT }}>
+              + เพิ่มเอง
             </button>
             <button onClick={saveToLibrary} disabled={questions.length === 0} style={{ flex: 1, minWidth: '160px', padding: '16px', borderRadius: '14px', border: `2px solid ${questions.length > 0 ? CI.gold : '#e2e8f0'}`, background: questions.length > 0 ? `${CI.gold}12` : '#f8fafc', color: questions.length > 0 ? '#92400e' : '#94a3b8', cursor: questions.length > 0 ? 'pointer' : 'not-allowed', fontWeight: 800, fontSize: '16px', fontFamily: FONT }}>
               {editingId ? '💾 อัปเดต' : '💾 บันทึกลงคลัง'}

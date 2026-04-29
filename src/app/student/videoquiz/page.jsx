@@ -12,6 +12,48 @@ function getYouTubeId(url) {
   return match ? match[1] : null;
 }
 
+// MM:SS or HH:MM:SS → seconds
+function parseTimestamp(str) {
+  if (!str) return 0;
+  const parts = str.split(':').map(s => parseInt(s, 10) || 0);
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return parseInt(str, 10) || 0;
+}
+
+// Web Audio sounds — beep / correct / wrong
+function playSfx(type) {
+  try {
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const tone = (freq, start, dur, wave = 'sine', vol = 0.18) => {
+      const o = ac.createOscillator(); const g = ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.type = wave;
+      o.frequency.setValueAtTime(freq, ac.currentTime + start);
+      g.gain.setValueAtTime(vol, ac.currentTime + start);
+      g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + start + dur);
+      o.start(ac.currentTime + start); o.stop(ac.currentTime + start + dur + 0.01);
+    };
+    if (type === 'beep') {
+      // Classic quiz "ปี๊บปี๊บ" alert sound
+      tone(880, 0,    0.12, 'sine', 0.22);
+      tone(880, 0.16, 0.12, 'sine', 0.22);
+      tone(1100, 0.32, 0.18, 'sine', 0.20);
+    } else if (type === 'correct') {
+      // Cheerful 3-note ascending
+      [523, 659, 784].forEach((f, i) => tone(f, i * 0.09, 0.14, 'triangle', 0.20));
+    } else if (type === 'wrong') {
+      // Sad 2-note descending
+      tone(392, 0,    0.20, 'sawtooth', 0.18);
+      tone(294, 0.18, 0.30, 'sawtooth', 0.18);
+    } else if (type === 'finish') {
+      // Fanfare for completion
+      [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.13, 0.24, 'triangle', 0.22));
+    }
+    setTimeout(() => { try { ac.close(); } catch {} }, 2500);
+  } catch {}
+}
+
 async function fetchQuizFromServer(code) {
   const res = await fetch(`/api/teacher/videoquiz?code=${code.toUpperCase()}`);
   const data = await res.json().catch(() => ({}));
@@ -47,10 +89,21 @@ function VideoQuizStudentInner() {
   const [studentSubmitted, setStudentSubmitted] = useState(false);
   const [studentResults, setStudentResults] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null); // seconds remaining
-  const timerRef = useRef(null);
-  const answersRef = useRef({});
-  const quizRef = useRef(null);
-  const codeRef = useRef('');
+  // Pop-up quiz state
+  const [popupQ,         setPopupQ]         = useState(null);  // current question being asked
+  const [popupSelected,  setPopupSelected]  = useState(null);
+  const [popupFeedback,  setPopupFeedback]  = useState(null);  // 'correct' | 'wrong' | null
+  const [askedQIds,      setAskedQIds]      = useState({});    // {id: true} — already asked
+  const [ytReady,        setYtReady]        = useState(false);
+
+  const timerRef    = useRef(null);
+  const answersRef  = useRef({});
+  const quizRef     = useRef(null);
+  const codeRef     = useRef('');
+  const playerRef   = useRef(null);
+  const playerDivId = useRef('yt-player-' + Math.random().toString(36).slice(2, 8));
+  const watchRef    = useRef(null);   // currentTime poll interval
+  const askedRef    = useRef({});
 
   // Keep refs in sync for use inside timer callback
   useEffect(() => { answersRef.current = studentAnswers; }, [studentAnswers]);
@@ -114,7 +167,123 @@ function VideoQuizStudentInner() {
   };
 
   // Cleanup timer on unmount
-  useEffect(() => () => clearInterval(timerRef.current), []);
+  useEffect(() => () => {
+    clearInterval(timerRef.current);
+    clearInterval(watchRef.current);
+    try { playerRef.current?.destroy?.(); } catch {}
+  }, []);
+
+  // Keep askedRef in sync
+  useEffect(() => { askedRef.current = askedQIds; }, [askedQIds]);
+
+  // Load YouTube IFrame API once
+  useEffect(() => {
+    if (window.YT && window.YT.Player) { setYtReady(true); return; }
+    const existing = document.getElementById('yt-iframe-api');
+    if (!existing) {
+      const tag = document.createElement('script');
+      tag.id = 'yt-iframe-api';
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.body.appendChild(tag);
+    }
+    window.onYouTubeIframeAPIReady = () => setYtReady(true);
+    const interval = setInterval(() => {
+      if (window.YT && window.YT.Player) { setYtReady(true); clearInterval(interval); }
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Initialize player when quiz loaded + API ready
+  const ytIdForInit = studentQuiz ? getYouTubeId(studentQuiz.videoUrl) : null;
+  useEffect(() => {
+    if (!studentQuiz || !ytReady || !ytIdForInit || studentSubmitted) return;
+    if (playerRef.current) return; // already initialized
+
+    // small delay to ensure div is in DOM
+    const initTimer = setTimeout(() => {
+      const div = document.getElementById(playerDivId.current);
+      if (!div) return;
+      try {
+        playerRef.current = new window.YT.Player(playerDivId.current, {
+          videoId: ytIdForInit,
+          playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+          events: {
+            onReady: () => {
+              // Start polling currentTime every 250ms
+              clearInterval(watchRef.current);
+              watchRef.current = setInterval(() => {
+                if (!playerRef.current?.getCurrentTime) return;
+                const t = playerRef.current.getCurrentTime();
+                // Find any unasked question whose timestamp ≤ t
+                const qs = quizRef.current?.questions || [];
+                for (const q of qs) {
+                  const qSec = parseTimestamp(q.timestamp);
+                  if (askedRef.current[q.id]) continue;
+                  if (qSec > 0 && t >= qSec - 0.4 && t <= qSec + 1.5) {
+                    // trigger pop-up
+                    askedRef.current = { ...askedRef.current, [q.id]: true };
+                    setAskedQIds(askedRef.current);
+                    try { playerRef.current.pauseVideo(); } catch {}
+                    setPopupSelected(null);
+                    setPopupFeedback(null);
+                    setPopupQ(q);
+                    playSfx('beep');
+                    return;
+                  }
+                }
+              }, 250);
+            },
+            onStateChange: (e) => {
+              // 0 = ended → auto-submit
+              if (e.data === 0) {
+                const remaining = (quizRef.current?.questions || []).filter(q => !askedRef.current[q.id]);
+                if (remaining.length > 0) {
+                  // auto-show remaining unasked questions one after another
+                  // For simplicity, just submit
+                }
+                if (!studentSubmitted) {
+                  doSubmit(answersRef.current, quizRef.current, codeRef.current, studentName, studentId, false);
+                  playSfx('finish');
+                }
+              }
+            },
+          },
+        });
+      } catch (e) {
+        console.warn('YT init error', e);
+      }
+    }, 100);
+
+    return () => clearTimeout(initTimer);
+  }, [studentQuiz, ytReady, ytIdForInit, studentSubmitted, studentName, studentId, doSubmit]);
+
+  // Handle pop-up answer
+  const submitPopupAnswer = () => {
+    if (!popupQ || popupSelected === null) return;
+    const correct = popupQ.answer !== null && popupSelected === popupQ.answer;
+    setPopupFeedback(correct ? 'correct' : 'wrong');
+    playSfx(correct ? 'correct' : 'wrong');
+    // Save answer
+    setStudentAnswers(prev => {
+      const next = { ...prev, [popupQ.id]: popupSelected };
+      answersRef.current = next;
+      return next;
+    });
+    // After 1.8s, close pop-up and resume video
+    setTimeout(() => {
+      setPopupQ(null);
+      setPopupSelected(null);
+      setPopupFeedback(null);
+      try { playerRef.current?.playVideo(); } catch {}
+    }, 1800);
+  };
+
+  const skipPopup = () => {
+    if (!popupQ) return;
+    // Mark as unanswered, resume
+    setPopupQ(null); setPopupSelected(null); setPopupFeedback(null);
+    try { playerRef.current?.playVideo(); } catch {}
+  };
 
   const selectAnswer = (qId, value) => {
     if (studentSubmitted) return;
@@ -398,18 +567,200 @@ function VideoQuizStudentInner() {
 
       <div style={{ maxWidth: '600px', margin: '0 auto', padding: '16px' }}>
 
-        {/* YouTube embed */}
+        {/* YouTube embed (controlled via IFrame API for timed quizzes) */}
         {ytId && (
           <div style={{
             borderRadius: '20px', overflow: 'hidden', marginBottom: '20px',
             background: '#000', boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
             position: 'relative', paddingTop: '56.25%', /* 16:9 */
           }}>
-            <iframe
-              src={`https://www.youtube.com/embed/${ytId}`}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-              allowFullScreen title="Video"
+            <div
+              id={playerDivId.current}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
             />
+          </div>
+        )}
+
+        {/* Hint banner about timed pop-ups */}
+        {studentQuiz.questions.some(q => parseTimestamp(q.timestamp) > 0) && !studentSubmitted && (
+          <div style={{
+            background: 'linear-gradient(135deg,#fef3c7,#fde68a)',
+            border: '1px solid #fbbf24', borderRadius: '14px',
+            padding: '12px 18px', marginBottom: '16px',
+            color: '#92400e', fontSize: '14px', fontWeight: 700,
+            display: 'flex', alignItems: 'center', gap: '10px',
+          }}>
+            <span style={{ fontSize: '22px' }}>🔔</span>
+            <span>ขณะดูคลิป จะมีคำถามเด้งขึ้นมาอัตโนมัติพร้อมเสียงปี๊บ — ตอบให้ครบเพื่อรับคะแนน!</span>
+          </div>
+        )}
+
+        {/* ===== POP-UP QUESTION MODAL ===== */}
+        {popupQ && (
+          <div style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(4px)',
+            zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+            animation: 'popupFade 0.3s ease',
+          }}>
+            <style>{`
+              @keyframes popupFade { from{opacity:0} to{opacity:1} }
+              @keyframes popupBounce { 0%{opacity:0;transform:scale(0.7) translateY(40px)} 60%{opacity:1;transform:scale(1.04)} 100%{opacity:1;transform:scale(1)} }
+              @keyframes correctFlash { 0%,100%{background:linear-gradient(135deg,#dcfce7,#bbf7d0)} 50%{background:linear-gradient(135deg,#86efac,#4ade80)} }
+              @keyframes wrongShake   { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+            `}</style>
+            <div style={{
+              maxWidth: '520px', width: '100%',
+              background: '#fff', borderRadius: '24px',
+              padding: '28px 24px',
+              boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
+              animation: popupFeedback === 'wrong' ? 'wrongShake 0.4s ease' : 'popupBounce 0.45s cubic-bezier(0.34,1.56,0.64,1)',
+              border: `3px solid ${
+                popupFeedback === 'correct' ? '#22c55e' :
+                popupFeedback === 'wrong'   ? '#ef4444' :
+                CI.cyan
+              }`,
+              transition: 'border-color 0.3s',
+            }}>
+              {/* Alert header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                <div style={{
+                  background: `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`,
+                  color: '#fff', borderRadius: '12px', padding: '6px 14px',
+                  fontSize: '13px', fontWeight: 900, letterSpacing: '1px',
+                }}>🔔 คำถามเด้งขึ้น!</div>
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>⏱️ {popupQ.timestamp}</span>
+              </div>
+
+              {/* Question */}
+              <h3 style={{
+                margin: '0 0 18px', fontSize: '20px', fontWeight: 800,
+                color: '#1e293b', lineHeight: 1.4,
+              }}>
+                {popupQ.text}
+              </h3>
+
+              {/* Options (MC) */}
+              {popupQ.type === 'mc' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  {popupQ.options.filter(o => o).map((opt, oi) => {
+                    const selected = popupSelected === oi;
+                    const isCorrectAns = oi === popupQ.answer;
+                    const showCorrect = popupFeedback && isCorrectAns;
+                    const showWrong   = popupFeedback === 'wrong' && selected && !isCorrectAns;
+                    let bg = '#fafafa', borderColor = '#e2e8f0', color = '#475569';
+                    if (showCorrect) { bg = '#dcfce7'; borderColor = '#22c55e'; color = '#166534'; }
+                    else if (showWrong) { bg = '#fee2e2'; borderColor = '#ef4444'; color = '#991b1b'; }
+                    else if (selected) { bg = `${CI.cyan}15`; borderColor = CI.cyan; color = CI.cyan; }
+                    return (
+                      <button
+                        key={oi}
+                        onClick={() => !popupFeedback && setPopupSelected(oi)}
+                        disabled={!!popupFeedback}
+                        style={{
+                          padding: '14px 16px', borderRadius: '14px', textAlign: 'left',
+                          border: `2px solid ${borderColor}`, background: bg, color,
+                          cursor: popupFeedback ? 'default' : 'pointer',
+                          fontSize: '16px', fontFamily: FONT, fontWeight: selected || showCorrect ? 700 : 500,
+                          display: 'flex', alignItems: 'center', gap: '12px',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        <span style={{
+                          width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '15px', fontWeight: 900,
+                          background: showCorrect ? '#22c55e' : showWrong ? '#ef4444' : (selected ? CI.cyan : '#f1f5f9'),
+                          color: (showCorrect || showWrong || selected) ? '#fff' : '#94a3b8',
+                        }}>
+                          {showCorrect ? '✓' : showWrong ? '✗' : String.fromCharCode(65 + oi)}
+                        </span>
+                        <span style={{ flex: 1 }}>{opt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* TF */}
+              {popupQ.type === 'tf' && (
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+                  {[{ label: '✓ ถูก', val: 0 }, { label: '✗ ผิด', val: 1 }].map(({ label, val }) => {
+                    const selected = popupSelected === val;
+                    const isCorrectAns = val === popupQ.answer;
+                    const showCorrect = popupFeedback && isCorrectAns;
+                    const showWrong = popupFeedback === 'wrong' && selected && !isCorrectAns;
+                    let bg = '#fafafa', borderColor = '#e2e8f0', color = '#64748b';
+                    if (showCorrect) { bg = '#dcfce7'; borderColor = '#22c55e'; color = '#166534'; }
+                    else if (showWrong) { bg = '#fee2e2'; borderColor = '#ef4444'; color = '#991b1b'; }
+                    else if (selected) { bg = `${CI.cyan}15`; borderColor = CI.cyan; color = CI.cyan; }
+                    return (
+                      <button key={val}
+                        onClick={() => !popupFeedback && setPopupSelected(val)}
+                        disabled={!!popupFeedback}
+                        style={{
+                          flex: 1, padding: '18px', borderRadius: '14px',
+                          border: `2px solid ${borderColor}`, background: bg, color,
+                          cursor: popupFeedback ? 'default' : 'pointer',
+                          fontSize: '20px', fontFamily: FONT, fontWeight: 700,
+                        }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Feedback message */}
+              {popupFeedback === 'correct' && (
+                <div style={{
+                  background: 'linear-gradient(135deg,#dcfce7,#bbf7d0)',
+                  border: '2px solid #22c55e', borderRadius: '12px',
+                  padding: '12px 16px', marginBottom: '14px',
+                  color: '#166534', fontWeight: 800, fontSize: '16px',
+                  textAlign: 'center', animation: 'correctFlash 0.6s ease 2',
+                }}>
+                  🎉 ถูกต้อง! เก่งมาก
+                </div>
+              )}
+              {popupFeedback === 'wrong' && (
+                <div style={{
+                  background: 'linear-gradient(135deg,#fee2e2,#fecaca)',
+                  border: '2px solid #ef4444', borderRadius: '12px',
+                  padding: '12px 16px', marginBottom: '14px',
+                  color: '#991b1b', fontWeight: 800, fontSize: '16px',
+                  textAlign: 'center',
+                }}>
+                  ❌ ยังไม่ถูก — ดูเฉลยข้างบน
+                  {popupQ.explanation && (
+                    <div style={{ fontWeight: 500, fontSize: '13px', marginTop: '6px', color: '#7f1d1d' }}>
+                      💡 {popupQ.explanation}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Submit button (only when not yet shown feedback) */}
+              {!popupFeedback && (
+                <button
+                  onClick={submitPopupAnswer}
+                  disabled={popupSelected === null}
+                  style={{
+                    width: '100%', padding: '16px', borderRadius: '14px', border: 'none',
+                    background: popupSelected !== null
+                      ? `linear-gradient(135deg, ${CI.cyan}, ${CI.magenta})`
+                      : '#e2e8f0',
+                    color: popupSelected !== null ? '#fff' : '#94a3b8',
+                    cursor: popupSelected !== null ? 'pointer' : 'not-allowed',
+                    fontSize: '17px', fontWeight: 900, fontFamily: FONT,
+                    boxShadow: popupSelected !== null ? `0 6px 20px ${CI.cyan}40` : 'none',
+                  }}
+                >
+                  ส่งคำตอบ
+                </button>
+              )}
+            </div>
           </div>
         )}
 
