@@ -51,9 +51,9 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
       {/* ===== BANNER (full-bleed scenic hero) ===== */}
       <div style={{
         background: `linear-gradient(145deg,${CI.dark} 0%,#111145 45%,#1f1f6e 100%)`,
-        padding: 'clamp(20px,3.2vw,38px) clamp(20px,3vw,40px) 0', color: '#fff',
+        padding: 'clamp(16px,2.4vw,28px) clamp(20px,3vw,40px) 0', color: '#fff',
         position: 'relative', overflow: 'hidden',
-        minHeight: 'clamp(220px,24vw,310px)',
+        minHeight: 'clamp(170px,18vw,240px)',
         width: '100%',
       }}>
         {/* Background glows */}
@@ -121,13 +121,13 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
 
         {/* Title — animated cyan/purple/magenta gradient, centered */}
         <div style={{
-          position:'relative', zIndex:3, marginBottom:'clamp(10px,1.4vw,18px)',
-          maxWidth:'1200px', margin:'0 auto clamp(10px,1.4vw,18px)',
+          position:'relative', zIndex:3,
+          maxWidth:'1200px', margin:'0 auto clamp(6px,0.8vw,10px)',
           textAlign:'center',
         }}>
           <h1 style={{
-            margin:'0 0 6px',
-            fontSize:'clamp(28px,4vw,52px)',
+            margin:'0 0 4px',
+            fontSize:'clamp(24px,3.4vw,44px)',
             fontWeight:900, letterSpacing:'0.04em', lineHeight:1.05,
             display:'inline-block',
             animation:'titleBob 4.5s ease-in-out infinite, titleGlow 6s ease-in-out infinite',
@@ -156,10 +156,13 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           </p>
         </div>
 
-        {/* City silhouette + Mountains + Road + Buses (proportional to container) */}
+        {/* City silhouette + Mountains + Road + Buses — break out of banner padding */}
         <div style={{
-          position:'relative', width:'100%',
-          height:'clamp(95px,11vw,140px)', zIndex:2,
+          position:'relative',
+          width:'calc(100% + 2 * clamp(20px,3vw,40px))',
+          marginLeft:'calc(-1 * clamp(20px,3vw,40px))',
+          marginRight:'calc(-1 * clamp(20px,3vw,40px))',
+          height:'clamp(85px,10vw,125px)', zIndex:2,
         }}>
           {/* Distant mountains */}
           <svg viewBox="0 0 1200 60" preserveAspectRatio="none" style={{
