@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import StudentSplash from '@/components/StudentSplash';
 
 const FONT = "'Kanit', 'Noto Sans Thai', sans-serif";
 
@@ -695,13 +696,17 @@ function StudentMillionaireInner() {
 }
 
 export default function StudentMillionairePage() {
+  const [showSplash, setShowSplash] = useState(true);
   return (
-    <Suspense fallback={
-      <div style={{height:'100dvh',minHeight:'100vh',background:'#0d1117',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Kanit,sans-serif'}}>
-        <span style={{color:'rgba(255,255,255,0.35)',fontSize:16}}>กำลังโหลด…</span>
-      </div>
-    }>
-      <StudentMillionaireInner/>
-    </Suspense>
+    <>
+      {showSplash && <StudentSplash duration={2200} onFinish={() => setShowSplash(false)} />}
+      <Suspense fallback={
+        <div style={{height:'100dvh',minHeight:'100vh',background:'#0d1117',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'Kanit,sans-serif'}}>
+          <span style={{color:'rgba(255,255,255,0.35)',fontSize:16}}>กำลังโหลด…</span>
+        </div>
+      }>
+        <StudentMillionaireInner/>
+      </Suspense>
+    </>
   );
 }

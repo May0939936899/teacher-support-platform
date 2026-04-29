@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
+import StudentSplash from '@/components/StudentSplash';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', gold: '#ffc107', purple: '#7c4dff' };
 const FONT = "'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -1020,8 +1021,10 @@ function VideoQuizStudentInner() {
 }
 
 export default function StudentVideoQuizPage() {
+  const [showSplash, setShowSplash] = useState(true);
   return (
     <>
+      {showSplash && <StudentSplash duration={2200} onFinish={() => setShowSplash(false)} />}
       <Toaster
         position="top-center"
         toastOptions={{

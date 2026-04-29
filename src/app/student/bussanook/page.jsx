@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import StudentSplash from '@/components/StudentSplash';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const FONT    = "'Kanit', 'Noto Sans Thai', sans-serif";
@@ -747,13 +748,17 @@ function sBtnStyle(bg, color = '#fff') {
 
 // ── Page export with Suspense boundary ────────────────────────────────────────
 export default function BusSanookStudentPage() {
+  const [showSplash, setShowSplash] = useState(true);
   return (
-    <Suspense fallback={
-      <div style={{ minHeight:'100dvh', background:BG, fontFamily:FONT, color:CYAN, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>
-        ⏳ กำลังโหลด...
-      </div>
-    }>
-      <BusSanookStudentInner />
-    </Suspense>
+    <>
+      {showSplash && <StudentSplash duration={2200} onFinish={() => setShowSplash(false)} />}
+      <Suspense fallback={
+        <div style={{ minHeight:'100dvh', background:BG, fontFamily:FONT, color:CYAN, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>
+          ⏳ กำลังโหลด...
+        </div>
+      }>
+        <BusSanookStudentInner />
+      </Suspense>
+    </>
   );
 }

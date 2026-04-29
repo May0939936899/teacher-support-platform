@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import StudentSplash from '@/components/StudentSplash';
 
 const CI = { cyan: '#00b4e6', magenta: '#e6007e', dark: '#0b0b24', purple: '#7c4dff' };
 const FONT = "'Kanit', 'Noto Sans Thai', -apple-system, sans-serif";
@@ -390,17 +391,21 @@ function StudentInteractiveInner() {
 }
 
 export default function StudentInteractivePage() {
+  const [showSplash, setShowSplash] = useState(true);
   return (
-    <Suspense fallback={
-      <div style={pageStyle}>
-        <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>⏳</div>
-          <p style={{ color: '#64748b', fontSize: '18px', fontFamily: FONT }}>กำลังโหลด...</p>
+    <>
+      {showSplash && <StudentSplash duration={2200} onFinish={() => setShowSplash(false)} />}
+      <Suspense fallback={
+        <div style={pageStyle}>
+          <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+            <div style={{ fontSize: '40px', marginBottom: '16px' }}>⏳</div>
+            <p style={{ color: '#64748b', fontSize: '18px', fontFamily: FONT }}>กำลังโหลด...</p>
+          </div>
         </div>
-      </div>
-    }>
-      <StudentInteractiveInner />
-    </Suspense>
+      }>
+        <StudentInteractiveInner />
+      </Suspense>
+    </>
   );
 }
 

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback, Suspense, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import StudentSplash from '@/components/StudentSplash';
 
 const FONT = "'Kanit','Noto Sans Thai',sans-serif";
 const BG   = 'linear-gradient(160deg,#020918,#050f2a,#0a0520)';
@@ -1374,18 +1375,22 @@ function StudentSnakeLadderInner() {
 // Suspense wrapper
 // ════════════════════════════════════════════════════════════════════════════
 export default function StudentSnakeLadderPage() {
+  const [showSplash, setShowSplash] = useState(true);
   return (
-    <Suspense fallback={
-      <div style={{
-        height:'100dvh', minHeight:'100vh',
-        background:'linear-gradient(160deg,#020918,#050f2a,#0a0520)',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        fontFamily:"'Kanit',sans-serif",
-      }}>
-        <span style={{ color:'rgba(255,255,255,0.35)', fontSize:16 }}>กำลังโหลด…</span>
-      </div>
-    }>
-      <StudentSnakeLadderInner />
-    </Suspense>
+    <>
+      {showSplash && <StudentSplash duration={2200} onFinish={() => setShowSplash(false)} />}
+      <Suspense fallback={
+        <div style={{
+          height:'100dvh', minHeight:'100vh',
+          background:'linear-gradient(160deg,#020918,#050f2a,#0a0520)',
+          display:'flex', alignItems:'center', justifyContent:'center',
+          fontFamily:"'Kanit',sans-serif",
+        }}>
+          <span style={{ color:'rgba(255,255,255,0.35)', fontSize:16 }}>กำลังโหลด…</span>
+        </div>
+      }>
+        <StudentSnakeLadderInner />
+      </Suspense>
+    </>
   );
 }
