@@ -210,21 +210,41 @@ function VideoQuizStudentInner() {
       try {
         playerRef.current = new window.YT.Player(playerDivId.current, {
           videoId: ytIdForInit,
-          // disablekb prevents keyboard seeking; controls=0 hides timeline so click-seeking is harder
-          playerVars: { rel: 0, modestbranding: 1, playsinline: 1, disablekb: 1, controls: 0, fs: 0 },
+          // controls=1 so student can press PLAY (we still anti-skip in code)
+          playerVars: { rel: 0, modestbranding: 1, playsinline: 1, disablekb: 1, controls: 1 },
           events: {
             onReady: () => {
               maxWatchedRef.current = 0;
               setVideoFinished(false);
+
+              // ── Auto-rescale question timestamps to fit actual video duration
+              // (AI may have generated timestamps based on quiz time-limit, not video length)
+              try {
+                const dur = playerRef.current.getDuration?.() || 0;
+                if (dur > 0 && quizRef.current?.questions) {
+                  const qs = quizRef.current.questions;
+                  const maxQ = Math.max(...qs.map(q => parseTimestamp(q.timestamp) || 0));
+                  if (maxQ > dur - 5) {
+                    // Redistribute evenly across video (25%, 50%, 75%, ...)
+                    const sorted = [...qs].sort((a, b) => parseTimestamp(a.timestamp) - parseTimestamp(b.timestamp));
+                    sorted.forEach((q, i) => {
+                      const sec = Math.floor((dur * (i + 1)) / (sorted.length + 1));
+                      const m = Math.floor(sec / 60);
+                      const s = sec % 60;
+                      q.timestamp = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                    });
+                  }
+                }
+              } catch {}
+
               clearInterval(watchRef.current);
               watchRef.current = setInterval(() => {
                 if (!playerRef.current?.getCurrentTime) return;
                 const t = playerRef.current.getCurrentTime();
                 const dur = playerRef.current.getDuration?.() || 0;
 
-                // ── Anti-skip: if user seeked forward beyond what they've watched, snap back
-                const ALLOW = 2.0;  // 2s grace
-                if (t > maxWatchedRef.current + ALLOW + 0.5) {
+                // ── Anti-skip: snap back if user jumps forward > 3.5s ahead
+                if (t > maxWatchedRef.current + 3.5) {
                   try { playerRef.current.seekTo(maxWatchedRef.current, true); } catch {}
                   setSkipToast(true);
                   clearTimeout(window.__skipTimer);
@@ -236,17 +256,15 @@ function VideoQuizStudentInner() {
                 // ── Watch progress display
                 if (dur > 0) setWatchProgress(Math.min(1, t / dur));
 
-                // ── Detect finish (within 1s of end)
-                if (dur > 0 && t >= dur - 1.2 && !videoFinished) {
-                  setVideoFinished(true);
-                }
+                // ── Detect finish (within 1.2s of end)
+                if (dur > 0 && t >= dur - 1.2) setVideoFinished(true);
 
-                // ── Trigger question pop-up
+                // ── Trigger question pop-up (window: qSec-1.0 .. qSec+3.0)
                 const qs = quizRef.current?.questions || [];
                 for (const q of qs) {
                   const qSec = parseTimestamp(q.timestamp);
                   if (askedRef.current[q.id]) continue;
-                  if (qSec > 0 && t >= qSec - 0.4 && t <= qSec + 1.5) {
+                  if (qSec > 0 && t >= qSec - 1.0 && t <= qSec + 3.0) {
                     askedRef.current = { ...askedRef.current, [q.id]: true };
                     setAskedQIds(askedRef.current);
                     try { playerRef.current.pauseVideo(); } catch {}

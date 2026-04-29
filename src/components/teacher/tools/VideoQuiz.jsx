@@ -122,6 +122,59 @@ export default function VideoQuiz() {
   const [videoUrl, setVideoUrl] = useState('');
   const [quizTitle, setQuizTitle] = useState('');
   const [timeLimit, setTimeLimit] = useState(20);
+  const [videoDurationSec, setVideoDurationSec] = useState(0);  // auto-detected
+  const detectorPlayerRef = useRef(null);
+  const detectorDivId     = useRef('vq-detect-' + Math.random().toString(36).slice(2, 6));
+
+  // ── Auto-detect YouTube duration when URL changes ─────────────────────────
+  useEffect(() => {
+    setVideoDurationSec(0);
+    const ytId = getYouTubeId(videoUrl);
+    if (!ytId) return;
+
+    const ensureApi = () => new Promise(resolve => {
+      if (window.YT && window.YT.Player) return resolve();
+      const existing = document.getElementById('yt-iframe-api');
+      if (!existing) {
+        const tag = document.createElement('script');
+        tag.id = 'yt-iframe-api';
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.body.appendChild(tag);
+      }
+      window.onYouTubeIframeAPIReady = () => resolve();
+      const itv = setInterval(() => {
+        if (window.YT && window.YT.Player) { clearInterval(itv); resolve(); }
+      }, 200);
+    });
+
+    let cancelled = false;
+    (async () => {
+      await ensureApi();
+      if (cancelled) return;
+      try { detectorPlayerRef.current?.destroy?.(); } catch {}
+      const div = document.getElementById(detectorDivId.current);
+      if (!div) return;
+      detectorPlayerRef.current = new window.YT.Player(detectorDivId.current, {
+        videoId: ytId,
+        height: '1', width: '1',
+        playerVars: { controls: 0 },
+        events: {
+          onReady: () => {
+            try {
+              const dur = detectorPlayerRef.current.getDuration() || 0;
+              if (dur > 0) setVideoDurationSec(Math.round(dur));
+            } catch {}
+          },
+        },
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      try { detectorPlayerRef.current?.destroy?.(); } catch {}
+      detectorPlayerRef.current = null;
+    };
+  }, [videoUrl]);
   const [questions, setQuestions] = useState([]);
   const [aiGenerating, setAiGenerating] = useState(false);
 
@@ -133,6 +186,10 @@ export default function VideoQuiz() {
     setAiGenerating(true);
     const tid = toast.loading('🤖 AI กำลังสร้างข้อสอบ 3 ข้อ...');
     try {
+      // Use auto-detected duration (in minutes) — fallback to 5 min if undetected
+      const durationMin = videoDurationSec > 0
+        ? Math.max(1, Math.ceil(videoDurationSec / 60))
+        : 5;
       const res = await fetch('/api/teacher/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -141,7 +198,7 @@ export default function VideoQuiz() {
           payload: {
             videoTitle: quizTitle || 'วิดีโอการศึกษา',
             topic: quizTitle,
-            duration: timeLimit || 20,
+            duration: durationMin,
             numQuestions: 3,
           },
         }),
@@ -824,9 +881,24 @@ export default function VideoQuiz() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', marginBottom: '16px', alignItems: 'end' }}>
               <div>
-                <label style={lbl}>URL วิดีโอ YouTube *</label>
+                <label style={lbl}>
+                  URL วิดีโอ YouTube *
+                  {videoDurationSec > 0 && (
+                    <span style={{
+                      marginLeft: 10, fontSize: 12, fontWeight: 700,
+                      color: '#16a34a', background: '#dcfce7',
+                      padding: '2px 10px', borderRadius: 12,
+                    }}>
+                      🎬 วิดีโอ: {Math.floor(videoDurationSec/60)}:{String(videoDurationSec%60).padStart(2,'0')} นาที
+                    </span>
+                  )}
+                </label>
                 <input value={videoUrl} onChange={e => setVideoUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." style={inp}
                   onFocus={e => e.target.style.borderColor = CI.cyan} onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+                {/* Hidden detector — reads actual video duration */}
+                <div style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none', overflow: 'hidden' }}>
+                  <div id={detectorDivId.current} />
+                </div>
               </div>
               <div>
                 <label style={lbl}>⏱️ เวลา (นาที)</label>
