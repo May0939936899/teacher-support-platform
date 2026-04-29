@@ -48,63 +48,198 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', fontFamily: FONT }}>
 
-      {/* ===== BANNER ===== */}
+      {/* ===== BANNER (responsive scenic hero) ===== */}
       <div style={{
-        background: `linear-gradient(145deg,${CI.dark} 0%,#111145 50%,#1a1a5e 100%)`,
-        padding: '28px 32px 20px', color: '#fff',
-        position: 'relative', overflow: 'hidden', minHeight: '160px',
+        background: `linear-gradient(145deg,${CI.dark} 0%,#111145 45%,#1f1f6e 100%)`,
+        padding: 'clamp(20px,3.2vw,38px) clamp(20px,3vw,40px) 0', color: '#fff',
+        position: 'relative', overflow: 'hidden',
+        minHeight: 'clamp(210px,22vw,290px)',
       }}>
-        <div style={{ position:'absolute', top:'-40%', right:'-15%', width:'50%', height:'180%', background:`radial-gradient(ellipse,${CI.cyan}12 0%,transparent 70%)`, pointerEvents:'none' }} />
-        <div style={{ position:'absolute', bottom:'-30%', left:'-10%', width:'40%', height:'120%', background:`radial-gradient(ellipse,${CI.magenta}08 0%,transparent 70%)`, pointerEvents:'none' }} />
-        {[...Array(12)].map((_,i) => (
-          <div key={i} style={{ position:'absolute', width: i%3===0?'2px':'1.5px', height: i%3===0?'2px':'1.5px', borderRadius:'50%', background: i%3===0?CI.cyan:i%3===1?CI.gold:'#fff', top:`${(i*13+5)%50}%`, left:`${(i*19+8)%95}%`, animation:`twinkle ${1.5+(i%3)*0.8}s ease-in-out infinite`, animationDelay:`${i*0.3}s`, opacity:0.5 }} />
-        ))}
+        {/* Background glows */}
+        <div style={{ position:'absolute', top:'-40%', right:'-15%', width:'60%', height:'180%', background:`radial-gradient(ellipse,${CI.cyan}1c 0%,transparent 70%)`, pointerEvents:'none' }} />
+        <div style={{ position:'absolute', bottom:'-30%', left:'-10%', width:'50%', height:'130%', background:`radial-gradient(ellipse,${CI.magenta}10 0%,transparent 70%)`, pointerEvents:'none' }} />
+
+        {/* Stars */}
+        {[...Array(28)].map((_,i) => {
+          const s = (i%4===0)?3:(i%3===0)?2:1.5;
+          return (
+            <div key={i} style={{
+              position:'absolute',
+              width: s, height: s, borderRadius:'50%',
+              background: i%4===0?CI.gold:i%3===1?CI.cyan:'#fff',
+              top:`${(i*13+5)%55}%`, left:`${(i*19+8)%97}%`,
+              animation:`twinkle ${1.4+(i%4)*0.7}s ease-in-out infinite`,
+              animationDelay:`${i*0.18}s`,
+              opacity: 0.4 + (i%3)*0.18,
+              boxShadow: i%4===0 ? `0 0 4px ${CI.gold}` : 'none',
+            }} />
+          );
+        })}
+
+        {/* Moon */}
+        <div style={{
+          position:'absolute', top:'14%', right:'7%',
+          width:'clamp(34px,4vw,52px)', height:'clamp(34px,4vw,52px)',
+          borderRadius:'50%',
+          background:'radial-gradient(circle at 35% 35%, #fff8e0 0%, #ffd97a 60%, #d4a64a 100%)',
+          boxShadow:'0 0 24px rgba(255,217,122,0.4), inset -6px -4px 0 rgba(0,0,0,0.1)',
+          zIndex:1,
+        }} />
+
         <style>{`
-          @keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:0.8} }
-          @keyframes bannerBusRun { 0%{transform:translateX(-120%)} 100%{transform:translateX(calc(100vw + 20%))} }
-          @keyframes bannerBusRun2 { 0%{transform:translateX(calc(100vw + 20%)) scaleX(-1)} 100%{transform:translateX(-120%) scaleX(-1)} }
-          @keyframes bannerBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
-          @keyframes bannerRoadDash { 0%{stroke-dashoffset:0} 100%{stroke-dashoffset:-40} }
-          @keyframes bannerWheel { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+          @keyframes twinkle { 0%,100%{opacity:0.25} 50%{opacity:0.95} }
+          @keyframes bannerBusRun  { 0%{transform:translateX(-30%)}    100%{transform:translateX(140%)} }
+          @keyframes bannerBusRun2 { 0%{transform:translateX(140%) scaleX(-1)} 100%{transform:translateX(-30%) scaleX(-1)} }
+          @keyframes bannerBounce  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+          @keyframes bannerRoadDash{ 0%{stroke-dashoffset:0} 100%{stroke-dashoffset:-40} }
+          @keyframes cloudDrift    { 0%{transform:translateX(-15%)}    100%{transform:translateX(115%)} }
+          @keyframes cloudDrift2   { 0%{transform:translateX(115%)}    100%{transform:translateX(-15%)} }
+          @keyframes headlightPulse{ 0%,100%{opacity:0.6} 50%{opacity:1} }
         `}</style>
-        <div style={{ position:'relative', zIndex:2, marginBottom:'12px' }}>
-          <h1 style={{ margin:'0 0 2px', fontSize:'28px', fontWeight:800, letterSpacing:'0.02em' }}>
+
+        {/* Drifting clouds */}
+        <div style={{ position:'absolute', top:'18%', left:0, width:'100%', height:'30px', zIndex:1, pointerEvents:'none' }}>
+          <div style={{ position:'absolute', top:0, animation:'cloudDrift 28s linear infinite', fontSize:'clamp(20px,2.5vw,32px)', opacity:0.25, filter:'blur(0.5px)' }}>☁️</div>
+          <div style={{ position:'absolute', top:'40%', animation:'cloudDrift2 38s linear infinite', animationDelay:'-12s', fontSize:'clamp(16px,2vw,26px)', opacity:0.2, filter:'blur(0.5px)' }}>☁️</div>
+          <div style={{ position:'absolute', top:'80%', animation:'cloudDrift 44s linear infinite', animationDelay:'-22s', fontSize:'clamp(22px,2.8vw,36px)', opacity:0.18, filter:'blur(0.5px)' }}>☁️</div>
+        </div>
+
+        {/* Title */}
+        <div style={{ position:'relative', zIndex:3, marginBottom:'clamp(10px,1.4vw,18px)' }}>
+          <h1 style={{
+            margin:'0 0 4px',
+            fontSize:'clamp(24px,3.2vw,40px)',
+            fontWeight:800, letterSpacing:'0.02em', lineHeight:1.1,
+          }}>
             <span style={{ color:'#fff' }}>SPUBUS</span>
             <span style={{ color:CI.cyan, marginLeft:'10px', fontWeight:600 }}>MAGIC</span>
+            <span style={{
+              display:'inline-block', marginLeft:'12px', fontSize:'0.45em',
+              background:`linear-gradient(135deg,${CI.gold},#ffd45a)`, color:'#1a1a2e',
+              padding:'4px 10px', borderRadius:'12px', fontWeight:800, letterSpacing:'0.05em',
+              transform:'translateY(-4px)', verticalAlign:'middle',
+            }}>v2.0</span>
           </h1>
-          <p style={{ margin:0, fontSize:'14px', color:'rgba(255,255,255,0.6)' }}>แพลตฟอร์ม AI เปลี่ยนห้องเรียนให้มีชีวิต · คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม</p>
+          <p style={{
+            margin:0, fontSize:'clamp(12px,1.1vw,15px)',
+            color:'rgba(255,255,255,0.65)', maxWidth:'600px', lineHeight:1.5,
+          }}>
+            แพลตฟอร์ม AI เปลี่ยนห้องเรียนให้มีชีวิต · คณะบริหารธุรกิจ มหาวิทยาลัยศรีปทุม
+          </p>
         </div>
-        <div style={{ position:'relative', width:'100%', height:'70px', zIndex:2 }}>
-          <svg width="100%" height="70" viewBox="-100 0 1400 70" preserveAspectRatio="none" style={{ position:'absolute', bottom:0, left:'-2%', width:'104%' }}>
-            <path d="M-100,35 C100,28 300,42 500,35 C700,28 900,42 1100,35 L1300,35" stroke="#2a2a4e" strokeWidth="32" fill="none" />
-            <path d="M-100,35 C100,28 300,42 500,35 C700,28 900,42 1100,35 L1300,35" stroke={CI.gold} strokeWidth="2" fill="none" strokeDasharray="16 12" opacity="0.7" style={{ animation:'bannerRoadDash 1s linear infinite' }} />
+
+        {/* City silhouette + Mountains + Road + Buses (proportional to container) */}
+        <div style={{
+          position:'relative', width:'100%',
+          height:'clamp(95px,11vw,140px)', zIndex:2,
+        }}>
+          {/* Distant mountains */}
+          <svg viewBox="0 0 1200 60" preserveAspectRatio="none" style={{
+            position:'absolute', bottom:'48%', left:0,
+            width:'100%', height:'clamp(28px,4vw,55px)',
+            opacity:0.55, zIndex:0,
+          }}>
+            <defs>
+              <linearGradient id="mtnGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3535a8" />
+                <stop offset="100%" stopColor="#0a0a2a" />
+              </linearGradient>
+            </defs>
+            <path fill="url(#mtnGrad)"
+              d="M0,60 L0,38 L120,15 L220,32 L340,8 L460,28 L560,12 L680,30 L820,15 L940,28 L1080,18 L1200,32 L1200,60 Z" />
           </svg>
-          <div style={{ position:'absolute', bottom:'22px', left:0, animation:'bannerBusRun 6s linear infinite' }}>
-            <div style={{ animation:'bannerBounce 0.25s ease-in-out infinite' }}>
-              <svg width="100" height="50" viewBox="0 0 140 65">
-                <rect x="5" y="10" width="130" height="40" rx="8" fill={CI.cyan} />
+
+          {/* City silhouette */}
+          <svg viewBox="0 0 1200 80" preserveAspectRatio="none" style={{
+            position:'absolute', bottom:'30%', left:0,
+            width:'100%', height:'clamp(34px,4.5vw,60px)',
+            opacity:0.55, zIndex:1, pointerEvents:'none',
+          }}>
+            <path
+              fill="#0a0a2e"
+              d="M0,80 L0,60 L60,60 L60,38 L100,38 L100,52 L160,52 L160,28 L210,28 L210,18 L260,18 L260,42 L320,42 L320,32 L370,32 L370,52 L420,52 L420,34 L480,34 L480,46 L540,46 L540,22 L600,22 L600,40 L660,40 L660,52 L720,52 L720,30 L780,30 L780,42 L850,42 L850,28 L910,28 L910,48 L980,48 L980,34 L1040,34 L1040,52 L1100,52 L1100,38 L1160,38 L1160,55 L1200,55 L1200,80 Z"
+            />
+            {[80, 175, 230, 285, 395, 505, 575, 695, 800, 935, 1010, 1115].map((x, i) => (
+              <rect key={i} x={x} y={i%2===0?34:25} width="3.5" height="3.5" fill={CI.gold}
+                style={{ animation:`twinkle ${2+(i%4)*0.5}s ease infinite`, animationDelay:`${i*0.4}s` }} />
+            ))}
+          </svg>
+
+          {/* Road */}
+          <svg width="100%" height="100%" viewBox="0 0 1200 100" preserveAspectRatio="none" style={{
+            position:'absolute', bottom:0, left:0,
+          }}>
+            <path d="M-50,72 Q300,68 600,72 T1250,72 L1250,100 L-50,100 Z" fill="#0a0a1e" />
+            <path d="M-50,55 Q300,48 600,55 T1250,55 L1250,80 L-50,80 Z" fill="#1a1a3e" />
+            <path d="M-50,67 Q300,60 600,67 T1250,67"
+              stroke={CI.gold} strokeWidth="2" fill="none"
+              strokeDasharray="14 10" opacity="0.75"
+              style={{ animation:'bannerRoadDash 1s linear infinite' }} />
+            <path d="M-50,55 Q300,48 600,55 T1250,55"
+              stroke="rgba(255,255,255,0.2)" strokeWidth="1" fill="none" />
+          </svg>
+
+          {/* Big bus (cyan) — scales with container */}
+          <div style={{
+            position:'absolute', bottom:'clamp(28px,3vw,42px)', left:'-10%',
+            width:'clamp(110px,11vw,165px)',
+            animation:'bannerBusRun 8s linear infinite',
+            zIndex:3,
+          }}>
+            <div style={{ animation:'bannerBounce 0.28s ease-in-out infinite' }}>
+              <svg viewBox="0 0 140 65" style={{ width:'100%', height:'auto', display:'block' }}>
+                <defs>
+                  <linearGradient id="busBody1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3dc9ed" />
+                    <stop offset="100%" stopColor={CI.cyan} />
+                  </linearGradient>
+                </defs>
+                <ellipse cx="70" cy="62" rx="58" ry="3" fill="rgba(0,0,0,0.4)" />
+                <rect x="5" y="10" width="130" height="40" rx="9" fill="url(#busBody1)" />
                 <rect x="10" y="5" width="120" height="10" rx="5" fill="#0099cc" />
-                <rect x="15" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
-                <rect x="38" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
-                <rect x="61" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
-                <rect x="84" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.9" />
-                <text x="50" y="44" fill="#fff" fontSize="9" fontWeight="800" fontFamily="sans-serif">SPU BUS</text>
-                <circle cx="35" cy="55" r="8" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
-                <circle cx="35" cy="55" r="3" fill="#555" />
-                <circle cx="105" cy="55" r="8" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
-                <circle cx="105" cy="55" r="3" fill="#555" />
+                <circle cx="135" cy="36" r="3" fill={CI.gold} style={{ animation:'headlightPulse 1.5s ease infinite' }} />
+                <rect x="15" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.95" />
+                <rect x="38" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.95" />
+                <rect x="61" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.95" />
+                <rect x="84" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.95" />
+                <rect x="107" y="18" width="18" height="16" rx="3" fill="#e0f7ff" opacity="0.95" />
+                <line x1="20" y1="20" x2="28" y2="32" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" />
+                <text x="70" y="46" fill="#fff" fontSize="8" fontWeight="900" fontFamily="sans-serif" textAnchor="middle">SPU BUS</text>
+                <circle cx="35" cy="55" r="9" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
+                <circle cx="35" cy="55" r="4" fill="#666" />
+                <circle cx="105" cy="55" r="9" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
+                <circle cx="105" cy="55" r="4" fill="#666" />
               </svg>
             </div>
           </div>
-          <div style={{ position:'absolute', bottom:'18px', left:0, animation:'bannerBusRun2 9s linear infinite', animationDelay:'2s' }}>
-            <svg width="60" height="32" viewBox="0 0 140 65">
-              <rect x="5" y="10" width="130" height="40" rx="8" fill={CI.magenta} />
+
+          {/* Smaller bus (magenta) — opposite direction */}
+          <div style={{
+            position:'absolute', bottom:'clamp(22px,2.4vw,32px)', left:'-10%',
+            width:'clamp(70px,7vw,110px)',
+            animation:'bannerBusRun2 12s linear infinite',
+            animationDelay:'2.5s',
+            zIndex:2, opacity:0.88,
+          }}>
+            <svg viewBox="0 0 140 65" style={{ width:'100%', height:'auto', display:'block' }}>
+              <defs>
+                <linearGradient id="busBody2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ff4090" />
+                  <stop offset="100%" stopColor={CI.magenta} />
+                </linearGradient>
+              </defs>
+              <ellipse cx="70" cy="62" rx="58" ry="3" fill="rgba(0,0,0,0.4)" />
+              <rect x="5" y="10" width="130" height="40" rx="9" fill="url(#busBody2)" />
               <rect x="10" y="5" width="120" height="10" rx="5" fill="#cc006e" />
-              <rect x="15" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.8" />
-              <rect x="38" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.8" />
-              <rect x="61" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.8" />
-              <circle cx="35" cy="55" r="8" fill="#1a1a2e" />
-              <circle cx="105" cy="55" r="8" fill="#1a1a2e" />
+              <circle cx="135" cy="36" r="3" fill={CI.gold} style={{ animation:'headlightPulse 1.5s ease infinite' }} />
+              <rect x="15" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.85" />
+              <rect x="38" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.85" />
+              <rect x="61" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.85" />
+              <rect x="84" y="18" width="18" height="16" rx="3" fill="#ffe0f0" opacity="0.85" />
+              <circle cx="35" cy="55" r="9" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
+              <circle cx="35" cy="55" r="4" fill="#666" />
+              <circle cx="105" cy="55" r="9" fill="#1a1a2e" stroke="#3a3a5e" strokeWidth="2" />
+              <circle cx="105" cy="55" r="4" fill="#666" />
             </svg>
           </div>
         </div>
