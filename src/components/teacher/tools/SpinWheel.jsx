@@ -228,6 +228,10 @@ export default function SpinWheel() {
   const [removeWinner, setRemoveWinner] = useState(false);
   const [confetti, setConfetti] = useState([]);
   const [confettiActive, setConfettiActive] = useState(false);
+  // Mode: 'wheel' | 'boxes'
+  const [mode, setMode]               = useState('wheel');
+  const [highlightedIdx, setHighlightedIdx] = useState(-1);
+  const boxesAnimRef = useRef(null);
 
   // Canvas size (responsive)
   const CANVAS_SIZE = 540;
@@ -355,9 +359,102 @@ export default function SpinWheel() {
     rafRef.current = requestAnimationFrame(frame);
   }, [spinning, items, rotationAngle, removeWinner]);
 
+  // ── Box Mode: cycle highlight through boxes, slow down, settle on winner ──
+  const spinBoxes = useCallback(() => {
+    if (spinning) return;
+    if (items.length < 2) {
+      toast.error('ต้องมีรายการอย่างน้อย 2 รายการ');
+      return;
+    }
+    const ctx = getAudioCtx(audioCtxRef);
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+
+    setShowWinner(false);
+    setWinner(null);
+    setSpinning(true);
+    noteIndexRef.current = 0;
+
+    const winnerIndex = Math.floor(Math.random() * items.length);
+
+    // Build a tick schedule: fast → slow (eased)
+    const totalTicks = 22 + Math.floor(Math.random() * 8); // 22-30 highlights
+    const totalDuration = 3500;
+    const schedule = [];
+    let elapsed = 0;
+    for (let i = 0; i < totalTicks; i++) {
+      const progress = i / (totalTicks - 1);
+      // easeOut: ticks start fast (small interval), end slow (large interval)
+      const eased = Math.pow(progress, 2.4);
+      const interval = 60 + eased * 360;     // 60ms → 420ms
+      elapsed += interval;
+      schedule.push(elapsed);
+    }
+    // Normalize total duration
+    const scale = totalDuration / elapsed;
+    const normalized = schedule.map(t => t * scale);
+
+    let tickIdx = 0;
+    let lastIdx = -1;
+
+    const doTick = () => {
+      if (tickIdx >= normalized.length) {
+        // Final settle on winner
+        setHighlightedIdx(winnerIndex);
+        const finalName = items[winnerIndex];
+        setWinner(finalName);
+        playWinFanfare(audioCtxRef);
+        setConfetti(generateConfettiParticles(70));
+        setConfettiActive(true);
+        setTimeout(() => setConfettiActive(false), 3500);
+        setShowWinner(true);
+        toast.success(`🎉 ผู้โชคดีคือ "${finalName}"!`);
+        setSpinning(false);
+        if (removeWinner) {
+          const newItems = items.filter((_, idx) => idx !== winnerIndex);
+          setTimeout(() => {
+            setItems(newItems.length > 0 ? newItems : items);
+            setHighlightedIdx(-1);
+            if (newItems.length === 0) toast('รายการหมดแล้ว กรุณารีเซ็ต');
+          }, 2000);
+        }
+        return;
+      }
+      // Pick a random index different from last (so we always see a change)
+      let idx;
+      if (tickIdx === normalized.length - 1) {
+        idx = winnerIndex; // make sure last visible tick is the winner
+      } else {
+        do { idx = Math.floor(Math.random() * items.length); }
+        while (items.length > 1 && idx === lastIdx);
+      }
+      lastIdx = idx;
+      setHighlightedIdx(idx);
+      // Tick sound
+      const progress = tickIdx / normalized.length;
+      const velocity = 0.45 + (1 - progress) * 0.55;
+      playPianoNote(audioCtxRef, noteIndexRef.current, velocity);
+      noteIndexRef.current = (noteIndexRef.current + 1) % PIANO_SCALE.length;
+
+      const nextWait = (tickIdx === 0 ? normalized[0] : normalized[tickIdx] - normalized[tickIdx - 1]);
+      tickIdx++;
+      boxesAnimRef.current = setTimeout(doTick, Math.max(40, nextWait));
+    };
+
+    doTick();
+  }, [spinning, items, removeWinner]);
+
+  // Choose which spin to run based on mode
+  const handleSpin = useCallback(() => {
+    if (mode === 'boxes') return spinBoxes();
+    return spin();
+  }, [mode, spin, spinBoxes]);
+
   // Cleanup RAF on unmount
   useEffect(() => {
-    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (boxesAnimRef.current) clearTimeout(boxesAnimRef.current);
+    };
   }, []);
 
   const resetList = useCallback(() => {
@@ -542,48 +639,160 @@ export default function SpinWheel() {
           )}
         </div>
 
-        {/* Right: Wheel */}
+        {/* Right: Wheel OR Boxes */}
         <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          {/* Pointer arrow */}
-          <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '8px' }}>
-            {/* Pointer triangle at top */}
-            <div style={{
-              width: 0, height: 0,
-              borderLeft: '14px solid transparent',
-              borderRight: '14px solid transparent',
-              borderTop: '26px solid #e6007e',
-              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))',
-              position: 'absolute',
-              top: '-4px',
-              zIndex: 10,
-            }} />
+
+          {/* Mode toggle */}
+          <div style={{
+            display:'flex', gap:6, background:'#f1f5f9', borderRadius:12,
+            padding:5, marginBottom:18, width:'100%', maxWidth:400,
+          }}>
+            {[
+              { id:'wheel', icon:'🎡', label:'วงล้อหมุน' },
+              { id:'boxes', icon:'✨', label:'กล่องสุ่ม' },
+            ].map(m => (
+              <button key={m.id}
+                onClick={() => !spinning && setMode(m.id)}
+                disabled={spinning}
+                style={{
+                  flex:1, padding:'10px 12px', borderRadius:9, border:'none',
+                  background: mode === m.id
+                    ? `linear-gradient(135deg, ${CI.cyan}, ${CI.purple})`
+                    : 'transparent',
+                  color: mode === m.id ? '#fff' : '#64748b',
+                  cursor: spinning ? 'not-allowed' : 'pointer',
+                  fontFamily:FONT, fontWeight:800, fontSize:14,
+                  boxShadow: mode === m.id ? `0 4px 14px ${CI.purple}40` : 'none',
+                  transition:'all 0.2s',
+                }}>
+                {m.icon} {m.label}
+              </button>
+            ))}
           </div>
 
-          <div style={{ position: 'relative' }}>
-            {/* Pointer */}
-            <div style={{
-              position: 'absolute',
-              top: '-14px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: 0, height: 0,
-              borderLeft: '14px solid transparent',
-              borderRight: '14px solid transparent',
-              borderTop: '28px solid #e6007e',
-              filter: 'drop-shadow(0 3px 6px rgba(230,0,126,0.5))',
-              zIndex: 5,
-            }} />
-            <canvas
-              ref={canvasRef}
-              width={CANVAS_SIZE}
-              height={CANVAS_SIZE}
-              style={{ display: 'block', maxWidth: '100%', borderRadius: '50%' }}
-            />
-          </div>
+          {/* ════════════ WHEEL MODE ════════════ */}
+          {mode === 'wheel' && (
+            <>
+              <div style={{ position: 'relative' }}>
+                {/* Pointer */}
+                <div style={{
+                  position: 'absolute',
+                  top: '-14px', left: '50%', transform: 'translateX(-50%)',
+                  width: 0, height: 0,
+                  borderLeft: '14px solid transparent',
+                  borderRight: '14px solid transparent',
+                  borderTop: '28px solid #e6007e',
+                  filter: 'drop-shadow(0 3px 6px rgba(230,0,126,0.5))',
+                  zIndex: 5,
+                }} />
+                <canvas
+                  ref={canvasRef}
+                  width={CANVAS_SIZE}
+                  height={CANVAS_SIZE}
+                  style={{ display: 'block', maxWidth: '100%', borderRadius: '50%' }}
+                />
+              </div>
+            </>
+          )}
 
-          {/* Spin button */}
+          {/* ════════════ BOXES MODE ════════════ */}
+          {mode === 'boxes' && (
+            <div style={{
+              width:'100%', minHeight: 480,
+              display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+              padding:'12px 0',
+            }}>
+              <style>{`
+                @keyframes boxPop {
+                  0% { transform: scale(1); }
+                  50% { transform: scale(1.18) rotate(2deg); }
+                  100% { transform: scale(1); }
+                }
+                @keyframes winnerPulse {
+                  0%,100% { transform: scale(1.08); box-shadow: 0 0 0 4px rgba(255,255,255,0.6), 0 0 32px rgba(230,0,126,0.6); }
+                  50%     { transform: scale(1.14); box-shadow: 0 0 0 8px rgba(255,255,255,0.4), 0 0 48px rgba(230,0,126,0.85); }
+                }
+                @keyframes winnerStar {
+                  0%,100% { transform: rotate(-8deg) scale(1); }
+                  50%     { transform: rotate(8deg) scale(1.15); }
+                }
+              `}</style>
+
+              <div style={{
+                display:'grid',
+                gridTemplateColumns:'repeat(auto-fill, minmax(140px, 1fr))',
+                gap:14, width:'100%', padding:'8px',
+              }}>
+                {items.map((item, i) => {
+                  const isHi    = highlightedIdx === i;
+                  const isWin   = !spinning && winner === item;
+                  const color   = SEGMENT_COLORS[i % SEGMENT_COLORS.length];
+                  return (
+                    <div key={i} style={{
+                      position:'relative',
+                      background: isHi || isWin
+                        ? `linear-gradient(135deg, ${color}, ${color}dd)`
+                        : `${color}15`,
+                      border: `3px solid ${isHi || isWin ? color : color + '55'}`,
+                      borderRadius: 18,
+                      padding: '20px 14px',
+                      textAlign:'center',
+                      transform: isWin
+                        ? 'scale(1.08)'
+                        : isHi ? 'scale(1.06)' : 'scale(1)',
+                      transition: spinning ? 'transform 0.12s ease, background 0.12s' : 'all 0.4s cubic-bezier(0.34,1.56,0.64,1)',
+                      boxShadow: isWin
+                        ? `0 0 0 4px rgba(255,255,255,0.6), 0 0 32px ${color}cc`
+                        : isHi
+                          ? `0 8px 24px ${color}66, 0 0 0 3px ${color}33`
+                          : `0 2px 8px rgba(0,0,0,0.05)`,
+                      animation: isWin ? 'winnerPulse 1.2s ease infinite' : 'none',
+                      cursor: 'default',
+                      minHeight: 76,
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                    }}>
+                      <div style={{
+                        fontSize: isHi || isWin ? 18 : 16,
+                        fontWeight: 800,
+                        color: isHi || isWin ? '#fff' : color,
+                        fontFamily:FONT,
+                        lineHeight:1.3,
+                        textShadow: isHi || isWin ? '0 2px 6px rgba(0,0,0,0.25)' : 'none',
+                        wordBreak:'break-word',
+                      }}>
+                        {item}
+                      </div>
+                      {isWin && (
+                        <>
+                          <div style={{
+                            position:'absolute', top:-14, right:-10,
+                            background:'#fff', color: CI.magenta,
+                            padding:'4px 10px', borderRadius:14,
+                            fontSize:11, fontWeight:900,
+                            fontFamily:FONT, letterSpacing:0.5,
+                            boxShadow:'0 4px 12px rgba(230,0,126,0.4)',
+                            transform:'rotate(8deg)',
+                            zIndex:2,
+                          }}>
+                            ⭐ ผู้โชคดี
+                          </div>
+                          <div style={{
+                            position:'absolute', top:-22, left:-8,
+                            fontSize:28,
+                            animation:'winnerStar 0.8s ease-in-out infinite',
+                          }}>👑</div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Spin button — works for both modes */}
           <button
-            onClick={spin}
+            onClick={handleSpin}
             disabled={spinning}
             style={{
               marginTop: '20px',
@@ -603,10 +812,12 @@ export default function SpinWheel() {
               letterSpacing: '2px',
             }}
           >
-            {spinning ? '⏳ กำลังหมุน...' : '🎯 หมุน!'}
+            {spinning
+              ? (mode === 'boxes' ? '✨ กำลังสุ่ม...' : '⏳ กำลังหมุน...')
+              : (mode === 'boxes' ? '🎲 สุ่มผู้โชคดี!' : '🎯 หมุน!')}
           </button>
 
-          {/* Winner display below wheel */}
+          {/* Winner display below */}
           {winner && !showWinner && (
             <div style={{
               marginTop: '16px',
