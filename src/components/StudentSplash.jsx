@@ -64,6 +64,7 @@ export default function StudentSplash({ duration = 2200, onFinish }) {
         zIndex:3, textAlign:'center', position:'relative',
         animation:'spTitleIn 0.7s ease both, spFloat 5s ease-in-out infinite',
         marginBottom: 'clamp(40px,8vh,80px)',
+        transform: 'translateY(-12vh)',  // ← lift title above the train+bridge
       }}>
         <h1 style={{
           margin:0, fontSize:'clamp(40px,7.5vw,84px)',
@@ -192,8 +193,7 @@ export default function StudentSplash({ duration = 2200, onFinish }) {
         { left: '73%', bottom: '4vh', size: 'clamp(24px,3vw,36px)',    emoji: '🌳' },
         { left: '80%', bottom: '7vh', size: 'clamp(34px,4.2vw,52px)',  emoji: '🌲' },
         { left: '86%', bottom: '3.5vh', size: 'clamp(22px,2.8vw,34px)', emoji: '🌳' },
-        { left: '92%', bottom: '5.5vh', size: 'clamp(28px,3.6vw,44px)', emoji: '🌲' },
-        { left: '97%', bottom: '4vh', size: 'clamp(24px,3vw,36px)',    emoji: '🌳' },
+        // Removed two right-edge trees (92% and 97%) per user request
       ].map((tree, i) => (
         <div key={i} style={{
           position: 'absolute',

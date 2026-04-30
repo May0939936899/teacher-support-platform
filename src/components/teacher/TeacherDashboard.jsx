@@ -254,7 +254,7 @@ export default function TeacherDashboard({ onSelectTool, menuItems, colorMap, la
           @keyframes rainbowShift  { 0%{background-position:0% 50%}    100%{background-position:300% 50%} }
           @keyframes titleBob      { 0%,100%{transform:translateY(0)}  50%{transform:translateY(-4px)} }
           @keyframes titleGlowNight{ 0%,100%{filter:drop-shadow(0 0 12px rgba(0,180,230,0.5))} 50%{filter:drop-shadow(0 0 22px rgba(124,77,255,0.6)) drop-shadow(0 0 12px rgba(230,0,126,0.5))} }
-          @keyframes titleGlowDay  { 0%,100%{filter:drop-shadow(0 4px 8px rgba(15,23,42,0.18)) drop-shadow(0 0 14px rgba(124,77,255,0.25))} 50%{filter:drop-shadow(0 6px 12px rgba(15,23,42,0.22)) drop-shadow(0 0 22px rgba(0,180,230,0.35))} }
+          @keyframes titleGlowDay  { 0%,100%{filter:drop-shadow(0 2px 3px rgba(15,23,42,0.12))} 50%{filter:drop-shadow(0 3px 5px rgba(15,23,42,0.14))} }
           @keyframes auroraShift   { 0%{transform:translateX(-30%) skewX(-15deg)} 100%{transform:translateX(130%) skewX(-15deg)} }
           @keyframes skyBob        { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px) rotate(-2deg)} }
           @keyframes sunSpin       { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
